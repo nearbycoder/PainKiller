@@ -23,7 +23,7 @@
 
 <a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" alt="Play the Purgatory feature trailer (1:57)" width="100%"></a>
 
-*Feature trailer · 1:57 · 1080p · the game's own synthesized music and sound effects. All footage is captured from the running game: scripted, rendered in virtual time and edited by [`tools/make_trailer.py`](tools/make_trailer.py).*
+*Feature trailer · 1:57 · 1080p · the game's own synthesized music and sound effects. Click the poster to open the [37 MB MP4](docs/media/trailer.mp4); GitHub serves it as a download. All footage is captured from the running game: scripted, rendered in virtual time and edited by [`tools/make_trailer.py`](tools/make_trailer.py).*
 
 ## About
 
