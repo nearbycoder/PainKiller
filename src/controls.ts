@@ -1,0 +1,277 @@
+import type { Game } from "./game";
+import { clamp } from "./core";
+
+export function stickAxis(value: number, deadzone = 0.18) {
+  return Math.abs(value) <= deadzone
+    ? 0
+    : (Math.sign(value) * (Math.abs(value) - deadzone)) / (1 - deadzone);
+}
+/** Touch and standard-mapped controllers share the same gameplay actions. */
+export class Controls {
+  moveX = 0;
+  moveY = 0;
+  primary = false;
+  secondary = false;
+  jump = false;
+  sprint = false;
+  connected = false;
+  mobile = false;
+  private touchX = 0;
+  private touchY = 0;
+  private held = new Set<string>();
+  private previous: boolean[] = [];
+  private wasConnected = false;
+  private repeat = 0;
+  private element: HTMLElement;
+  private cancelGestures: (() => void)[] = [];
+  constructor(private game: Game) {
+    this.element = document.createElement("div");
+    this.element.id = "touch-controls";
+    this.element.innerHTML = `<div id="touch-move" role="group" aria-label="Movement joystick"><i></i><span>MOVE</span></div><div id="touch-look" aria-label="Drag to look"></div><div class="touch-actions"><button data-touch="secondary" aria-label="Alternate fire">ALT</button><button data-touch="primary" class="touch-fire" aria-label="Fire">FIRE</button><button data-touch="jump" aria-label="Jump">JUMP</button><button data-touch="sprint" aria-label="Sprint">RUN</button></div><div class="touch-tools"><button data-touch="previous" aria-label="Previous weapon">◀</button><button data-touch="next" aria-label="Next weapon">▶</button><button data-touch="use" aria-label="Use gate">USE</button><button data-touch="tarot" aria-label="Activate tarot">TAROT</button><button data-touch="inspect" aria-label="Inspect weapon">INSPECT</button><button data-touch="pause" aria-label="Pause">Ⅱ</button></div><span id="touch-rotate">Landscape gives you a wider view</span>`;
+    document.body.append(this.element);
+    const layout = () => {
+      this.mobile = matchMedia("(pointer: coarse)").matches || innerWidth < 900;
+      document.body.classList.toggle("touch-layout", this.mobile);
+    };
+    layout();
+    window.addEventListener("resize", layout);
+    const move = this.element.querySelector<HTMLElement>("#touch-move")!;
+    let moving: number | undefined,
+      startX = 0,
+      startY = 0;
+    move.addEventListener("pointerdown", (e) => {
+      if (this.game.mode !== "playing" || moving !== undefined) return;
+      e.preventDefault();
+      moving = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      move.setPointerCapture(e.pointerId);
+    });
+    move.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== moving) return;
+      const dx = e.clientX - startX,
+        dy = e.clientY - startY,
+        len = Math.max(48, Math.hypot(dx, dy));
+      this.touchX = dx / len;
+      this.touchY = dy / len;
+      move.style.setProperty("--jx", `${this.touchX * 34}px`);
+      move.style.setProperty("--jy", `${this.touchY * 34}px`);
+    });
+    const endMove = (e: PointerEvent) => {
+      if (e.pointerId !== moving) return;
+      moving = undefined;
+      this.touchX = this.touchY = 0;
+      move.style.setProperty("--jx", "0px");
+      move.style.setProperty("--jy", "0px");
+    };
+    for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+      move.addEventListener(event, endMove as EventListener);
+    const look = this.element.querySelector<HTMLElement>("#touch-look")!;
+    let looking: number | undefined,
+      lx = 0,
+      ly = 0;
+    look.addEventListener("pointerdown", (e) => {
+      if (this.game.mode !== "playing" || looking !== undefined) return;
+      e.preventDefault();
+      looking = e.pointerId;
+      lx = e.clientX;
+      ly = e.clientY;
+      look.setPointerCapture(e.pointerId);
+    });
+    look.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== looking || this.game.mode !== "playing") return;
+      this.look(
+        (e.clientX - lx) * this.game.sensitivity * 1.25,
+        (e.clientY - ly) * this.game.sensitivity * 1.25,
+      );
+      lx = e.clientX;
+      ly = e.clientY;
+    });
+    this.cancelGestures.push(() => {
+      const id = moving;
+      moving = undefined;
+      if (id !== undefined && move.hasPointerCapture(id))
+        move.releasePointerCapture(id);
+    });
+    this.cancelGestures.push(() => {
+      const id = looking;
+      looking = undefined;
+      if (id !== undefined && look.hasPointerCapture(id))
+        look.releasePointerCapture(id);
+    });
+    const endLook = (e: PointerEvent) => {
+      if (e.pointerId === looking) looking = undefined;
+    };
+    for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+      look.addEventListener(event, endLook as EventListener);
+    for (const button of Array.from(
+      this.element.querySelectorAll<HTMLButtonElement>("button"),
+    )) {
+      const pointers = new Set<number>();
+      const action = button.dataset.touch!;
+      button.addEventListener("pointerdown", (e) => {
+        if (this.game.mode !== "playing") return;
+        e.preventDefault();
+        pointers.add(e.pointerId);
+        button.setPointerCapture(e.pointerId);
+        this.held.add(action);
+        button.classList.add("held");
+        this.action(action);
+        this.game.sound.start();
+      });
+      this.cancelGestures.push(() => {
+        for (const id of pointers)
+          if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
+        pointers.clear();
+      });
+      const end = (e: PointerEvent) => {
+        pointers.delete(e.pointerId);
+        if (!pointers.size) {
+          this.held.delete(action);
+          button.classList.remove("held");
+        }
+      };
+      for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
+        button.addEventListener(event, end as EventListener);
+    }
+    window.addEventListener("blur", () => this.clear());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.clear();
+    });
+  }
+  private action(action: string) {
+    const g = this.game;
+    if (action === "previous") g.equip((g.weapon + 4) % 5);
+    if (action === "next") g.equip((g.weapon + 1) % 5);
+    if (action === "inspect") g.weaponMotion.inspect = 1.7;
+    if (
+      action === "use" &&
+      g.arenaCleared &&
+      Math.hypot(g.position.x, g.position.z + 28) < 5
+    )
+      g.nextArena();
+    if (action === "tarot") g.activateCard();
+    if (action === "pause") g.setMode("paused");
+  }
+  private look(x: number, y: number) {
+    this.game.yaw -= x;
+    this.game.pitch = clamp(
+      this.game.pitch - y * (this.game.invertY ? -1 : 1),
+      -1.45,
+      1.45,
+    );
+    this.game.weaponMotion.look(x * 10, y * 10);
+  }
+  clear() {
+    this.moveX = this.moveY = this.touchX = this.touchY = 0;
+    this.primary = this.secondary = this.jump = this.sprint = false;
+    this.held.clear();
+    this.element
+      .querySelectorAll(".held")
+      .forEach((b) => b.classList.remove("held"));
+    const stick = this.element.querySelector<HTMLElement>("#touch-move")!;
+    stick.style.setProperty("--jx", "0px");
+    stick.style.setProperty("--jy", "0px");
+    this.cancelGestures.forEach((cancel) => cancel());
+  }
+  poll(dt: number, pads?: readonly (Gamepad | null)[]) {
+    let gamepads = pads;
+    if (!gamepads)
+      try {
+        gamepads = navigator.getGamepads?.() || [];
+      } catch {
+        gamepads = [];
+      }
+    const pad = Array.from(gamepads).find(
+      (p) => p?.connected && p.mapping === "standard",
+    );
+    this.connected = !!pad;
+    document.body.classList.toggle("controller-active", this.connected);
+    if (this.wasConnected && !pad && this.game.mode === "playing")
+      this.game.setMode("paused");
+    this.wasConnected = !!pad;
+    const down = pad
+      ? Array.from(pad.buttons, (b) => b.pressed || b.value > 0.5)
+      : [];
+    const press = (i: number) => !!down[i] && !this.previous[i];
+    if (press(9)) {
+      if (this.game.mode === "playing") this.game.setMode("paused");
+      else if (this.game.mode === "paused") this.game.setMode("playing");
+    }
+    if (this.game.mode === "playing") {
+      this.moveX = clamp(
+        this.touchX + (pad ? stickAxis(pad.axes[0] || 0) : 0),
+        -1,
+        1,
+      );
+      this.moveY = clamp(
+        this.touchY + (pad ? stickAxis(pad.axes[1] || 0) : 0),
+        -1,
+        1,
+      );
+      this.primary = this.held.has("primary") || !!down[7];
+      this.secondary = this.held.has("secondary") || !!down[6];
+      this.jump = this.held.has("jump") || !!down[0];
+      this.sprint = this.held.has("sprint") || !!down[10];
+      if (pad)
+        this.look(
+          stickAxis(pad.axes[2] || 0) *
+            dt *
+            2.5 *
+            (this.game.sensitivity / 0.002),
+          stickAxis(pad.axes[3] || 0) *
+            dt *
+            2 *
+            (this.game.sensitivity / 0.002),
+        );
+      for (const [id, action] of [
+        [4, "previous"],
+        [5, "next"],
+        [2, "use"],
+        [3, "tarot"],
+        [1, "inspect"],
+      ] as const)
+        if (press(id)) this.action(action);
+    } else {
+      this.moveX = this.moveY = 0;
+      this.primary = this.secondary = this.jump = this.sprint = false;
+      this.repeat -= dt;
+      const axis = pad ? stickAxis(pad.axes[1] || 0) : 0;
+      const direction =
+        down[12] || axis < -0.5
+          ? "ArrowUp"
+          : down[13] || axis > 0.5
+            ? "ArrowDown"
+            : null;
+      if (direction && this.repeat <= 0) {
+        this.key(direction);
+        this.repeat = 0.22;
+      } else if (!direction) this.repeat = 0;
+      if (press(0)) (document.activeElement as HTMLElement)?.click();
+      if (press(1)) this.key("Escape");
+      // D-pad and horizontal stick also adjust the focused options slider.
+      const focused = document.activeElement;
+      if (
+        focused instanceof HTMLInputElement &&
+        focused.type === "range" &&
+        (press(14) || press(15))
+      ) {
+        focused.value = String(
+          clamp(
+            Number(focused.value) +
+              (press(15) ? 1 : -1) * Number(focused.step || 1),
+            Number(focused.min),
+            Number(focused.max),
+          ),
+        );
+        focused.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    }
+    this.previous = down;
+  }
+  private key(code: string) {
+    (document.activeElement || document.body).dispatchEvent(
+      new KeyboardEvent("keydown", { key: code, code, bubbles: true }),
+    );
+  }
+}

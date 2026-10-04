@@ -1,0 +1,264 @@
+#touch-controls {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.touch-layout[data-mode="playing"] #touch-controls {
+  display: block;
+}
+.controller-active #touch-controls {
+  opacity: 0.4;
+}
+#touch-controls button {
+  touch-action: none;
+  pointer-events: auto;
+  min-width: 46px;
+  min-height: 46px;
+  border: 1px solid #c6af8266;
+  border-radius: 50%;
+  background: #14150fd0;
+  color: #eadcbb;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px #0008;
+}
+#touch-controls button.held {
+  background: #936b37cc;
+  border-color: #f7d996;
+}
+#touch-move {
+  position: absolute;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: max(30px, env(safe-area-inset-bottom));
+  width: 130px;
+  height: 130px;
+  border: 1px solid #d1c2a955;
+  border-radius: 50%;
+  background: #111a;
+  pointer-events: auto;
+  touch-action: none;
+}
+#touch-move i {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  left: 40px;
+  top: 40px;
+  transform: translate(var(--jx, 0px), var(--jy, 0px));
+  background: #d2bc8833;
+  border: 1px solid #d2bc8877;
+  border-radius: 50%;
+}
+#touch-move span {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #ddd6bd88;
+}
+#touch-look {
+  position: absolute;
+  left: 38%;
+  right: 0;
+  top: 60px;
+  bottom: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-actions {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(30px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 58px 70px;
+  gap: 10px;
+}
+#touch-controls .touch-fire {
+  width: 70px;
+  height: 70px;
+  border-color: #d4a76bbb;
+  background: #412718c9;
+}
+.touch-tools {
+  position: absolute;
+  left: 50%;
+  top: max(12px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+}
+#touch-controls .touch-tools button {
+  min-width: 40px;
+  min-height: 36px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+#touch-rotate {
+  display: none;
+  position: absolute;
+  top: 56px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #ded5be99;
+}
+.touch-layout #hud-help {
+  display: none;
+}
+.touch-layout .hud-top {
+  top: max(58px, calc(env(safe-area-inset-top) + 50px));
+  left: 14px;
+  right: 14px;
+}
+.touch-layout .hud-top h2 {
+  font-size: 16px;
+}
+.touch-layout .hud-top .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.touch-layout .objective {
+  top: 38px;
+  font-size: 10px;
+}
+.touch-layout .objective p {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.touch-layout .objective span {
+  font-size: 10px;
+}
+.touch-layout .hud-bottom {
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 170px;
+  right: 178px;
+}
+.touch-layout .health > b,
+.touch-layout .armor > b {
+  font-size: 27px;
+}
+.touch-layout .vitals {
+  width: 115px;
+  gap: 4px 12px;
+}
+.touch-layout .health,
+.touch-layout .armor {
+  gap: 4px;
+  padding-bottom: 13px;
+}
+.touch-layout .vital-icon {
+  font-size: 17px;
+}
+.touch-layout .health > span:last-child,
+.touch-layout .armor > span:last-child {
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+.touch-layout .soul-bar {
+  margin-top: 4px;
+}
+.touch-layout .ammo {
+  width: 100px;
+}
+.touch-layout .ammo > div > b {
+  font-size: 33px;
+}
+.touch-layout .ammo small {
+  font-size: 8px;
+}
+.touch-layout .weapon-hud {
+  display: none;
+}
+.touch-layout #toast {
+  top: 30%;
+  font-size: 14px;
+}
+.touch-layout #gate-prompt {
+  bottom: 29%;
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  #touch-rotate {
+    display: block;
+  }
+  .touch-layout .hud-top {
+    top: 84px;
+  }
+  .touch-tools {
+    gap: 4px;
+  }
+  #touch-controls .touch-tools button {
+    min-width: 39px;
+  }
+  .touch-layout .hud-bottom {
+    left: 18px;
+    right: 18px;
+    bottom: 192px;
+  }
+  .touch-layout .game-menu {
+    padding: 24px 18px;
+  }
+  .touch-layout .menu-hints {
+    font-size: 10px;
+  }
+  .touch-layout .menu-hints > span:first-child {
+    display: none;
+  }
+  .touch-layout .screen-heading h1 {
+    font-size: 30px;
+  }
+  .touch-layout .option-row {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .touch-layout .option-row > span {
+    flex: 1 1 100%;
+  }
+  .touch-layout .option-row input[type="range"] {
+    width: 150px;
+  }
+  .touch-layout .settings-categories {
+    flex-wrap: wrap;
+  }
+  .touch-layout .campaign-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch-layout .hud-top {
+    top: 54px;
+  }
+  .touch-layout .hud-top .eyebrow,
+  .touch-layout .combat-stats {
+    display: none;
+  }
+  .touch-layout .objective {
+    top: 0;
+  }
+  #touch-move {
+    width: 110px;
+    height: 110px;
+    bottom: 20px;
+  }
+  #touch-move i {
+    left: 30px;
+    top: 30px;
+  }
+  .touch-actions {
+    bottom: 20px;
+    gap: 5px;
+  }
+  .touch-layout .game-menu {
+    padding: 12px 24px;
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "purgatory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "desktop": "electron .",
+    "desktop:dev": "PURGATORY_DEV=1 electron .",
+    "package:linux": "npm run build && electron-builder --linux AppImage && node tools/package-archive.cjs",
+    "test:desktop": "electron . --smoke-test",
+    "format": "prettier --write src desktop tests index.html vite.config.ts tsconfig.json package.json",
+    "format:check": "prettier --check src desktop tests index.html vite.config.ts tsconfig.json package.json",
+    "art:build": "bash tools/build-assets.sh",
+    "media": "python3 tools/make_trailer.py"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.12.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/cinzel": "^5.3.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  },
+  "main": "desktop/main.cjs",
+  "description": "An original gothic arena shooter with a 24-level campaign",
+  "author": "Purgatory contributors",
+  "build": {
+    "appId": "game.purgatory.desktop",
+    "productName": "Purgatory",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "package.json",
+      "!node_modules/**/*",
+      "THIRD_PARTY_NOTICES.txt"
+    ],
+    "linux": {
+      "category": "Game",
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "icon": "build/icon.png",
+      "desktop": {
+        "entry": {
+          "Name": "Purgatory",
+          "Comment": "A gothic arena shooter",
+          "Categories": "Game;ActionGame;"
+        }
+      },
+      "executableName": "purgatory"
+    },
+    "asar": true,
+    "compression": "normal"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nearbycoder/PainKiller.git"
+  }
+}

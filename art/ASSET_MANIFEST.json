@@ -1,0 +1,147 @@
+[
+  {
+    "id": "large_castle_door",
+    "kind": "model",
+    "creator": [
+      "Tina"
+    ],
+    "url": "https://polyhaven.com/a/large_castle_door",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "dead_tree_trunk_02",
+    "kind": "model",
+    "creator": [
+      "Jenelle van Heerden",
+      "Rico Cilliers"
+    ],
+    "url": "https://polyhaven.com/a/dead_tree_trunk_02",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "rock_moss_set_01",
+    "kind": "model",
+    "creator": [
+      "Kless Gyzen"
+    ],
+    "url": "https://polyhaven.com/a/rock_moss_set_01",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "gothic_statue",
+    "kind": "model",
+    "creator": [
+      "Benny Weimer"
+    ],
+    "url": "https://polyhaven.com/a/gothic_statue",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "medieval_blocks_03",
+    "kind": "material",
+    "creator": [
+      "Rob Tuytel"
+    ],
+    "url": "https://polyhaven.com/a/medieval_blocks_03",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "mossy_cobblestone",
+    "kind": "material",
+    "creator": [
+      "S\u01a1n Nguy\u1ec5n"
+    ],
+    "url": "https://polyhaven.com/a/mossy_cobblestone",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "rocky_terrain_02",
+    "kind": "material",
+    "creator": [
+      "Amal Kumar"
+    ],
+    "url": "https://polyhaven.com/a/rocky_terrain_02",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "rusty_metal",
+    "kind": "material",
+    "creator": [
+      "Rob Tuytel"
+    ],
+    "url": "https://polyhaven.com/a/rusty_metal",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "dark_wood",
+    "kind": "material",
+    "creator": [
+      "Dario Barresi",
+      "Dimitrios Savva",
+      "Rico Cilliers"
+    ],
+    "url": "https://polyhaven.com/a/dark_wood",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "brown_leather",
+    "kind": "material",
+    "creator": [
+      "Rob Tuytel"
+    ],
+    "url": "https://polyhaven.com/a/brown_leather",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "qwantani_moonrise_puresky",
+    "kind": "HDRI",
+    "url": "https://polyhaven.com/a/qwantani_moonrise_puresky",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "creator": [
+      "Greg Zaal",
+      "Jarod Guest"
+    ]
+  },
+  {
+    "id": "male-city-zombie",
+    "kind": "animated character",
+    "creator": [
+      "Rikindle3D"
+    ],
+    "url": "https://opengameart.org/content/male-city-zombie-ready-for-use-in-game-engines",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "tree_small_02",
+    "kind": "bark texture source; source scan evaluated, geometry not shipped",
+    "creator": [
+      "Rico Cilliers"
+    ],
+    "url": "https://polyhaven.com/a/tree_small_02",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "id": "grass_medium_01",
+    "kind": "model",
+    "creator": [
+      "Rob Tuytel",
+      "Rico Cilliers"
+    ],
+    "url": "https://polyhaven.com/a/grass_medium_01",
+    "license": "CC0-1.0",
+    "licenseURL": "https://creativecommons.org/publicdomain/zero/1.0/"
+  }
+]
