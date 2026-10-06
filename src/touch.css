@@ -187,6 +187,12 @@
 .touch-layout #gate-prompt {
   bottom: 29%;
 }
+.touch-layout #hint {
+  bottom: 33%;
+  max-width: 64vw;
+  padding: 6px 14px;
+  font-size: 12px;
+}
 @media (max-width: 600px) and (orientation: portrait) {
   #touch-rotate {
     display: block;

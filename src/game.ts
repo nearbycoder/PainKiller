@@ -43,6 +43,7 @@ import {
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
 import { parseSettings, type Settings } from "./settings";
+import { HintQueue, hintText, type HintId } from "./hints";
 declare global {
   interface Window {
     desktop?: {
@@ -53,6 +54,19 @@ declare global {
     };
     __PURGATORY__?: unknown;
   }
+}
+function readSeenHints(): string[] {
+  try {
+    const seen = JSON.parse(localStorage.getItem("purgatory.hints") || "[]");
+    return Array.isArray(seen) ? seen.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+function writeSeenHints(seen: Iterable<string>) {
+  try {
+    localStorage.setItem("purgatory.hints", JSON.stringify([...seen]));
+  } catch {}
 }
 /** Particle bursts closer than this to the eye are skipped (metres). */
 const NEAR_PARTICLE_DISTANCE = 1.5;
@@ -140,6 +154,8 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  /** One-time combat hints; which ones were shown is kept in local storage. */
+  hints = new HintQueue(readSeenHints());
   /** World positions that recently hurt the player, for the HUD's hit-direction arcs. */
   damageMarks: { x: number; z: number; life: number }[] = [];
   /** Seconds since any living enemy was in view; drives the last-enemies locator. */
@@ -355,6 +371,7 @@ export class Game {
       invertY: this.invertY,
       headBob: this.headBob,
       crosshair: this.crosshair,
+      hints: this.hints.enabled,
     };
   }
   applySettings(s: Settings) {
@@ -372,6 +389,7 @@ export class Game {
       headBob: s.headBob,
       crosshair: s.crosshair,
     });
+    this.hints.setEnabled(s.hints);
     this.sound.music = s.music;
     this.sound.setVolume(s.volume);
     this.sound.setChannels(s.effectsVolume, s.musicVolume);
@@ -503,6 +521,23 @@ export class Game {
       this.sectorStart = { ...kept };
     }
   }
+  /** Queue a one-time hint; it appears in its own HUD line when nothing blocks it. */
+  hint(id: HintId) {
+    this.hints.trigger(id);
+  }
+  /** The visible hint worded for the current input device. */
+  hintText() {
+    const id = this.hints.visible;
+    if (!id) return "";
+    return hintText(
+      id,
+      this.controls.connected
+        ? "controller"
+        : this.controls.mobile
+          ? "touch"
+          : "keyboard",
+    );
+  }
   notify(text: string, time = 3) {
     this.toast = text;
     this.toastTimer = time;
@@ -523,6 +558,7 @@ export class Game {
   }
   equip(id: number) {
     this.weapon = clamp(id, 0, 4);
+    if (this.weapon === 4 && this.mode === "playing") this.hint("storm");
     this.weaponMotion.equip(this.weapon);
     this.weaponModels.forEach((w, i) => (w.root.visible = i === this.weapon));
     this.recoil = 0.14;
@@ -559,6 +595,7 @@ export class Game {
   }
   loadArena() {
     this.clearDynamic();
+    this.hints.clear();
     this.arena?.dispose();
     this.arena = buildArena(this.scene, LEVELS[this.level], this.room);
     this.physics.reset(this.arena.colliders);
@@ -890,6 +927,13 @@ export class Game {
   }
   beginWave() {
     this.wave++;
+    if (this.wave === 1) this.hint("arsenal");
+    if (
+      this.wave === 1 &&
+      !this.cardUsed &&
+      this.save.cards.includes(this.save.selectedCard)
+    )
+      this.hint("tarot");
     if (
       LEVELS[this.level].boss &&
       this.room === LEVELS[this.level].rooms - 1 &&
@@ -947,6 +991,7 @@ export class Game {
           : 1;
     e.hp -= damage * multiplier;
     if (kind === "ice") {
+      if (e.type !== "boss") this.hint("freeze");
       e.frozen = e.type === "boss" ? 1 : 4;
       this.burst(
         e.model.root.position.clone().add(new T.Vector3(0, 1, 0)),
@@ -1254,6 +1299,7 @@ export class Game {
           if (i < 3) this.trace(visualMuzzle, hit.point, 0xffdca0);
         }
     }
+    if (id === 2 && alt) this.hint("grenade");
     if (id === 2)
       this.projectile(
         alt ? "grenade" : "stake",
@@ -1512,6 +1558,13 @@ export class Game {
     }
     this.updateEnemies(dt);
     if (this.mode !== "playing") return;
+    // Hints wait while a general is being introduced.
+    const boss = LEVELS[this.level].boss;
+    const shown = this.hints.update(
+      dt,
+      !!boss && this.toastTimer > 0 && this.toast === boss.toUpperCase(),
+    );
+    if (shown) writeSeenHints(this.hints.seen);
     for (const m of this.damageMarks) m.life -= dt;
     this.damageMarks = this.damageMarks.filter((m) => m.life > 0);
     // Line-of-sight tests only matter once the locator could appear.
@@ -2077,6 +2130,7 @@ export class Game {
         )
           continue;
         if (p.kind === "soul") {
+          this.hint("souls");
           this.souls++;
           this.save.souls++;
           this.levelSouls++;

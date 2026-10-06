@@ -1374,6 +1374,32 @@ body[data-mode="dead"] #world {
   color: #ffca9b;
   opacity: 0;
 }
+#hint {
+  position: absolute;
+  left: 50%;
+  bottom: 190px;
+  transform: translateX(-50%);
+  max-width: min(940px, 90vw);
+  padding: 9px 20px;
+  border: 1px solid #bfa47766;
+  background: linear-gradient(
+    90deg,
+    #0000,
+    #0b0a09d9 18%,
+    #0b0a09d9 82%,
+    #0000
+  );
+  color: #ead9b4;
+  font:
+    600 15px/1.35 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
 #threat-ring {
   position: absolute;
   left: 50%;

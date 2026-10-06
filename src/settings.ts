@@ -13,6 +13,7 @@ export const defaults = {
   invertY: false,
   headBob: true,
   crosshair: true,
+  hints: true,
 };
 export type Settings = typeof defaults;
 export function parseSettings(raw: string | null): Settings {
@@ -48,6 +49,7 @@ export function parseSettings(raw: string | null): Settings {
     "headBob",
     "crosshair",
     "adaptiveResolution",
+    "hints",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   return result;

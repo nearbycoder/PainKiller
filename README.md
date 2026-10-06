@@ -89,7 +89,7 @@ Health, armor and ammunition sit in every arena and drop from the fallen. Every 
 
 ### Options
 
-Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolution scale with optional adaptive resolution, brightness, field of view, and independent master, effects and music volume. Sensitivity and inverted look apply to mouse, stick and touch. Three difficulties are available: **Reverie**, **Purgatory** and **Torment**. Settings and campaign progress save locally.
+Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolution scale with optional adaptive resolution, brightness, field of view, and independent master, effects and music volume. Sensitivity and inverted look apply to mouse, stick and touch. One-time combat hints explain the weapon combos, souls and the tarot the first time each comes up, worded for keyboard, controller or touch, and can be turned off under Gameplay. Three difficulties are available: **Reverie**, **Purgatory** and **Torment**. Settings and campaign progress save locally.
 
 ## Content
 

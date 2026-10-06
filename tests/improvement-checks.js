@@ -289,6 +289,81 @@
     }
   });
 
+  check("combat hints appear once each and never when disabled", () => {
+    const stored = localStorage.getItem("purgatory.hints"),
+      options = g.settings();
+    try {
+      g.hints.seen.clear();
+      g.applySettings({ ...options, hints: true });
+      setup();
+      g.beginWave();
+      step(2);
+      g.onHUD();
+      const box = document.getElementById("hint");
+      assert(
+        box && /five weapons/i.test(box.textContent),
+        "No arsenal hint: " + box?.textContent,
+      );
+      assert(Number(box.style.opacity) > 0, "Hint is invisible");
+      const e = g.spawnEnemy(
+        "shambler",
+        g.position
+          .clone()
+          .setY(0)
+          .add(new V(0, 0, -8)),
+      );
+      g.hitEnemy(e, 1, "ice");
+      step(30);
+      assert(
+        g.hints.visible === "arsenal",
+        "A second hint replaced the first early",
+      );
+      step(6 * 60);
+      assert(
+        g.hints.visible === "freeze",
+        "Freeze hint did not follow: " + g.hints.visible,
+      );
+      step(7 * 60);
+      g.hitEnemy(e, 1, "ice");
+      step(10);
+      assert(g.hints.visible === null, "Freeze hint shown twice");
+      assert(
+        JSON.parse(localStorage.getItem("purgatory.hints")).includes("freeze"),
+        "Seen hints were not saved",
+      );
+      // A general's introduction holds hints back.
+      setup(4, 2);
+      g.toast = window.__PURGATORY__.campaign[4].boss.toUpperCase();
+      g.toastTimer = 3;
+      g.equip(4);
+      step(30);
+      assert(
+        g.hints.visible === null,
+        "Hint shown over a general's introduction",
+      );
+      step(3 * 60);
+      assert(
+        g.hints.visible === "storm",
+        "Storm hint did not appear afterwards",
+      );
+      // Disabled hints never appear.
+      g.applySettings({ ...g.settings(), hints: false });
+      setup();
+      g.equip(2);
+      g.cooldown = 0;
+      g.shoot(true);
+      step(60);
+      assert(
+        g.hints.visible === null && !g.hints.seen.has("grenade"),
+        "Hint shown while disabled",
+      );
+    } finally {
+      g.applySettings(options);
+      if (stored === null) localStorage.removeItem("purgatory.hints");
+      else localStorage.setItem("purgatory.hints", stored);
+    }
+  });
+
   g.save = saved;
   g.persist();
   g.level = saved.level;

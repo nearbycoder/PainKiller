@@ -541,11 +541,20 @@ export class UI {
             ["Off", false],
             ["On", true],
           ],
+        ) +
+        this.choice(
+          "hints",
+          "Combat hints",
+          "Explain combos and souls once, the first time they come up.",
+          [
+            ["Off", false],
+            ["On", true],
+          ],
         );
     return `<div class="settings-layout"><nav class="settings-categories" aria-label="Settings categories">${tabs.map(([id, label]) => `<button class="${id === this.settingsTab ? "selected" : ""}" data-action="settings-tab" data-value="${id}" aria-pressed="${id === this.settingsTab}"><span>◆</span>${label}</button>`).join("")}</nav><section class="settings-options" aria-label="${this.settingsTab} settings"><h2>${tabs.find((t) => t[0] === this.settingsTab)![1]}</h2>${content}<div class="settings-bottom"><span>Changes are saved automatically.</span><button data-action="defaults">Restore all defaults</button></div></section></div>`;
   }
   renderHUD() {
-    this.root.innerHTML = `<div id="damage-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="gate-prompt"></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}</button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ V</button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon">R ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
+    this.root.innerHTML = `<div id="damage-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}</button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ V</button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon">R ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
     this.root
       .querySelector('[data-action="pause"]')
       ?.addEventListener("click", () => this.game.setMode("paused"));
@@ -654,6 +663,12 @@ export class UI {
     document.getElementById("hitmarker")!.style.opacity =
       g.hitFlash > 0 ? "1" : "0";
     this.threats();
+    const hint = document.getElementById("hint");
+    if (hint) {
+      const text = g.hintText();
+      if (text && hint.textContent !== text) hint.textContent = text;
+      hint.style.opacity = String(g.hints.opacity);
+    }
     document.getElementById("soul-fill")!.style.width =
       (g.souls / 66) * 100 + "%";
     document.getElementById("hud-help")!.textContent = g.controls.connected
