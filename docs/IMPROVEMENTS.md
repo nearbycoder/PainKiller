@@ -37,6 +37,38 @@ Still open: everything below rank 6 in the list, the owner decisions at the end,
 
 **Still open / owner decisions:** controller rebinding; Windows and macOS builds; meshopt compression (needs a new tool install); hosting the web build; difficulty direction, including whether to telegraph the generals' shockwaves (the autopilot's main killer); weapon progression; bespoke general models and authored scenes for the 18 procedural themes.
 
+## Round 3 scope (2026-10-06)
+
+Picked from what is still open after round 2, for a player and without touching difficulty. Out of scope as owner decisions: difficulty retuning, a warning before generals' shockwaves, weapon progression, meshopt compression (needs a tool install), hosting, licensing, releases. Windows and macOS builds and bespoke general models stay deferred: the first cannot be tested here and the second needs new art.
+
+### R3-1. Controller rebinding (rest of ranked #7)
+
+Every gameplay action that the controller can trigger (fire, alternate fire, jump, sprint, next and previous weapon, use, tarot, inspect) gets a standard-mapping button, editable in Options › Controls by selecting a slot and pressing a controller button. A button another action uses moves and the page says so. Start always pauses and cannot be bound, the sticks stay move and look, and menu navigation (D-pad, A, B) is unchanged, so a player cannot lock themselves out. Bindings save with the options and reset with their own button and with "Restore all defaults". The HUD key line, gate prompt, weapon-slot keys and combat hints show the bound buttons instead of fixed names.
+
+**Accept / verify:** unit tests for defaults, parsing (unknown actions, Start, out-of-range buttons, duplicates), conflicts and labels; a browser check that rebinds through the real Options page with a synthetic gamepad, then jumps, fires and uses the gate with the new buttons while the old ones do nothing, that Start still pauses, and that the HUD and a hint name the new button; the existing input checks stay green; a capture of the Controls page.
+
+### R3-2. Controller feel: stick look speed and vibration
+
+Look speed on the right stick is today the mouse sensitivity scaled, so a player who tunes the mouse also changes the stick. Add a separate *Stick look speed* option (default equal to today's speed at the default mouse sensitivity) and an optional *Controller vibration* (default on) for taking damage, nearby explosions, the generals' shockwave hitting you and becoming the Wraith, through the Gamepad `vibrationActuator` where the browser offers it. Nothing changes for players without a controller.
+
+**Accept / verify:** unit tests for the option limits and the rumble strength mapping; browser checks with a synthetic gamepad that stick look speed is independent of mouse sensitivity, that hits request a rumble whose strength grows with damage, and that none is requested when vibration is off or the pad has no actuator. A physical controller is not available, so how it feels is **not verified** and will be reported as such.
+
+### R3-3. Death recap
+
+The death screen says what killed you and what hurt you during that attempt: the killing blow ("Struck down by a general's shockwave"), the damage taken from the top three sources, and one line on how that source is avoided (strafe across hellfire, keep distance from a brute's swing, your own rockets hurt up close, jump a shockwave ring). It describes mechanics that already exist; it does not warn before an attack and changes no numbers.
+
+**Accept / verify:** unit tests for the recap (sorting, merging, wording, plural forms, unknown causes); browser checks that deaths by hellfire, melee, own explosion and shockwave each name the right cause, that the breakdown resets on *Rise again* and with a new sector, and that a resumed save does not show a stale recap; a capture of the death screen.
+
+### R3-4. Gate guide
+
+Once a sector is cleared, the gate is a 4 m ring at one end of a 52 × 62 m arena with cover, and the HUD only says "Follow the green gate". When the open gate is out of view, show a gate marker at the screen edge pointing to it (distinct from the red enemy chevrons), with the distance in metres while it is off-screen.
+
+**Accept / verify:** browser checks that the marker appears only after the sector is cleared, points left, right and behind correctly, hides when the gate is in view, and is gone in the next sector; a capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:desktop`, `npm run build`, `npm run format:check`, the arena collider fixture, and one full balance autopilot run (no combat values change, so it should match round 2 within run-to-run variance). Options are checked to never touch `~/.config/Purgatory` (the desktop smoke run uses its isolated profile).
+
 ## Round 2 scope (2026-10-06)
 
 Picked from the ranked list below, plus what round 1 showed. A contact sheet of all 18 procedural themes (`docs/media/improvements/round2/themes-before.jpg`) shows them sharing one brown flagstone floor and the same four torch plinths. Prison and asylum are indistinguishable, snow has no snow, and town, castle, Babel and the canals read as the same yard. Out of scope as owner decisions: difficulty retuning (including a shockwave wind-up, which would make the deadliest general attack easier), weapon progression, hosting, licensing and releases. Meshopt compression (#9) needs a new tool install, so it waits.
