@@ -187,3 +187,126 @@ export function moveLabel(b: Readonly<Bindings>) {
   );
   return keys.join("") === "WASD" ? "WASD" : keys.join(" ");
 }
+
+/**
+ * Rebindable controller buttons (standard mapping), one per action. Start (9) always
+ * pauses and Home (16) belongs to the system, so neither can be bound; the sticks stay
+ * move and look, and menus keep the D-pad, A and B.
+ */
+export const PAD_ACTIONS = [
+  ["primary", "Primary fire"],
+  ["alternate", "Alternate fire"],
+  ["jump", "Jump"],
+  ["sprint", "Sprint"],
+  ["next", "Next weapon"],
+  ["previous", "Previous weapon"],
+  ["weapon1", "Thresher"],
+  ["weapon2", "Shotgun / Freezer"],
+  ["weapon3", "Stakes / Grenades"],
+  ["weapon4", "Rockets / Chaingun"],
+  ["weapon5", "Tempest"],
+  ["use", "Use gate"],
+  ["tarot", "Tarot card"],
+  ["inspect", "Inspect weapon"],
+  ["pause", "Pause (Start always works)"],
+] as const satisfies readonly (readonly [Action, string])[];
+export type PadAction = (typeof PAD_ACTIONS)[number][0];
+/** A standard-mapping button index per action, or null when unbound. */
+export type PadBindings = Record<PadAction, number | null>;
+
+export const DEFAULT_PAD_BINDINGS: Readonly<PadBindings> = {
+  primary: 7,
+  alternate: 6,
+  jump: 0,
+  sprint: 10,
+  next: 5,
+  previous: 4,
+  weapon1: null,
+  weapon2: null,
+  weapon3: null,
+  weapon4: null,
+  weapon5: null,
+  use: 2,
+  tarot: 3,
+  inspect: 1,
+  pause: null,
+};
+
+export const PAD_START = 9;
+export function padBindable(button: unknown): button is number {
+  return (
+    typeof button === "number" &&
+    Number.isInteger(button) &&
+    button >= 0 &&
+    button <= 15 &&
+    button !== PAD_START
+  );
+}
+
+export function clonePadBindings(b: Readonly<PadBindings>): PadBindings {
+  return { ...b };
+}
+
+/** Validate saved controller bindings; a button is kept for one action only. */
+export function parsePadBindings(raw: unknown): PadBindings {
+  const result = clonePadBindings(DEFAULT_PAD_BINDINGS);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return result;
+  const saved = raw as Record<string, unknown>;
+  const used = new Set<number>();
+  for (const [action] of PAD_ACTIONS) {
+    if (!(action in saved)) continue;
+    const value = saved[action];
+    result[action] =
+      padBindable(value) && !used.has(value) ? (used.add(value), value) : null;
+  }
+  for (const [action] of PAD_ACTIONS) {
+    if (action in saved) continue;
+    const value = result[action];
+    if (value !== null && used.has(value)) result[action] = null;
+    else if (value !== null) used.add(value);
+  }
+  return result;
+}
+
+/** Give an action a button; the action that had it loses it and is returned. */
+export function bindPad(
+  b: PadBindings,
+  action: PadAction,
+  button: number,
+): PadAction | null {
+  if (!padBindable(button)) return null;
+  let moved: PadAction | null = null;
+  for (const [other] of PAD_ACTIONS)
+    if (other !== action && b[other] === button) {
+      b[other] = null;
+      moved = other;
+    }
+  b[action] = button;
+  return moved;
+}
+
+const PAD_NAMES = [
+  "A",
+  "B",
+  "X",
+  "Y",
+  "LB",
+  "RB",
+  "LT",
+  "RT",
+  "BACK",
+  "START",
+  "L3",
+  "R3",
+  "D-PAD ↑",
+  "D-PAD ↓",
+  "D-PAD ←",
+  "D-PAD →",
+];
+export const padLabel = (button: number) =>
+  PAD_NAMES[button] ?? `BUTTON ${button}`;
+/** Label for an action's controller button; "—" when unbound. */
+export function padActionLabel(b: Readonly<PadBindings>, action: PadAction) {
+  const button = b[action];
+  return button === null ? "—" : padLabel(button);
+}

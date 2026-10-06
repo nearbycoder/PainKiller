@@ -22,6 +22,8 @@ Key bindings live in `src/bindings.ts` and are saved inside the options (`purgat
 
 Per-level records are kept in `save.records` (`mergeRecord` in `src/core.ts`): the fastest clear, most kills, most relics in one clear, and whether the level was ever cleared without dying. Deaths are counted per level and carried through *Rise again* and the wave snapshot.
 
+Controller buttons are saved alongside (`purgatory.options` › `padBindings`): one standard-mapping button index per action, or `null`. `parsePadBindings` drops Start (9), Home (16) and anything outside 0–15, and keeps a button for one action only. `Controls.poll()` routes held actions (fire, jump, sprint) and one-shot actions (`Game.press()`) through them; Start always pauses, and menu navigation (D-pad, A, B) is fixed. While the Controls page waits for a button, `Controls.capture` receives every newly pressed button instead of the menus.
+
 `tests/round2-checks.js` covers rebinding (through the real Options page), wave resume, records and the generals. `tests/arena-checks.js` guards arena layouts against `tests/fixtures/arena-colliders.json`. `tools/browser-checks.cjs` now runs in an in-memory browser session, so saves and options left by other runs cannot leak in.
 
 ## Inspection API and browser checks

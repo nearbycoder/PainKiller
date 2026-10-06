@@ -562,6 +562,12 @@ body[data-mode="dead"] #world {
   font-size: 15px;
   color: #bdb098;
 }
+.rebind-row.pad-row {
+  grid-template-columns: 1fr 190px;
+}
+.pad-list {
+  margin-top: 26px;
+}
 .rebind-slot {
   padding: 5px 4px;
   border: 1px solid #b89b6355;

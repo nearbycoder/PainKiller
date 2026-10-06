@@ -1,5 +1,11 @@
 import type { Game } from "./game";
 import { clamp } from "./core";
+import { PAD_ACTIONS, PAD_START, type PadAction } from "./bindings";
+
+/** Controller actions that fire once when their button goes down. */
+const PAD_PRESSES = PAD_ACTIONS.map(([a]) => a).filter(
+  (a) => !["primary", "alternate", "jump", "sprint"].includes(a),
+);
 
 export function stickAxis(value: number, deadzone = 0.18) {
   return Math.abs(value) <= deadzone
@@ -24,6 +30,11 @@ export class Controls {
   private repeat = 0;
   private element: HTMLElement;
   private cancelGestures: (() => void)[] = [];
+  /**
+   * While the Controls page listens for a controller button, every newly pressed button
+   * goes here instead of to the menus (Start included, so the page can cancel).
+   */
+  capture: ((button: number) => void) | null = null;
   constructor(private game: Game) {
     this.element = document.createElement("div");
     this.element.id = "touch-controls";
@@ -189,11 +200,24 @@ export class Controls {
       ? Array.from(pad.buttons, (b) => b.pressed || b.value > 0.5)
       : [];
     const press = (i: number) => !!down[i] && !this.previous[i];
-    if (press(9)) {
+    if (this.capture && this.game.mode !== "playing") {
+      const button = down.findIndex((d, i) => d && !this.previous[i]);
+      this.previous = down;
+      this.moveX = this.moveY = 0;
+      this.primary = this.secondary = this.jump = this.sprint = false;
+      if (button >= 0) this.capture(button);
+      return;
+    }
+    if (press(PAD_START)) {
       if (this.game.mode === "playing") this.game.setMode("paused");
       else if (this.game.mode === "paused") this.game.setMode("playing");
     }
     if (this.game.mode === "playing") {
+      const bound = this.game.padBindings;
+      const padHeld = (a: PadAction) => {
+        const button = bound[a];
+        return button !== null && !!down[button];
+      };
       this.moveX = clamp(
         this.touchX + (pad ? stickAxis(pad.axes[0] || 0) : 0),
         -1,
@@ -204,10 +228,10 @@ export class Controls {
         -1,
         1,
       );
-      this.primary = this.held.has("primary") || !!down[7];
-      this.secondary = this.held.has("secondary") || !!down[6];
-      this.jump = this.held.has("jump") || !!down[0];
-      this.sprint = this.held.has("sprint") || !!down[10];
+      this.primary = this.held.has("primary") || padHeld("primary");
+      this.secondary = this.held.has("secondary") || padHeld("alternate");
+      this.jump = this.held.has("jump") || padHeld("jump");
+      this.sprint = this.held.has("sprint") || padHeld("sprint");
       if (pad)
         this.look(
           stickAxis(pad.axes[2] || 0) *
@@ -219,14 +243,11 @@ export class Controls {
             2 *
             (this.game.sensitivity / 0.002),
         );
-      for (const [id, action] of [
-        [4, "previous"],
-        [5, "next"],
-        [2, "use"],
-        [3, "tarot"],
-        [1, "inspect"],
-      ] as const)
-        if (press(id)) this.action(action);
+      for (const action of PAD_PRESSES) {
+        const button = bound[action];
+        if (button !== null && press(button) && this.game.mode === "playing")
+          this.game.press(action);
+      }
     } else {
       this.moveX = this.moveY = 0;
       this.primary = this.secondary = this.jump = this.sprint = false;

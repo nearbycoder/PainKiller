@@ -5,6 +5,10 @@
 //   npm run test:browser -- --checks tests/balance-autopilot.js --out artifacts/balance.json
 //   npm run test:browser -- --before 'window.__AUTOPILOT__ = { seeds: 1 }' --checks tests/balance-autopilot.js
 //   npm run test:browser -- --url http://localhost:5187/   # reuse a running dev server
+//   npm run test:browser -- --checks tools/media/round3/gate.js --capture docs/media/x.jpg
+//
+// --capture saves a JPEG of the window after the last script has run (a script may
+// return a promise; the runner waits for it and then for two rendered frames).
 //
 // Without --url it starts its own Vite dev server on a free port and stops it afterwards.
 // Exits non-zero if any check fails, a script throws, or the renderer logs an error.
@@ -125,6 +129,16 @@ app.whenReady().then(async () => {
     if (errors.length) {
       failed += errors.length;
       console.log(`FAIL renderer console errors:\n  ${errors.join("\n  ")}`);
+    }
+    const capture = option("capture");
+    if (capture) {
+      await js(
+        "new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+      );
+      const image = await wc.capturePage();
+      fs.mkdirSync(path.dirname(path.resolve(capture)), { recursive: true });
+      fs.writeFileSync(path.resolve(capture), image.toJPEG(88));
+      console.log("captured", capture);
     }
     const out = option("out");
     if (out) {

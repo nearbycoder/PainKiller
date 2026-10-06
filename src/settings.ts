@@ -1,4 +1,11 @@
-import { DEFAULT_BINDINGS, cloneBindings, parseBindings } from "./bindings";
+import {
+  DEFAULT_BINDINGS,
+  DEFAULT_PAD_BINDINGS,
+  cloneBindings,
+  clonePadBindings,
+  parseBindings,
+  parsePadBindings,
+} from "./bindings";
 export const defaults = {
   sensitivity: 0.002,
   fov: 80,
@@ -16,6 +23,7 @@ export const defaults = {
   crosshair: true,
   hints: true,
   bindings: cloneBindings(DEFAULT_BINDINGS),
+  padBindings: clonePadBindings(DEFAULT_PAD_BINDINGS),
 };
 export type Settings = typeof defaults;
 export function parseSettings(raw: string | null): Settings {
@@ -55,5 +63,6 @@ export function parseSettings(raw: string | null): Settings {
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);
+  result.padBindings = parsePadBindings(saved.padBindings);
   return result;
 }

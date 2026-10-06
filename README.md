@@ -51,7 +51,7 @@ Clear each **sector** by surviving three waves. Red arcs around the crosshair po
 | Pause | Esc or P | Start | Ⅱ |
 | Fullscreen (desktop) | F11 | | |
 
-These are the default keyboard and mouse bindings. Every action can be rebound to any key or mouse button (including side buttons), two per action, under **Options › Controls**; Esc always pauses. Controller and touch layouts are fixed. Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch controls appear automatically on coarse-pointer devices or windows narrower than 900 px.
+These are the defaults. Every keyboard and mouse action can be rebound to any key or mouse button (including side buttons), two per action, under **Options › Controls**, and so can the controller's buttons, including the D-pad and Back, which are free by default and can pick weapons directly. Esc and Start always pause, and the sticks always move and look. The touch layout is fixed. Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch controls appear automatically on coarse-pointer devices or windows narrower than 900 px.
 
 ## Features
 
@@ -219,7 +219,7 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run.
-- Keyboard and mouse bindings can be changed; controller buttons cannot. Saves resume the start of the current wave, not the exact moment you quit.
+- Keyboard, mouse and controller buttons can be rebound; the sticks and the touch layout cannot. Saves resume the start of the current wave, not the exact moment you quit.
 - The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.

@@ -12,7 +12,15 @@ import {
   keyLabel,
   SLOTS,
   unbind,
+  bindPad,
+  clonePadBindings,
+  DEFAULT_PAD_BINDINGS,
+  PAD_ACTIONS,
+  PAD_START,
+  padBindable,
+  padLabel,
   type Action,
+  type PadAction,
 } from "./bindings";
 declare const __APP_VERSION__: string;
 const seal = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 2 44 13v22L24 46 4 35V13Z" fill="none" stroke="currentColor"/><path d="M21 9h6v11h10v5H27v15h-6V25H11v-5h10z" fill="currentColor"/><path d="M24 2v7M24 40v6M4 13l9 5m22 12 9 5M4 35l9-5m22-12 9-5" stroke="currentColor"/></svg>`;
@@ -40,6 +48,9 @@ export class UI {
   /** The binding slot waiting for a key or mouse button, if any. */
   rebinding: { action: Action; slot: number } | null = null;
   rebindNote = "";
+  /** The controller action waiting for a button, if any. */
+  padRebinding: PadAction | null = null;
+  padNote = "";
   private swallowClick = false;
   constructor(public game: Game) {
     this.root = document.getElementById("app")!;
@@ -105,6 +116,14 @@ export class UI {
   }
   key(e: KeyboardEvent) {
     if (this.game.mode === "playing") return;
+    if (this.padRebinding) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.code === "Escape") this.capturePad("cancel");
+      else if (e.code === "Backspace" || e.code === "Delete")
+        this.capturePad("clear");
+      return;
+    }
     if (this.rebinding) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -194,6 +213,57 @@ export class UI {
       )
       ?.focus();
   }
+  /** Listen for a controller button for `action`, or stop listening. */
+  listenPad(action: PadAction | null) {
+    this.padRebinding = action;
+    this.game.controls.capture = action ? (b) => this.capturePad(b) : null;
+  }
+  /** Finish a pending controller rebind: Start or Esc cancels, Backspace clears. */
+  capturePad(button: number | "cancel" | "clear") {
+    const action = this.padRebinding;
+    if (!action) return;
+    this.listenPad(null);
+    const name = (a: PadAction) => PAD_ACTIONS.find(([x]) => x === a)![1];
+    const s = this.game.settings();
+    if (button === "cancel" || button === PAD_START)
+      this.padNote = "Unchanged.";
+    else if (button === "clear") {
+      s.padBindings[action] = null;
+      this.padNote = `${name(action)}: button cleared.`;
+    } else if (!padBindable(button))
+      this.padNote = `${padLabel(button)} cannot be bound.`;
+    else {
+      const moved = bindPad(s.padBindings, action, button);
+      this.padNote = moved
+        ? `${padLabel(button)} moved from ${name(moved)} to ${name(action)}.`
+        : `${name(action)}: ${padLabel(button)}.`;
+    }
+    this.game.applySettings(s);
+    this.game.saveOptions();
+    this.render();
+    this.root
+      .querySelector<HTMLElement>(
+        `[data-action="pad-rebind"][data-value="${action}"]`,
+      )
+      ?.focus();
+  }
+  padRows() {
+    const b = this.game.padBindings;
+    return `<div class="rebind-list pad-list" aria-label="Controller bindings"><p class="rebind-note" role="status">${this.padNote || "Controller: select an action, then press a button. Start or Esc cancels; Backspace clears. Start always pauses, the sticks move and look, and menus keep the D-pad, A and B."}</p>${PAD_ACTIONS.map(
+      ([action, label]) => {
+        const listening = this.padRebinding === action;
+        const button = b[action];
+        const shown = listening
+          ? "PRESS A BUTTON…"
+          : button === null
+            ? "—"
+            : padLabel(button);
+        return `<div class="rebind-row pad-row"><span>${label}</span><button class="rebind-slot${listening ? " listening" : ""}${button === null ? " empty" : ""}" data-action="pad-rebind" data-value="${action}" aria-label="${label}, controller: ${listening ? "press a button" : button === null ? "unbound" : padLabel(button)}">${shown}</button></div>`;
+      },
+    ).join(
+      "",
+    )}<button class="rebind-reset" data-action="reset-pad-bindings">Reset controller buttons</button></div>`;
+  }
   /** A level's best clear for the level select. */
   recordLine(level: number) {
     const r = this.game.save.records?.[level];
@@ -229,7 +299,29 @@ export class UI {
   }
   action(action: string, value?: string) {
     const g = this.game;
+    if (action === "pad-rebind") {
+      this.rebinding = null;
+      this.listenPad(value as PadAction);
+      this.padNote = "";
+      this.render();
+      this.root
+        .querySelector<HTMLElement>(
+          `[data-action="pad-rebind"][data-value="${value}"]`,
+        )
+        ?.focus();
+      return;
+    }
+    if (action === "reset-pad-bindings") {
+      const s = g.settings();
+      s.padBindings = clonePadBindings(DEFAULT_PAD_BINDINGS);
+      g.applySettings(s);
+      g.saveOptions();
+      this.padNote = "Controller buttons reset.";
+      this.render();
+      return;
+    }
     if (action === "rebind") {
+      this.listenPad(null);
       const [name, slot] = value!.split(":");
       this.rebinding = { action: name as Action, slot: Number(slot) };
       this.rebindNote = "";
@@ -388,6 +480,13 @@ export class UI {
   }
   render() {
     const g = this.game;
+    if (
+      this.padRebinding &&
+      (g.mode === "playing" ||
+        this.page !== "settings" ||
+        this.settingsTab !== "controls")
+    )
+      this.listenPad(null);
     if (g.mode !== this.lastMode) {
       this.page = "home";
       this.dialog = "";
@@ -620,16 +719,14 @@ export class UI {
         `<div class="binding-list">${[
           ["MOUSE · WHEEL", "Look · next / previous weapon"],
           ["LEFT / RIGHT STICK", "Controller move / look"],
-          ["RT / LT", "Primary / alternate fire"],
-          ["LB / RB", "Previous / next weapon"],
-          ["A · X · Y · B", "Jump · use · tarot · inspect"],
-          ["L3 / START", "Sprint / pause"],
+          ["START", "Controller pause"],
         ]
           .map(
             ([key, label]) =>
               `<div><span>${label}</span><kbd>${key}</kbd></div>`,
           )
-          .join("")}</div>`;
+          .join("")}</div>` +
+        this.padRows();
     if (this.settingsTab === "gameplay")
       content =
         this.choice(
@@ -761,7 +858,8 @@ export class UI {
             Math.ceil(g.cardTime) +
             "s"
         : g.save.cards.length
-          ? "Q · " +
+          ? (g.controls.connected ? g.padFor("tarot") : g.keyFor("tarot")) +
+            " · " +
             (g.cardUsed
               ? "TAROT SPENT"
               : CARDS[g.save.selectedCard].name.toUpperCase())
@@ -770,7 +868,7 @@ export class UI {
     set(
       "gate-prompt",
       g.arenaCleared && Math.hypot(g.position.x, g.position.z + 28) < 5
-        ? `[ ${g.controls.connected ? "X" : g.keyFor("use")} ]  ` +
+        ? `[ ${g.controls.connected ? g.padFor("use") : g.keyFor("use")} ]  ` +
             (g.room === level.rooms - 1 ? "FINISH LEVEL" : "NEXT SECTOR")
         : "",
     );
@@ -791,10 +889,16 @@ export class UI {
     document.getElementById("soul-fill")!.style.width =
       (g.souls / 66) * 100 + "%";
     document.getElementById("hud-help")!.textContent = g.controls.connected
-      ? "LEFT STICK MOVE · RIGHT STICK LOOK · RT / LT FIRE · LB / RB WEAPONS · A JUMP · X USE · START PAUSE"
+      ? `LEFT STICK MOVE · RIGHT STICK LOOK · ${g.padFor("primary")} / ${g.padFor("alternate")} FIRE · ${g.padFor("previous")} / ${g.padFor("next")} WEAPONS · ${g.padFor("jump")} JUMP · ${g.padFor("use")} USE · START PAUSE`
       : `${g.moveKeys()} MOVE · ${g.keyFor("jump")} JUMP · ${g.keyFor("primary")} / ${g.keyFor("alternate")} FIRE · ${g.keyFor("next")} / ${g.keyFor("previous")} SWITCH · ${g.keyFor("inspect")} INSPECT · ESC PAUSE`;
-    set("hud-prev-key", g.controls.connected ? "LB" : g.keyFor("previous"));
-    set("hud-next-key", g.controls.connected ? "RB" : g.keyFor("next"));
+    set(
+      "hud-prev-key",
+      g.controls.connected ? g.padFor("previous") : g.keyFor("previous"),
+    );
+    set(
+      "hud-next-key",
+      g.controls.connected ? g.padFor("next") : g.keyFor("next"),
+    );
     document.getElementById("hud-help")!.style.opacity =
       g.elapsed < 20 ? "1" : "0";
     for (let i = 0; i < 5; i++)

@@ -52,7 +52,12 @@ import {
   cloneBindings,
   DEFAULT_BINDINGS,
   moveLabel,
+  clonePadBindings,
+  DEFAULT_PAD_BINDINGS,
+  PAD_ACTIONS,
+  padActionLabel,
   type Action,
+  type PadAction,
 } from "./bindings";
 declare global {
   interface Window {
@@ -223,6 +228,7 @@ export class Game {
   invertY = false;
   headBob = true;
   bindings = cloneBindings(DEFAULT_BINDINGS);
+  padBindings = clonePadBindings(DEFAULT_PAD_BINDINGS);
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
   enemies: Enemy[] = [];
@@ -399,6 +405,7 @@ export class Game {
       crosshair: this.crosshair,
       hints: this.hints.enabled,
       bindings: cloneBindings(this.bindings),
+      padBindings: clonePadBindings(this.padBindings),
     };
   }
   applySettings(s: Settings) {
@@ -419,6 +426,7 @@ export class Game {
     this.hints.setEnabled(s.hints);
     this.bindings = cloneBindings(s.bindings);
     this.codeActions = actionsByCode(this.bindings);
+    this.padBindings = clonePadBindings(s.padBindings);
     this.sound.music = s.music;
     this.sound.setVolume(s.volume);
     this.sound.setChannels(s.effectsVolume, s.musicVolume);
@@ -657,7 +665,7 @@ export class Game {
         : this.controls.mobile
           ? "touch"
           : "keyboard",
-      (a) => this.keyFor(a),
+      (a) => (this.controls.connected ? this.padFor(a) : this.keyFor(a)),
     );
   }
   notify(text: string, time = 3) {
@@ -947,6 +955,12 @@ export class Game {
   /** Label of the keys bound to an action, for prompts. */
   keyFor(action: Action) {
     return actionLabel(this.bindings, action);
+  }
+  /** Label of the controller button bound to an action, for prompts. */
+  padFor(action: Action) {
+    return PAD_ACTIONS.some(([a]) => a === action)
+      ? padActionLabel(this.padBindings, action as PadAction)
+      : "—";
   }
   moveKeys() {
     return moveLabel(this.bindings);
