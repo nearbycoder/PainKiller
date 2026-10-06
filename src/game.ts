@@ -37,9 +37,10 @@ import {
   freshSave,
   damageAfterArmor,
   segmentSphere,
+  spatialCue,
   type Save,
 } from "./core";
-import { Sound } from "./audio";
+import { Sound, type EnemyCue } from "./audio";
 import { parseSettings, type Settings } from "./settings";
 declare global {
   interface Window {
@@ -492,6 +493,17 @@ export class Game {
     this.toast = text;
     this.toastTimer = time;
   }
+  /** Play an enemy cue panned and attenuated from the player's point of view. */
+  enemyCue(name: EnemyCue, at: T.Vector3) {
+    const s = spatialCue(
+      this.position.x,
+      this.position.z,
+      this.yaw,
+      at.x,
+      at.z,
+    );
+    if (s.gain > 0) this.sound.cue(name, s.pan, s.gain);
+  }
   cycleWeapon(direction: number) {
     if (this.mode === "playing") this.equip((this.weapon + direction + 5) % 5);
   }
@@ -855,6 +867,7 @@ export class Game {
     };
     this.enemies.push(e);
     this.burst(p.clone().add(new T.Vector3(0, 1, 0)), 0xb8d98a, 5, 3);
+    this.enemyCue(type === "boss" ? "roar" : "spawn", p);
     return e;
   }
   beginWave() {
@@ -921,6 +934,7 @@ export class Game {
       );
     } else if (e.frozen > 0 && kind === "shotgun") {
       e.hp -= e.type === "boss" ? 150 : 1000;
+      this.enemyCue("shatter", e.model.root.position);
       this.burst(
         e.model.root.position.clone().add(new T.Vector3(0, 1, 0)),
         0x91d8ff,
@@ -968,6 +982,8 @@ export class Game {
   ) {
     const pos = e.model.root.position.clone();
     this.enemies = this.enemies.filter((x) => x !== e);
+    this.enemyCue("death", pos);
+    this.sound.cue("kill");
     this.kills++;
     this.levelKills++;
     this.save.kills++;
@@ -1567,12 +1583,14 @@ export class Game {
         if (phase > e.phase) {
           e.phase = phase;
           this.notify("THE GENERAL ENRAGES", 2);
+          this.enemyCue("roar", pos);
           for (let i = 0; i < 3; i++) this.spawnEnemy("skeleton");
         }
         moveSpeed *= 1 + e.phase * 0.35;
         if (e.cooldown <= 0) {
           e.cooldown = 3.5 - e.phase * 0.6;
           e.model.action?.("cast");
+          this.enemyCue("cast", pos);
           const chapter = LEVELS[this.level].chapter;
           if (chapter === 1 || chapter === 3 || chapter === 5) {
             const m = new T.Mesh(
@@ -1583,6 +1601,7 @@ export class Game {
             m.position.set(pos.x, 0.12, pos.z);
             this.scene.add(m);
             this.rings.push({ mesh: m, radius: 0.5, hit: false });
+            this.enemyCue("shockwave", pos);
             this.notify("SHOCKWAVE  /  JUMP", 1.2);
           }
           const count = chapter === 2 ? 5 : chapter === 4 ? 9 : 3;
@@ -1618,6 +1637,7 @@ export class Game {
           const dir = this.position.clone().sub(origin).normalize();
           if (this.wallDistance(origin, dir, distance) >= distance - 0.5) {
             e.model.action?.("cast");
+            this.enemyCue("cast", pos);
             this.projectile(
               "hellfire",
               origin,
@@ -1631,6 +1651,14 @@ export class Game {
           }
         } else if (distance < (e.type === "brute" ? 2.6 : 1.8)) {
           e.attackWindup = e.type === "hound" ? 0.2 : 0.36;
+          this.enemyCue(
+            e.type === "hound"
+              ? "windup-hound"
+              : e.type === "brute" || e.type === "knight"
+                ? "windup-heavy"
+                : "windup",
+            pos,
+          );
           moveSpeed = 0;
           e.cooldown = 1.15;
           e.model.action?.("attack");

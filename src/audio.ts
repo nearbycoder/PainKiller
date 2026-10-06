@@ -1,3 +1,40 @@
+export type EnemyCue =
+  | "spawn"
+  | "windup"
+  | "windup-hound"
+  | "windup-heavy"
+  | "cast"
+  | "death"
+  | "shatter"
+  | "roar"
+  | "shockwave"
+  | "kill";
+/** Rate limits enemy cues: a global cap per window, plus a minimum spacing per cue. */
+export class CueBudget {
+  private starts: number[] = [];
+  private last = new Map<string, number>();
+  constructor(
+    readonly window = 0.25,
+    readonly limit = 6,
+    readonly spacing: Partial<Record<EnemyCue, number>> = {
+      spawn: 0.15,
+      death: 0.05,
+      kill: 0.04,
+      cast: 0.08,
+    },
+  ) {}
+  allow(name: EnemyCue, now: number) {
+    // Bosses and their shockwaves are always heard.
+    const essential = name === "roar" || name === "shockwave";
+    if (now - (this.last.get(name) ?? -Infinity) < (this.spacing[name] ?? 0))
+      return false;
+    this.starts = this.starts.filter((t) => now - t < this.window);
+    if (!essential && this.starts.length >= this.limit) return false;
+    this.starts.push(now);
+    this.last.set(name, now);
+    return true;
+  }
+}
 export class Sound {
   ctx?: AudioContext;
   gain?: GainNode;
@@ -9,6 +46,7 @@ export class Sound {
   music = true;
   nextBeat = 0;
   beat = 0;
+  cues = new CueBudget();
   start() {
     if (!this.ctx) {
       this.ctx = new AudioContext();
@@ -30,6 +68,7 @@ export class Sound {
     volume = 0.1,
     end = 40,
     music = false,
+    pan = 0,
   ) {
     if (!this.ctx || !this.gain) return;
     const t = this.ctx.currentTime,
@@ -41,15 +80,16 @@ export class Sound {
     g.gain.setValueAtTime(volume, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + duration);
     o.connect(g);
-    g.connect((music ? this.musicGain : this.effectsGain)!);
+    const panner = this.route(g, music, pan);
     o.start(t);
     o.stop(t + duration);
     o.onended = () => {
       o.disconnect();
       g.disconnect();
+      panner?.disconnect();
     };
   }
-  noise(duration = 0.15, volume = 0.2, cutoff = 6500, music = false) {
+  noise(duration = 0.15, volume = 0.2, cutoff = 6500, music = false, pan = 0) {
     if (!this.ctx || !this.gain) return;
     const c = this.ctx,
       t = c.currentTime,
@@ -66,13 +106,83 @@ export class Sound {
     filter.frequency.value = cutoff;
     s.connect(filter);
     filter.connect(g);
-    g.connect((music ? this.musicGain : this.effectsGain)!);
+    const panner = this.route(g, music, pan);
     s.start(t);
     s.onended = () => {
       s.disconnect();
       filter.disconnect();
       g.disconnect();
+      panner?.disconnect();
     };
+  }
+  /** Connect a voice to its channel, through a stereo panner when it has a bearing. */
+  private route(voice: GainNode, music: boolean, pan: number) {
+    const channel = (music ? this.musicGain : this.effectsGain)!;
+    if (!pan || !this.ctx!.createStereoPanner) {
+      voice.connect(channel);
+      return undefined;
+    }
+    const panner = this.ctx!.createStereoPanner();
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    voice.connect(panner);
+    panner.connect(channel);
+    return panner;
+  }
+  /**
+   * Enemy telegraphs and reactions. `pan` and `gain` come from spatialCue();
+   * a shared budget keeps a crowd from stacking dozens of voices.
+   */
+  cue(name: EnemyCue, pan = 0, gain = 1) {
+    if (
+      !this.ctx ||
+      gain <= 0 ||
+      !this.cues.allow(name, performance.now() / 1000)
+    )
+      return;
+    const v = (n: number) => n * gain,
+      p = pan;
+    switch (name) {
+      case "spawn":
+        this.noise(0.32, v(0.06), 900, false, p);
+        this.tone(62, 0.34, "sine", v(0.08), 118, false, p);
+        break;
+      case "windup":
+        this.tone(150, 0.26, "sawtooth", v(0.12), 78, false, p);
+        this.noise(0.2, v(0.08), 1300, false, p);
+        break;
+      case "windup-hound":
+        this.tone(300, 0.16, "square", v(0.07), 150, false, p);
+        this.noise(0.12, v(0.09), 2600, false, p);
+        break;
+      case "windup-heavy":
+        this.tone(78, 0.42, "sawtooth", v(0.17), 36, false, p);
+        this.noise(0.36, v(0.12), 700, false, p);
+        break;
+      case "cast":
+        this.tone(210, 0.3, "sine", v(0.09), 560, false, p);
+        this.noise(0.26, v(0.06), 3200, false, p);
+        break;
+      case "death":
+        this.noise(0.17, v(0.11), 1500, false, p);
+        this.tone(165, 0.2, "triangle", v(0.1), 48, false, p);
+        break;
+      case "shatter":
+        this.noise(0.22, v(0.13), 9500, false, p);
+        this.tone(2300, 0.16, "triangle", v(0.05), 900, false, p);
+        break;
+      case "roar":
+        this.tone(96, 1.1, "sawtooth", v(0.16), 42, false, p);
+        this.tone(64, 1.2, "square", v(0.05), 30, false, p);
+        this.noise(0.9, v(0.1), 620, false, p);
+        break;
+      case "shockwave":
+        this.tone(54, 0.7, "sine", v(0.3), 24, false, p);
+        this.noise(0.5, v(0.14), 420, false, p);
+        break;
+      case "kill":
+        this.tone(980, 0.07, "sine", v(0.05), 1460);
+        break;
+    }
   }
   shot(id: number, alt = false) {
     if (id === 0) {

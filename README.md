@@ -69,7 +69,7 @@ Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch c
 
 ### Seven breeds of the damned, five generals
 
-Shamblers, skeletons and **hounds** rush you; **monks** and floating **witches** throw hellfire from range; **knights** carry swords; **brutes** soak up punishment. Every melee attack winds up before it lands, so you can dodge it. Each chapter ends with a **general**: projectile volleys, rage phases at 70% and 35% health that summon reinforcements, and expanding shockwaves you have to jump.
+Shamblers, skeletons and **hounds** rush you; **monks** and floating **witches** throw hellfire from range; **knights** carry swords; **brutes** soak up punishment. Every melee attack winds up with an audible growl, panned toward the attacker, before it lands, so you can dodge it. Each chapter ends with a **general**: projectile volleys, rage phases at 70% and 35% health that summon reinforcements, and expanding shockwaves you have to jump.
 
 ![A chapter general's boss bar, shockwave and hellfire in Dune Sepulchre](docs/media/screenshots/05-general.jpg)
 
@@ -190,7 +190,7 @@ docs/                development notes and README media
 - **Rendering.** Three.js r180 PBR materials with an HDR sky, PCF soft shadows refreshed at 30 Hz, half-resolution SSAO on High, and FXAA over the composed world and first-person weapon passes. Static meshes are merged by material, and an adaptive resolution controller kicks in under load.
 - **Blender pipeline.** Every environment, weapon and enemy costume is built by headless Blender Python scripts. They handle procedural masonry, baked weapon materials, animation retargeting onto new rigs, LOD reduction, and texture-optimized GLB export.
 - **Layered animation.** Six retargeted base clips are combined with procedural layers for breathing, turning, alternating attacks, casting, directional hit reactions and bone-mounted armor.
-- **Zero audio files.** Gunfire, footsteps, pickups and the combat ostinato are oscillators and filtered noise generated in real time.
+- **Zero audio files.** Gunfire, footsteps, pickups, enemy telegraphs and the combat ostinato are oscillators and filtered noise generated in real time. Enemy spawns, melee wind-ups, hellfire casts, deaths and the generals' roars and shockwaves are stereo-panned by bearing and attenuated by distance, under a shared voice budget.
 - **Locked-down desktop shell.** The renderer is sandboxed with context isolation and no Node access. The preload exposes only save read/write, fullscreen and quit, and saves are written atomically.
 
 ## Credits and tooling

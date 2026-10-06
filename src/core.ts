@@ -157,3 +157,34 @@ export function archSegments(width: number, height: number) {
     };
   });
 }
+/**
+ * Stereo pan (-1 left … 1 right) and gain for a sound at (sx, sz) heard by a
+ * listener at (lx, lz) facing `yaw` (0 looks down -Z). Silent beyond `range`.
+ */
+export function spatialCue(
+  lx: number,
+  lz: number,
+  yaw: number,
+  sx: number,
+  sz: number,
+  range = 48,
+) {
+  const dx = sx - lx,
+    dz = sz - lz,
+    distance = Math.hypot(dx, dz);
+  if (distance > range) return { pan: 0, gain: 0, behind: false, distance };
+  const right =
+      distance > 0.01
+        ? (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance
+        : 0,
+    ahead =
+      distance > 0.01
+        ? (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance
+        : 1,
+    behind = ahead < -0.2;
+  const gain =
+    clamp(1 / (1 + Math.max(0, distance - 3) / 9), 0.15, 1) *
+    (behind ? 0.85 : 1);
+  // Keep some of every cue in both ears; hard pans are fatiguing on headphones.
+  return { pan: right * 0.6, gain, behind, distance };
+}

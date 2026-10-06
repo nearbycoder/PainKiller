@@ -75,6 +75,93 @@
     g.setMode("playing");
   });
 
+  const recordCues = (fn) => {
+    const cues = [],
+      original = g.sound.cue;
+    g.sound.cue = (name, pan = 0, gain = 1) => {
+      cues.push({ name, pan, gain });
+      return original.call(g.sound, name, pan, gain);
+    };
+    try {
+      fn();
+    } finally {
+      g.sound.cue = original;
+    }
+    return cues;
+  };
+
+  check("a melee wind-up on the left is heard on the left", () => {
+    setup();
+    g.yaw = 0;
+    const cues = recordCues(() => {
+      const e = g.spawnEnemy(
+        "knight",
+        g.position
+          .clone()
+          .setY(0)
+          .add(new V(-1.5, 0, 0)),
+      );
+      e.cooldown = 0;
+      g.updateEnemies(1 / 60);
+    });
+    const windup = cues.find((c) => c.name.startsWith("windup"));
+    assert(windup, "No wind-up cue: " + JSON.stringify(cues));
+    assert(
+      windup.name === "windup-heavy",
+      "Knight should use the heavy wind-up",
+    );
+    assert(windup.pan < -0.5, "Wind-up pan " + windup.pan);
+    return cues.map((c) => c.name);
+  });
+
+  check("a witch casting on the right is heard on the right", () => {
+    setup();
+    g.yaw = 0;
+    const cues = recordCues(() => {
+      const e = g.spawnEnemy(
+        "witch",
+        g.position
+          .clone()
+          .setY(0)
+          .add(new V(18, 0, -2)),
+      );
+      e.cooldown = 0;
+      g.updateEnemies(1 / 60);
+    });
+    const cast = cues.find((c) => c.name === "cast");
+    assert(cast, "No cast cue: " + JSON.stringify(cues));
+    assert(
+      cast.pan > 0.5 && cast.gain < 1,
+      `pan ${cast.pan}, gain ${cast.gain}`,
+    );
+  });
+
+  check("kills, shatters and generals have their own cues", () => {
+    setup();
+    const cues = recordCues(() => {
+      const a = g.spawnEnemy(
+        "skeleton",
+        g.position
+          .clone()
+          .setY(0)
+          .add(new V(0, 0, -6)),
+      );
+      g.hitEnemy(a, 9999, "bullet");
+      const b = g.spawnEnemy(
+        "brute",
+        g.position
+          .clone()
+          .setY(0)
+          .add(new V(3, 0, -8)),
+      );
+      g.hitEnemy(b, 1, "ice");
+      g.hitEnemy(b, 1, "shotgun");
+      g.spawnEnemy("boss", new V(0, 0, -20));
+    }).map((c) => c.name);
+    for (const name of ["spawn", "death", "kill", "shatter", "roar"])
+      assert(cues.includes(name), `missing ${name}: ${cues.join(",")}`);
+  });
+
   g.save = saved;
   g.persist();
   g.level = saved.level;
