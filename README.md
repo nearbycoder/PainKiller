@@ -163,6 +163,8 @@ See [art/README.md](art/README.md) for what each script builds and the art that 
 
 **Audio** has no source files to rebuild. Every sound effect and the music are synthesized at runtime with the Web Audio API in [`src/audio.ts`](src/audio.ts).
 
+**Level-select previews.** `npx electron tools/make-previews.cjs` renders `public/assets/previews/level-N.jpg` from the game: each level's first-sector start view, without HUD or weapon.
+
 **Trailer, screenshots and teaser.** `python3 tools/make_trailer.py` renders scripted gameplay offscreen in virtual time, so every frame is identical on every run. It then mixes the game's own synthesized audio (with music ducking under effects) and writes everything in `docs/media/`.
 
 ## Project structure

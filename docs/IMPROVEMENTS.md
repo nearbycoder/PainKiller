@@ -17,6 +17,26 @@ The orchestrator approved items 1, 2, 3, 5 and 6 as planned. Item 4 was narrowed
 
 Still open: everything below rank 6 in the list, the owner decisions at the end, and human checks (a listening pass on the new audio, playtesting the difficulty curve, physical controllers and phones, Firefox and Safari).
 
+## Round 2 results (2026-10-06)
+
+| Item | Status | Verified by |
+| --- | --- | --- |
+| R2-1. Key rebinding | Done | `tests/bindings.test.ts` (defaults, Escape, conflicts, parsing, persistence, labels, hint wording); `tests/round2-checks.js` rebinds through the real Options page, then moves, jumps, fires, picks a weapon, uses the gate with Mouse 4 and pauses with the new keys while the old ones stop working, and checks that Escape still pauses; capture `round2/r2-1-controls-rebinding.jpg`. Controller buttons are still fixed. |
+| R2-2. Resume at the current wave | Done | `tests/resume.test.ts`; browser checks quit in wave 3 through the pause menu and Continue into wave 3 with the saved health, armor, ammunition, souls and kills, without respawning a taken supply; death, level select and finishing a level do not resume mid-sector; desktop smoke native save round trip; capture `round2/r2-2-wave-resume.jpg`. *Restart checkpoint* is renamed *Restart sector*. |
+| R2-3. Per-theme arena identity | Done | Before/after contact sheets `round2/themes-before.jpg` and `round2/themes-after.jpg`; `tests/arena-checks.js` matches all 104 sectors' colliders and spawns against a fixture recorded before the change; draw calls +8.8% and triangles +5.2% across the 18 themes, with no measurable change in render time (table in [DEVELOPMENT.md](DEVELOPMENT.md#procedural-arena-dressing-round-2)). Snow is the one theme above 10% (+10.8%, 74 → 82 calls). |
+| R2-4. Per-level records | Done | `tests/resume.test.ts` (merging, corrupt records, formatting); browser checks for NEW BEST TIME, a slower deathless clear keeping the best time, the level-select record line, and a death that survives quitting from the death screen; capture `round2/r2-4-records.jpg`. |
+| R2-5. Generals' identity (stretch) | Done, cosmetic | Browser check: five distinct material sets, unchanged health, speed, hit sphere and scale, and a dressed general still ragdolls; capture `round2/r2-5-generals.jpg`. The silhouettes (crown, antlers, horns, halo, wings) do most of the work; the colour differences are subtle under torchlight. |
+
+**Found along the way and fixed:**
+
+- After a death, quitting from the death screen and continuing would have restarted the sector with the death forgotten, which would have allowed a false "deathless" record and dropped the level's running stats. Now every sector start, including the one after a death, is saved as a wave-1 snapshot that matches *Rise again* exactly.
+- The level-select previews still showed the pre-round-1 broken arches and the old floors. `tools/make-previews.cjs` now regenerates them from the game.
+- Browser checks could inherit options left in the shared Electron profile by other runs (a screenshot run had moved E to Jump). The runner now uses an in-memory session.
+
+**Balance regression run.** The full autopilot (60 runs) on this branch gave cleared/died/timed-out of 12/0/0, 12/0/0 and 11/1/0 for ordinary sectors on Reverie, Purgatory and Torment, and 5/3/0, 4/4/0 and 2/6/0 for general sectors, with no timeouts. The three Reverie general deaths looked new, so I re-ran the two deadliest generals (Seraph's Ascent and The Abyss) on Reverie with four seeds each on `main` and on this branch: `main` died twice and this branch not at all. That is run-to-run variance, as expected, since nothing in round 2 touches combat values or layouts.
+
+**Still open / owner decisions:** controller rebinding; Windows and macOS builds; meshopt compression (needs a new tool install); hosting the web build; difficulty direction, including whether to telegraph the generals' shockwaves (the autopilot's main killer); weapon progression; bespoke general models and authored scenes for the 18 procedural themes.
+
 ## Round 2 scope (2026-10-06)
 
 Picked from the ranked list below, plus what round 1 showed. A contact sheet of all 18 procedural themes (`docs/media/improvements/round2/themes-before.jpg`) shows them sharing one brown flagstone floor and the same four torch plinths. Prison and asylum are indistinguishable, snow has no snow, and town, castle, Babel and the canals read as the same yard. Out of scope as owner decisions: difficulty retuning (including a shockwave wind-up, which would make the deadliest general attack easier), weapon progression, hosting, licensing and releases. Meshopt compression (#9) needs a new tool install, so it waits.

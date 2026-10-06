@@ -16,6 +16,14 @@ Production builds load the actors, weapons, supplies, the cemetery (title backdr
 
 Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server`: in an offscreen Electron (Chromium) window driven through the real menus, jumping straight to Soul Foundry with its download delayed showed the loading screen and then the authored foundry, a blocked crypt download showed the retry screen and recovered, and the background-prefetched cathedral started without waiting; in Playwright's cached `chrome-headless-shell` 151 (SwiftShader WebGL 2) it reached the menu and Hallowed Ground with no console errors. Firefox and Safari were not tested.
 
+## Controls, records and checks added in round 2
+
+Key bindings live in `src/bindings.ts` and are saved inside the options (`purgatory.options` › `bindings`). Each action has up to two codes: `KeyboardEvent.code` values or `Mouse0`–`Mouse4`. `parseBindings` drops unknown actions, unbindable codes and duplicates, and Escape is never bindable. `Game.held()`, `Game.press()` and `Game.firing()` route all keyboard and mouse input through the bindings; controller and touch input are unchanged. `Game.mouse` is still honoured as a fire input for scripted checks.
+
+Per-level records are kept in `save.records` (`mergeRecord` in `src/core.ts`): the fastest clear, most kills, most relics in one clear, and whether the level was ever cleared without dying. Deaths are counted per level and carried through *Rise again* and the wave snapshot.
+
+`tests/round2-checks.js` covers rebinding (through the real Options page), wave resume, records and the generals. `tests/arena-checks.js` guards arena layouts against `tests/fixtures/arena-colliders.json`. `tools/browser-checks.cjs` now runs in an in-memory browser session, so saves and options left by other runs cannot leak in.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.
