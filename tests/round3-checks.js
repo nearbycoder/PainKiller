@@ -280,6 +280,108 @@
     assert(rumbles.length === n, "Rumbled a pad without an actuator");
   });
 
+  const recap = () => document.querySelector(".death-recap")?.innerText || "";
+  /** Step until the player dies (or give up), with hits landing for real. */
+  const untilDead = (frames = 900) => {
+    for (let i = 0; i < frames && g.mode === "playing"; i++) {
+      g.invulnerable = Math.min(g.invulnerable, 0);
+      g.update(1 / 60);
+    }
+    assert(g.mode === "dead", "Player did not die");
+  };
+
+  check("death by a witch's hellfire names it, with a tip", () => {
+    setup(5);
+    g.health = 8;
+    g.armor = 0;
+    const origin = g.position.clone().setY(1.6);
+    origin.z -= 12;
+    const dir = g.position.clone().sub(origin).normalize();
+    g.projectile("hellfire", origin, dir, 14, 15, 5, true, "witch");
+    untilDead(240);
+    const text = recap();
+    assert(/Slain by a witch's hellfire/.test(text), text);
+    assert(/strafe across it/.test(text), text);
+    return text;
+  });
+
+  check("death by melee lists the sources of this attempt", () => {
+    setup(5);
+    g.armor = 0;
+    // An earlier, non-lethal hit from the player's own rocket.
+    g.explode(g.position.clone().setZ(g.position.z - 3), 180, 6);
+    g.invulnerable = 0;
+    g.health = 6;
+    g.spawnEnemy("brute", g.position.clone().setZ(g.position.z - 2));
+    untilDead();
+    const text = recap();
+    assert(/Slain by a brute/.test(text), text);
+    assert(/A brute\s+\d+/.test(text), text);
+    assert(/Your own blast\s+\d+/.test(text), text);
+    assert(/freeze it and shatter it/.test(text), text);
+    return text;
+  });
+
+  check("death by your own blast says so", () => {
+    setup(5);
+    g.health = 5;
+    g.armor = 0;
+    g.explode(g.position.clone().setZ(g.position.z - 1), 180, 6);
+    assert(g.mode === "dead", "Blast did not kill");
+    const text = recap();
+    assert(/Slain by your own blast/.test(text), text);
+    assert(/switch to the shotgun/.test(text), text);
+    return text;
+  });
+
+  check("death by a general's shockwave names the general", () => {
+    setup(4);
+    g.health = 10;
+    g.armor = 0;
+    const Object3D = Object.getPrototypeOf(g.scene.constructor);
+    const mesh = new Object3D();
+    mesh.position.set(g.position.x, 0.12, g.position.z - 6);
+    g.scene.add(mesh);
+    g.rings.push({ mesh, radius: 0.5, hit: false });
+    untilDead(240);
+    const text = recap();
+    assert(/Slain by the Gravewarden's shockwave/.test(text), text);
+    assert(/jump as a ring reaches you/.test(text), text);
+    return text;
+  });
+
+  check(
+    "the recap starts fresh after Rise again, a new sector and Continue",
+    () => {
+      g.retry();
+      assert(g.mode === "playing", "Rise again did not restart");
+      assert(Object.keys(g.damageLog).length === 0, "Log kept after retry");
+      g.invulnerable = 0;
+      g.hurt(10, g.position.clone().setZ(g.position.z - 2), "hound");
+      assert(g.damageLog.hound > 0, "Hit not logged");
+      g.arenaCleared = true;
+      g.nextArena();
+      assert(Object.keys(g.damageLog).length === 0, "Log kept in a new sector");
+      // Die, quit from the death screen, Continue, then die of something else.
+      g.health = 4;
+      g.armor = 0;
+      g.invulnerable = 0;
+      g.hurt(20, g.position.clone().setZ(g.position.z - 2), "knight");
+      assert(g.mode === "dead", "Knight did not kill");
+      g.setMode("menu");
+      g.continueGame();
+      assert(g.mode === "playing", "Continue did not start");
+      assert(Object.keys(g.damageLog).length === 0, "Log survived Continue");
+      g.health = 4;
+      g.armor = 0;
+      g.invulnerable = 0;
+      g.hurt(20, g.position.clone().setZ(g.position.z - 2), "hound");
+      const text = recap();
+      assert(/Slain by a hound/.test(text) && !/knight/i.test(text), text);
+      return text;
+    },
+  );
+
   g.controls.poll(1 / 60, []);
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");

@@ -46,6 +46,7 @@ import {
 import { Sound, type EnemyCue } from "./audio";
 import { parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
+import { damageKey, deathRecap, type DamageLog } from "./recap";
 import {
   actionLabel,
   actionsByCode,
@@ -120,6 +121,8 @@ interface Projectile {
   life: number;
   age: number;
   hostile: boolean;
+  /** Who fired a hostile projectile (enemy type, or "boss"), for the death recap. */
+  source?: string;
   radius: number;
   hits: Set<Enemy>;
   body?: RigidBody;
@@ -174,6 +177,9 @@ export class Game {
   elapsed = 0;
   /** Deaths in the current level; a clear with none is deathless. */
   levelDeaths = 0;
+  /** Damage taken this sector attempt by source; the death screen's recap. */
+  damageLog: DamageLog = {};
+  lastDeath: ReturnType<typeof deathRecap> | null = null;
   /** What the last completed level achieved, for the result screen. */
   lastClear: { fastest: boolean; deathless: boolean; best: number } | null =
     null;
@@ -732,6 +738,7 @@ export class Game {
   loadArena() {
     this.clearDynamic();
     this.hints.clear();
+    this.damageLog = {};
     this.arena?.dispose();
     this.arena = buildArena(this.scene, LEVELS[this.level], this.room);
     this.physics.reset(this.arena.colliders);
@@ -1130,7 +1137,7 @@ export class Game {
     }
     this.spawnTimer = 0;
   }
-  hurt(damage: number, from?: T.Vector3, cause = "unknown") {
+  hurt(damage: number, from?: T.Vector3, cause = "unknown", source?: string) {
     if (
       this.invulnerable > 0 ||
       this.demon > 0 ||
@@ -1140,6 +1147,11 @@ export class Game {
       return;
     const dealt =
       damage * (this.difficulty === 0 ? 0.6 : this.difficulty === 2 ? 1.4 : 1);
+    const key = damageKey(cause, source);
+    // Log what the hit actually took, not the overkill of a killing blow.
+    this.damageLog[key] =
+      (this.damageLog[key] || 0) +
+      Math.min(dealt, Math.max(0, this.health) + this.armor);
     const result = damageAfterArmor(dealt, this.armor);
     this.armor = result.armor;
     this.health -= result.health;
@@ -1155,6 +1167,7 @@ export class Game {
     if (this.health <= 0) {
       this.health = 0;
       this.levelDeaths++;
+      this.lastDeath = deathRecap(this.damageLog, key, LEVELS[this.level].boss);
       // Death restarts the sector with fresh supplies; record exactly that, so quitting
       // from the death screen and continuing matches Rise again (deaths included).
       this.save.resume = {
@@ -1574,6 +1587,7 @@ export class Game {
     damage: number,
     life: number,
     hostile = false,
+    source?: string,
   ) {
     const m = projectileModel(hostile ? "hellfire" : kind);
     const muzzleOffset = Math.min(
@@ -1594,6 +1608,7 @@ export class Game {
       life,
       age: 0,
       hostile,
+      source,
       radius: kind === "storm" ? 0.7 : 0.2,
       hits: new Set(),
       distance: 0,
@@ -2002,6 +2017,7 @@ export class Game {
               22,
               6,
               true,
+              "boss",
             );
           }
         }
@@ -2026,6 +2042,7 @@ export class Game {
               15,
               5,
               true,
+              e.type,
             );
             e.cooldown = 1.8 + Math.random();
           }
@@ -2181,6 +2198,7 @@ export class Game {
               .clone()
               .addScaledVector(p.velocity.clone().normalize(), -10),
             "hellfire",
+            p.source,
           );
           remove = true;
           this.burst(p.mesh.position, 0xffa365, 4, 3);

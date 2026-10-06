@@ -49,9 +49,9 @@
     g.difficulty = diff;
     api.start(level, room);
     const causes = {};
-    g.hurt = function (damage, from, cause = "unknown") {
+    g.hurt = function (damage, from, cause = "unknown", ...rest) {
       const before = this.health + this.armor;
-      hurt.call(this, damage, from, cause);
+      hurt.call(this, damage, from, cause, ...rest);
       const taken = before - (this.health + this.armor);
       if (taken > 0) causes[cause] = (causes[cause] || 0) + taken;
     };

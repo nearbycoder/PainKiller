@@ -26,6 +26,10 @@ Controller buttons are saved alongside (`purgatory.options` › `padBindings`): 
 
 `tests/round2-checks.js` covers rebinding (through the real Options page), wave resume, records and the generals. `tests/arena-checks.js` guards arena layouts against `tests/fixtures/arena-colliders.json`. `tools/browser-checks.cjs` now runs in an in-memory browser session, so saves and options left by other runs cannot leak in.
 
+## Death recap (round 3)
+
+`Game.hurt(damage, from, cause, source)` adds each hit to `Game.damageLog`, keyed by cause plus, for hellfire, the caster (`hellfire:witch`, `hellfire:boss`). Each hit is capped at the health and armor the player had, so a killing blow's overkill is not counted. `loadArena()` clears the log, so it covers one sector attempt: *Rise again*, a new sector and *Continue* all start fresh. On death `deathRecap()` in `src/recap.ts` turns it into the killing blow, the top three sources and a tip for the killing source. The tips describe existing mechanics only; no numbers changed.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.

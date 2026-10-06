@@ -264,6 +264,12 @@ export class UI {
       "",
     )}<button class="rebind-reset" data-action="reset-pad-bindings">Reset controller buttons</button></div>`;
   }
+  /** What killed the player and what hurt them this attempt. */
+  deathRecap() {
+    const r = this.game.lastDeath;
+    if (!r) return "";
+    return `<section class="death-recap" aria-label="Death recap"><p class="killed-by">${r.killedBy}</p>${r.sources.length ? `<ul>${r.sources.map((x) => `<li><span>${x.name}</span><b>${x.damage}</b></li>`).join("")}</ul><small>Damage taken this attempt, armor included</small>` : ""}${r.tip ? `<p class="death-tip">${r.tip}</p>` : ""}</section>`;
+  }
   /** A level's best clear for the level select. */
   recordLine(level: number) {
     const r = this.game.save.records?.[level];
@@ -509,7 +515,7 @@ export class UI {
     if (g.mode === "loading")
       content = `<main class="end-screen"><p class="menu-kicker">OPENING THE GATE</p><h1>${LEVELS[g.loading.level].name}</h1><p>${g.loading.error ? "The level could not be loaded. Check your connection and try again." : "Loading this environment…"}</p>${g.loading.error ? `<nav>${this.button("Try again", "retry-loading", undefined, "data-default")}${this.button("Main menu", "abandon-loading")}</nav>` : ""}</main>`;
     else if (g.mode === "dead")
-      content = `<main class="end-screen"><p class="menu-kicker">PURGATORY CLAIMS ANOTHER</p><h1 class="blood-title">You died</h1><p>${g.levelKills} ${g.levelKills === 1 ? "enemy" : "enemies"} slain. Your work is not finished.</p><nav>${this.button("Rise again", "retry", undefined, "data-default")}${this.button("Main menu", "menu")}</nav></main>`;
+      content = `<main class="end-screen"><p class="menu-kicker">PURGATORY CLAIMS ANOTHER</p><h1 class="blood-title">You died</h1>${this.deathRecap()}<p>${g.levelKills} ${g.levelKills === 1 ? "enemy" : "enemies"} slain. Your work is not finished.</p><nav>${this.button("Rise again", "retry", undefined, "data-default")}${this.button("Main menu", "menu")}</nav></main>`;
     else if (g.mode === "result" || g.mode === "ending")
       content = `<main class="end-screen"><div class="end-seal">${seal}</div><p class="menu-kicker">${g.mode === "ending" ? "THE LAST SEAL IS BROKEN" : "LEVEL COMPLETE"}</p><h1>${g.mode === "ending" ? "Absolution" : LEVELS[g.level].name}</h1><p>${g.mode === "ending" ? "The gates open. For the first time, nothing follows you." : "The road goes deeper."}</p><div class="result-stats">${[
         [g.levelKills, "ENEMIES SLAIN"],
