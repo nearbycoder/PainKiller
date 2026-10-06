@@ -89,7 +89,7 @@ Health, armor and ammunition sit in every arena and drop from the fallen. Every 
 
 ### Options
 
-Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolution scale with optional adaptive resolution, brightness, field of view, and independent master, effects and music volume. Sensitivity and inverted look apply to mouse, stick and touch. One-time combat hints explain the weapon combos, souls and the tarot the first time each comes up, worded for keyboard, controller or touch, and can be turned off under Gameplay. Three difficulties are available: **Reverie**, **Purgatory** and **Torment**. Settings and campaign progress save locally.
+Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolution scale with optional adaptive resolution, brightness, field of view, and independent master, effects and music volume. Look sensitivity (mouse and touch) and stick look speed are set separately, inverted look applies to every input, and controller vibration (when hit, near explosions, and as the Wraith wakes) can be turned off. One-time combat hints explain the weapon combos, souls and the tarot the first time each comes up, worded for keyboard, controller or touch, and can be turned off under Gameplay. Three difficulties are available: **Reverie**, **Purgatory** and **Torment**. Settings and campaign progress save locally.
 
 ## Content
 
@@ -216,7 +216,7 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Four themes (cemetery, cathedral, crypt, foundry) use Blender-authored scenes. The other 18 are compact procedural arenas. Each has its own ground (snow, sand, tile, marble, planks, cobbles, lava-cracked basalt and more) and some dressing, but they are much plainer than the authored scenes, and sectors reuse each theme's layout with varied cover.
 - The five generals share one rig and differ in attack patterns. Each has its own crown, antlers, horns, halo or wings, glowing eyes and colours, but these are pieces fixed to the shared skeleton, not bespoke models, and the colour differences are subtle under torchlight. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
 - Campaign length and balance have not been measured end to end with human playtesters. A scripted autopilot ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#balance-autopilot)) samples ten sectors on every difficulty. For it, ordinary sectors are easy even on Torment and the generals, especially their shockwaves, cause most deaths. A bot is not a player, though.
-- Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried.
+- Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried, so controller vibration has never been felt.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run.
 - Keyboard, mouse and controller buttons can be rebound; the sticks and the touch layout cannot. Saves resume the start of the current wave, not the exact moment you quit.

@@ -229,6 +229,8 @@ export class Game {
   headBob = true;
   bindings = cloneBindings(DEFAULT_BINDINGS);
   padBindings = clonePadBindings(DEFAULT_PAD_BINDINGS);
+  stickSpeed = 1;
+  vibration = true;
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
   enemies: Enemy[] = [];
@@ -406,6 +408,8 @@ export class Game {
       hints: this.hints.enabled,
       bindings: cloneBindings(this.bindings),
       padBindings: clonePadBindings(this.padBindings),
+      stickSpeed: this.stickSpeed,
+      vibration: this.vibration,
     };
   }
   applySettings(s: Settings) {
@@ -422,6 +426,8 @@ export class Game {
       invertY: s.invertY,
       headBob: s.headBob,
       crosshair: s.crosshair,
+      stickSpeed: s.stickSpeed,
+      vibration: s.vibration,
     });
     this.hints.setEnabled(s.hints);
     this.bindings = cloneBindings(s.bindings);
@@ -1132,14 +1138,15 @@ export class Game {
       this.mode !== "playing"
     )
       return;
-    const result = damageAfterArmor(
-      damage * (this.difficulty === 0 ? 0.6 : this.difficulty === 2 ? 1.4 : 1),
-      this.armor,
-    );
+    const dealt =
+      damage * (this.difficulty === 0 ? 0.6 : this.difficulty === 2 ? 1.4 : 1);
+    const result = damageAfterArmor(dealt, this.armor);
     this.armor = result.armor;
     this.health -= result.health;
     this.damageFlash = 0.5;
     this.invulnerable = 0.3;
+    if (cause === "shockwave") this.controls.rumble("shockwave");
+    else this.controls.rumble("hurt", dealt / 40);
     if (from) {
       this.damageMarks.push({ x: from.x, z: from.z, life: 1 });
       if (this.damageMarks.length > 4) this.damageMarks.shift();
@@ -1627,6 +1634,8 @@ export class Game {
           );
       }
     const distance = this.position.distanceTo(pos);
+    if (distance < radius * 2)
+      this.controls.rumble("explosion", 1 - distance / (radius * 2));
     if (distance < radius)
       this.hurt(
         damage * (hostile ? 0.25 : 0.35) * (1 - distance / radius),
@@ -2326,6 +2335,7 @@ export class Game {
           if (this.souls >= 66) {
             this.souls = 0;
             this.demon = 15;
+            this.controls.rumble("wraith");
             this.notify("WRAITH FORM  /  UNCHAINED FOR 15 SECONDS", 4);
             this.sound.tone(55, 1, "sawtooth", 0.25, 330);
           }

@@ -190,6 +190,96 @@
     },
   );
 
+  check("stick look speed is its own option, not mouse sensitivity", () => {
+    const turn = (sensitivity, stickSpeed) => {
+      const s = g.settings();
+      Object.assign(s, { sensitivity, stickSpeed });
+      g.applySettings(s);
+      const yaw = g.yaw;
+      for (let i = 0; i < 30; i++) poll([], [0, 0, 1, 0]);
+      poll([]);
+      return yaw - g.yaw;
+    };
+    setup();
+    const slowMouse = turn(0.001, 1),
+      fastMouse = turn(0.004, 1),
+      fastStick = turn(0.001, 2);
+    assert(slowMouse > 0.5, "Stick did not turn: " + slowMouse);
+    assert(
+      Math.abs(slowMouse - fastMouse) < 1e-6,
+      `Mouse sensitivity changed stick speed: ${slowMouse} vs ${fastMouse}`,
+    );
+    assert(
+      Math.abs(fastStick - 2 * slowMouse) < 1e-6,
+      `Stick speed 2 turned ${fastStick} vs ${slowMouse}`,
+    );
+    // The slider lives on the Controls page and saves.
+    g.setMode("menu");
+    click('[data-action="page"][data-value="settings"]');
+    click('[data-action="settings-tab"][data-value="controls"]');
+    const slider = document.getElementById("stickSpeed");
+    slider.value = "150";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    const stored = JSON.parse(localStorage.getItem("purgatory.options"));
+    assert(stored.stickSpeed === 1.5, "Stick speed not saved");
+    return { slowMouse, fastMouse, fastStick };
+  });
+
+  check("hits rumble the controller, harder for heavier hits", () => {
+    const s = g.settings();
+    s.vibration = true;
+    g.applySettings(s);
+    setup();
+    const hit = (damage, cause) => {
+      g.invulnerable = 0;
+      g.health = 100;
+      g.armor = 0;
+      const n = rumbles.length;
+      g.hurt(damage, g.position.clone().setZ(g.position.z - 3), cause);
+      return rumbles.length > n ? rumbles[rumbles.length - 1] : null;
+    };
+    const hound = hit(9, "hound"),
+      brute = hit(25, "brute"),
+      shock = hit(24, "shockwave");
+    assert(hound && brute && shock, "A hit did not rumble");
+    assert(hound.type === "dual-rumble", hound.type);
+    assert(
+      brute.strongMagnitude > hound.strongMagnitude &&
+        brute.duration > hound.duration,
+      "A brute's hit was not stronger than a hound's",
+    );
+    assert(shock.strongMagnitude === 1, "Shockwave was not the strongest");
+    const n = rumbles.length;
+    g.explode(g.position.clone().setZ(g.position.z - 9), 0, 6);
+    assert(rumbles.length === n + 1, "A nearby explosion did not rumble");
+    g.explode(g.position.clone().setZ(g.position.z - 30), 0, 6);
+    assert(rumbles.length === n + 1, "A distant explosion rumbled");
+    return { hound, brute, shock };
+  });
+
+  check("no rumble when vibration is off or the pad cannot", () => {
+    g.setMode("menu");
+    click('[data-action="page"][data-value="settings"]');
+    click('[data-action="settings-tab"][data-value="controls"]');
+    click('[data-action="option"][data-value="vibration:false"]');
+    assert(g.vibration === false, "Option did not turn vibration off");
+    setup();
+    const n = rumbles.length;
+    g.invulnerable = 0;
+    g.hurt(20, g.position.clone().setZ(g.position.z - 3), "brute");
+    assert(rumbles.length === n, "Rumbled with vibration off");
+    const s = g.settings();
+    s.vibration = true;
+    g.applySettings(s);
+    actuator = false;
+    poll([]);
+    g.invulnerable = 0;
+    g.health = 100;
+    g.hurt(20, g.position.clone().setZ(g.position.z - 3), "brute");
+    actuator = true;
+    assert(rumbles.length === n, "Rumbled a pad without an actuator");
+  });
+
   g.controls.poll(1 / 60, []);
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");

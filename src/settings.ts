@@ -8,6 +8,9 @@ import {
 } from "./bindings";
 export const defaults = {
   sensitivity: 0.002,
+  /** Right-stick look speed; 1 is the speed mouse sensitivity 0.002 used to give. */
+  stickSpeed: 1,
+  vibration: true,
   fov: 80,
   volume: 0.45,
   music: true,
@@ -36,6 +39,7 @@ export function parseSettings(raw: string | null): Settings {
   const result = { ...defaults };
   const limits = {
     sensitivity: [0.0005, 0.006],
+    stickSpeed: [0.25, 3],
     fov: [65, 110],
     volume: [0, 1],
     musicVolume: [0, 1],
@@ -51,6 +55,12 @@ export function parseSettings(raw: string | null): Settings {
     if (typeof v === "number" && Number.isFinite(v))
       result[key] = Math.max(min, Math.min(max, v));
   }
+  // Before stick speed had its own option, it followed mouse sensitivity; keep that speed.
+  if (typeof saved.stickSpeed !== "number")
+    result.stickSpeed = Math.max(
+      0.25,
+      Math.min(3, result.sensitivity / defaults.sensitivity),
+    );
   result.quality = Math.round(result.quality);
   result.difficulty = Math.round(result.difficulty);
   for (const key of [
@@ -60,6 +70,7 @@ export function parseSettings(raw: string | null): Settings {
     "crosshair",
     "adaptiveResolution",
     "hints",
+    "vibration",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);

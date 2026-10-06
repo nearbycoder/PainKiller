@@ -12,6 +12,24 @@ export function stickAxis(value: number, deadzone = 0.18) {
     ? 0
     : (Math.sign(value) * (Math.abs(value) - deadzone)) / (1 - deadzone);
 }
+export type RumbleKind = "hurt" | "shockwave" | "explosion" | "wraith";
+/**
+ * Controller rumble for an event: strong (low-frequency) and weak (high-frequency) motor
+ * magnitudes, 0–1, and a duration in ms. `amount` is 0–1: damage taken / 40 for hits,
+ * closeness for explosions.
+ */
+export function rumbleFor(kind: RumbleKind, amount = 1) {
+  const a = clamp(amount, 0, 1);
+  if (kind === "shockwave") return { strong: 1, weak: 0.7, duration: 380 };
+  if (kind === "wraith") return { strong: 0.45, weak: 1, duration: 600 };
+  if (kind === "explosion")
+    return { strong: 0.7 * a, weak: 0.3 * a, duration: 160 + 120 * a };
+  return {
+    strong: 0.25 + 0.6 * a,
+    weak: 0.35 + 0.5 * a,
+    duration: 90 + 160 * a,
+  };
+}
 /** Touch and standard-mapped controllers share the same gameplay actions. */
 export class Controls {
   moveX = 0;
@@ -35,6 +53,7 @@ export class Controls {
    * goes here instead of to the menus (Start included, so the page can cancel).
    */
   capture: ((button: number) => void) | null = null;
+  private pad: Gamepad | null = null;
   constructor(private game: Game) {
     this.element = document.createElement("div");
     this.element.id = "touch-controls";
@@ -192,6 +211,7 @@ export class Controls {
       (p) => p?.connected && p.mapping === "standard",
     );
     this.connected = !!pad;
+    this.pad = pad ?? null;
     document.body.classList.toggle("controller-active", this.connected);
     if (this.wasConnected && !pad && this.game.mode === "playing")
       this.game.setMode("paused");
@@ -234,14 +254,8 @@ export class Controls {
       this.sprint = this.held.has("sprint") || padHeld("sprint");
       if (pad)
         this.look(
-          stickAxis(pad.axes[2] || 0) *
-            dt *
-            2.5 *
-            (this.game.sensitivity / 0.002),
-          stickAxis(pad.axes[3] || 0) *
-            dt *
-            2 *
-            (this.game.sensitivity / 0.002),
+          stickAxis(pad.axes[2] || 0) * dt * 2.5 * this.game.stickSpeed,
+          stickAxis(pad.axes[3] || 0) * dt * 2 * this.game.stickSpeed,
         );
       for (const action of PAD_PRESSES) {
         const button = bound[action];
@@ -284,6 +298,29 @@ export class Controls {
       }
     }
     this.previous = down;
+  }
+  /** Rumble the active controller, if it can and vibration is on. */
+  rumble(kind: RumbleKind, amount = 1) {
+    const actuator = this.pad?.vibrationActuator as
+      | { playEffect?: (type: string, params: object) => Promise<unknown> }
+      | null
+      | undefined;
+    if (!this.game.vibration || !actuator?.playEffect) return false;
+    const r = rumbleFor(kind, amount);
+    if (r.strong + r.weak < 0.05) return false;
+    try {
+      void actuator
+        .playEffect("dual-rumble", {
+          startDelay: 0,
+          duration: Math.round(r.duration),
+          strongMagnitude: r.strong,
+          weakMagnitude: r.weak,
+        })
+        ?.catch?.(() => {});
+    } catch {
+      return false;
+    }
+    return true;
   }
   private key(code: string) {
     (document.activeElement || document.body).dispatchEvent(

@@ -701,10 +701,28 @@ export class UI {
         this.range(
           "sensitivity",
           "Look sensitivity",
-          "Adjust mouse, touch and controller look speed.",
+          "Adjust mouse and touch look speed.",
           5,
           60,
           10000,
+        ) +
+        this.range(
+          "stickSpeed",
+          "Stick look speed",
+          "Controller right-stick turning speed, separate from the mouse.",
+          25,
+          300,
+          100,
+          "%",
+        ) +
+        this.choice(
+          "vibration",
+          "Controller vibration",
+          "Rumble when you are hit, near explosions and when the Wraith wakes.",
+          [
+            ["Off", false],
+            ["On", true],
+          ],
         ) +
         this.choice(
           "invertY",
