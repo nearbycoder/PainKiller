@@ -118,6 +118,16 @@
       kills: g.levelKills,
       damageTaken: Math.round(taken),
       minHealth: Math.round(minHealth),
+      // Enemies still alive when a run times out, to diagnose stuck encounters.
+      leftover:
+        g.mode === "playing" && !g.arenaCleared
+          ? g.enemies.map((e) => ({
+              type: e.type,
+              at: [e.model.root.position.x, e.model.root.position.z].map(
+                (v) => +v.toFixed(1),
+              ),
+            }))
+          : [],
       causes: Object.fromEntries(
         Object.entries(causes).map(([k, v]) => [k, Math.round(v)]),
       ),

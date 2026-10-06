@@ -289,6 +289,36 @@
     }
   });
 
+  check(
+    "an enemy trapped in a Hallowed Ground headstone corner is freed",
+    () => {
+      // Found by the balance autopilot: with the player diagonally beyond this corner
+      // between a headstone and a grave slab, wall sliding oscillates in place forever.
+      setup(0, 3);
+      g.remaining = 0;
+      const corner = new V(-7.4, 0, -10.2),
+        e = g.spawnEnemy("shambler", corner);
+      const hold = (frames) => {
+        for (let i = 0; i < frames; i++) {
+          g.position.set(-1, 1.75, -4);
+          g.velocity.set(0, 0, 0);
+          g.invulnerable = 9;
+          g.update(1 / 60);
+        }
+      };
+      hold(60 * 15);
+      assert(
+        e.model.root.position.distanceTo(corner) < 0.5,
+        "Corner no longer traps",
+      );
+      hold(60 * 6);
+      assert(
+        e.model.root.position.distanceTo(corner) > 3,
+        "Still trapped after 21 s",
+      );
+    },
+  );
+
   check("combat hints appear once each and never when disabled", () => {
     const stored = localStorage.getItem("purgatory.hints"),
       options = g.settings();

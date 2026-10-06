@@ -22,6 +22,37 @@ Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server
 
 The scripts in `tests/*-checks.js` can be pasted into, or evaluated by, a browser console attached to `npm run dev`. `npm run test:browser` runs them all headlessly: `tools/browser-checks.cjs` starts a Vite dev server on a free port, evaluates each script in an offscreen Electron window, and exits non-zero on any failed check or renderer console error. Pass `-- --checks menu,improvement` for a subset, `-- --url <dev server>` to reuse a running server, and `-- --out <file.json>` to keep the raw results. `tests/improvement-checks.js` covers the October 2026 improvement round described in [IMPROVEMENTS.md](IMPROVEMENTS.md). `tools/media/` drives the same development API for deterministic captures (see `tools/make_trailer.py`).
 
+## Balance autopilot
+
+`tests/balance-autopilot.js` is a repeatable yardstick, not a playtest. A scripted player aims perfectly at the nearest visible enemy, chooses the shotgun under 6 m, rockets under 18 m and stakes beyond, backs off when closer than 7 m, strafes, hops, and jumps a general's shockwave when it is about to arrive. It does not path-find or route to pickups. Each run seeds `Math.random`, but results also depend on run order (model caches consume randomness on first use), so compare complete default runs only:
+
+```bash
+npm run test:browser -- --checks tests/balance-autopilot.js --out artifacts/balance.json
+```
+
+The default set covers six ordinary sectors (Hallowed Ground 1 and 4, Penitent Cells 1, Soul Foundry 3, Spire of Tongues 5, Sealed Abbey 5) and four general sectors (The Barrow, The Drowned Fen, Seraph's Ascent, The Abyss) on all three difficulties with two seeds each: 60 runs, roughly 10–20 minutes on a busy machine. Damage includes armor.
+
+Results on 2026-10-06, before (v0.1.0, `4672978`) and after the October improvement round:
+
+| Sectors | Difficulty | Cleared / died / timed out, before | Cleared / died / timed out, after | Median damage, before → after | Median clear time, before → after |
+| --- | --- | --- | --- | --- | --- |
+| Ordinary (12 runs) | Reverie | 11 / 0 / 1 | 12 / 0 / 0 | 0 → 2 | 76 s → 79 s |
+| Ordinary (12 runs) | Purgatory | 12 / 0 / 0 | 12 / 0 / 0 | 15 → 15 | 79 s → 89 s |
+| Ordinary (12 runs) | Torment | 11 / 0 / 1 | 10 / 2 / 0 | 11 → 30 | 91 s → 88 s |
+| General (8 runs) | Reverie | 8 / 0 / 0 | 8 / 0 / 0 | 60 → 42 | 83 s → 79 s |
+| General (8 runs) | Purgatory | 2 / 6 / 0 | 4 / 4 / 0 | 168 → 162 | 82 s → 90 s |
+| General (8 runs) | Torment | 2 / 6 / 0 | 4 / 4 / 0 | 158 → 149 | 84 s → 84 s |
+
+The round changed no balance values on purpose; how hard ordinary sectors should be is the owner's decision. Apart from the timeouts, the before/after differences are run-to-run variance: the code changes shift the seeded random sequence. In this sample that variance is about ±2 deaths per cell, so do not read the changed death counts as an effect.
+
+The one real change is the **timeouts**. Both baseline timeouts (Hallowed Ground sector 4) ended with enemies wedged in the concave corner between a headstone and a grave slab at (-7.4, -10.2). When the player stands diagonally beyond that corner, the straight-line chase and wall slide oscillate in place forever, so the gate never opens. The stuck-enemy rescue moves such an enemy after 20 s. `tests/improvement-checks.js` reproduces that exact corner. The improved build had no timeouts.
+
+What the bot's damage says (after; by share of all damage taken):
+
+- Ordinary sectors: hellfire 48%, the bot's own rocket splash 43%, melee 9%. Melee almost never lands, because the player outruns every breed.
+- General sectors: shockwaves 46%, hellfire 29%, own splash 16%, contact with the general 7%. 6 of the 8 deaths in general sectors came from The Barrow and The Abyss, the two sampled generals that cast shockwaves, and the shockwave was the largest damage source in all 6.
+- Ordinary sectors stay easy for this bot even on Torment, while generals are where it dies. That matches the phase-1 finding. Whether that curve is intended is an open question for the owner.
+
 ## Measured performance (internal build 0.7)
 
 Visual inspection used the collaborative Chromium preview at 1280×800. The controlled 24 skeleton/revenant render workload from 0.6 measured 1.5 ms median High, 0.9 ms Medium, and 0.6 ms Low after the changes. A separate 24-enemy mixture of all seven regular archetypes measured 2.2 / 1.4 / 0.8 ms respectively. The mixed scene submitted 2,117,281 / 1,427,358 / 746,220 triangles and 835 / 504 / 334 draw calls. Fixed-step simulation with 24 living actors and eight ragdolls measured 0.7 ms median, 0.8 ms p90 for the mixed scene.
