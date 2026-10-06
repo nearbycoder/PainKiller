@@ -4,6 +4,7 @@ import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { type Level, type Theme } from "./data";
 import { archSegments, rng, type Collider } from "./core";
+import { GROUND_SURFACE, THEME_GROUND, ground } from "./grounds";
 export interface Arena {
   root: T.Group;
   colliders: Collider[];
@@ -64,6 +65,412 @@ function texture(seed: number) {
   t.colorSpace = T.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
+}
+/** Ground colour per theme, multiplied over its texture. */
+const GROUND_TINT: Partial<Record<Theme, number>> = {
+  prison: 0x8c8a86,
+  castle: 0xa4a9b8,
+  tower: 0x8f97b4,
+  monastery: 0xd8d4c0,
+  water: 0xa7b4b0,
+  babel: 0xc4ab88,
+  palace: 0xcfc6bc,
+  ruins: 0xb9a688,
+  town: 0xc8b8a4,
+  forest: 0xa9b29a,
+};
+type Builders = {
+  box: (
+    x: number,
+    y: number,
+    z: number,
+    w: number,
+    h: number,
+    d: number,
+    mat?: T.Material,
+  ) => T.Mesh;
+  cyl: (
+    x: number,
+    y: number,
+    z: number,
+    rt: number,
+    rb: number,
+    h: number,
+    mat?: T.Material,
+    n?: number,
+  ) => T.Mesh;
+  mesh: (
+    geo: T.BufferGeometry,
+    mat: T.Material,
+    x: number,
+    y: number,
+    z: number,
+  ) => T.Mesh;
+  mats: T.Material[];
+  metal: T.Material;
+  rust: T.Material;
+  dark: T.Material;
+  trim: T.Material;
+};
+function material(
+  mats: T.Material[],
+  parameters: T.MeshStandardMaterialParameters,
+  flat = false,
+) {
+  const m = new T.MeshStandardMaterial(parameters);
+  m.userData.flat = flat;
+  mats.push(m);
+  return m;
+}
+const plinthIce = new WeakMap<T.Material[], T.Material>();
+/** The four torch plinths take a form that belongs to the theme. Never solid. */
+function plinth(theme: Theme, x: number, z: number, b: Builders) {
+  if (theme === "snow") {
+    // The frozen pools' material, so the ice blocks add no draw call of their own.
+    if (!plinthIce.has(b.mats))
+      plinthIce.set(
+        b.mats,
+        material(b.mats, { color: 0x9fc4dc, roughness: 0.06, metalness: 0.35 }),
+      );
+    const ice = plinthIce.get(b.mats)!;
+    b.box(x, 0.4, z, 0.95, 0.8, 0.95, ice);
+  } else if (["docks", "station", "military"].includes(theme)) {
+    b.cyl(x, 0.4, z, 0.42, 0.42, 0.8, b.rust, 14);
+    b.cyl(x, 0.81, z, 0.44, 0.44, 0.04, b.metal, 14);
+  } else if (theme === "hell") {
+    b.cyl(x, 0.4, z, 0.3, 0.55, 0.8, b.dark, 6);
+  } else if (theme === "asylum" || theme === "palace") {
+    b.cyl(x, 0.05, z, 0.4, 0.45, 0.1, b.metal, 12);
+    b.cyl(x, 0.45, z, 0.07, 0.07, 0.8, b.metal, 8);
+  } else if (theme === "forest" || theme === "swamp") {
+    b.cyl(x, 0.4, z, 0.38, 0.45, 0.8, b.trim, 9);
+  } else b.box(x, 0.4, z, 0.9, 0.8, 0.9, b.dark);
+}
+/**
+ * Cosmetic dressing that gives each procedural theme its own look. Everything here is
+ * flat, overhead or against the walls, and none of it is solid, so encounter layouts
+ * and balance are unchanged (tests/fixtures/arena-colliders.json guards this).
+ */
+function dressTheme(
+  theme: Theme,
+  random: () => number,
+  b: Builders & {
+    wood: T.Material;
+    gold: T.Material;
+    red: T.Material;
+    wallH: number;
+  },
+) {
+  const pool = (x: number, z: number, r: number, mat: T.Material, y = 0.03) => {
+    const m = b.mesh(new T.CircleGeometry(r, 24), mat, x, y, z);
+    m.rotation.x = -Math.PI / 2;
+    m.scale.y = 0.55 + random() * 0.45;
+    return m;
+  };
+  const walls = (
+    fn: (x: number, z: number, side: number) => void,
+    step = 6,
+  ) => {
+    for (let z = -28; z <= 28; z += step)
+      for (const side of [-1, 1]) fn(side * 25.7, z, side);
+  };
+  if (theme === "snow") {
+    const snow = material(b.mats, { color: 0xf1f5f8, roughness: 0.82 });
+    const ice = material(
+      b.mats,
+      {
+        color: 0x9fc4dc,
+        roughness: 0.06,
+        metalness: 0.35,
+      },
+      true,
+    );
+    plinthIce.set(b.mats, ice);
+    // Drifts banked against the walls, snow on the wall tops, frozen pools.
+    walls((x, z, side) => {
+      const m = b.mesh(
+        new T.SphereGeometry(1, 10, 6),
+        snow,
+        x - side * 0.6,
+        -0.1,
+        z + random() * 3,
+      );
+      m.scale.set(1.2 + random(), 0.55 + random() * 0.45, 1.8 + random() * 1.5);
+    }, 4);
+    for (const z of [-31.6, 31.6])
+      b.box(0, b.wallH + 0.05, z, 55, 0.12, 1.7, snow);
+    for (const x of [-26.95, 26.95])
+      b.box(x, b.wallH + 0.05, 0, 1.7, 0.12, 65, snow);
+    for (let i = 0; i < 5; i++)
+      pool(
+        (random() - 0.5) * 36,
+        -26 + i * 12 + random() * 4,
+        1.6 + random() * 1.8,
+        ice,
+      );
+  } else if (theme === "swamp" || theme === "forest") {
+    const murk = material(
+      b.mats,
+      {
+        color: theme === "swamp" ? 0x1d2a1c : 0x2a2a1a,
+        roughness: 0.08,
+        metalness: 0.5,
+      },
+      true,
+    );
+    const reed = material(b.mats, { color: 0x6f6a36, roughness: 0.9 });
+    const count = theme === "swamp" ? 9 : 4;
+    for (let i = 0; i < count; i++) {
+      const x = (random() > 0.5 ? 1 : -1) * (5 + random() * 19),
+        z = -27 + random() * 54;
+      pool(x, z, 1.4 + random() * 2.4, murk);
+      for (let k = 0; k < 7; k++) {
+        const a = random() * Math.PI * 2;
+        const m = b.mesh(
+          new T.ConeGeometry(0.035, 1.1 + random() * 0.9, 4),
+          reed,
+          x + Math.cos(a) * 1.6,
+          0.6,
+          z + Math.sin(a) * 1.1,
+        );
+        m.rotation.z = (random() - 0.5) * 0.3;
+      }
+    }
+    if (theme === "forest") {
+      const cap = material(b.mats, { color: 0x9a3b22, roughness: 0.7 });
+      walls((x, z) => {
+        if (random() > 0.5) return;
+        b.cyl(x, 0.12, z, 0.05, 0.06, 0.24, b.trim, 6);
+        const m = b.mesh(
+          new T.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2),
+          cap,
+          x,
+          0.22,
+          z,
+        );
+        m.scale.y = 0.6;
+      }, 3);
+    }
+  } else if (theme === "asylum") {
+    // Fluorescent strips under the ceiling and a pale tiled wainscot.
+    const tube = material(b.mats, {
+      color: 0xdff6ee,
+      emissive: 0xc8fff0,
+      emissiveIntensity: 0.7,
+    });
+    const wainscot = material(b.mats, { color: 0x9fb8a8, roughness: 0.35 });
+    // Housed tubes, short enough not to streak across the view.
+    for (let z = -24; z <= 24; z += 8)
+      for (const x of [-8, 8]) {
+        b.box(x, 7.44, z, 0.34, 0.1, 1.6, b.metal);
+        b.box(x, 7.38, z, 0.14, 0.04, 1.4, tube);
+      }
+    for (const x of [-26.2, 26.2]) b.box(x, 0.7, 0, 0.04, 1.4, 64, wainscot);
+  } else if (theme === "prison") {
+    // Straw in the cells, rusted drains and hanging chains.
+    const straw = material(b.mats, { color: 0x8d7442, roughness: 1 }, true);
+    for (const side of [-1, 1])
+      for (let z = -25; z < 26; z += 8)
+        pool(side * 20.5, z + 2 + random() * 3, 1.3, straw, 0.025);
+    for (let z = -20; z <= 20; z += 10)
+      b.box(0, 0.035, z, 0.9, 0.02, 0.9, b.rust);
+    for (let z = -24; z <= 24; z += 12)
+      for (const x of [-10, 10]) b.cyl(x, 6.2, z, 0.03, 0.03, 3.6, b.metal, 4);
+  } else if (theme === "opera") {
+    // Footlights along the stage lip, a red carpet and boxes of gilt.
+    const lamp = material(b.mats, {
+      color: 0xffe2a6,
+      emissive: 0xffc46a,
+      emissiveIntensity: 2,
+    });
+    for (let x = -16; x <= 16; x += 2)
+      b.mesh(new T.SphereGeometry(0.12, 8, 6), lamp, x, 0.45, -16.9);
+    b.box(0, 0.035, 8, 4.2, 0.02, 44, b.red);
+  } else if (theme === "town" || theme === "castle") {
+    // Awnings or banners on the house fronts, above head height.
+    const cloth =
+      theme === "town"
+        ? [0x6e2a22, 0x2f4a5a, 0x6b5a2a, 0x3d4f2c]
+        : [0x5b1a1e, 0x1f2a4f];
+    const mats = cloth.map((color) =>
+      material(b.mats, { color, roughness: 0.95, side: T.DoubleSide }),
+    );
+    for (let z = -25; z <= 24; z += 12)
+      for (const side of [-1, 1]) {
+        const mat = mats[Math.floor(random() * mats.length)];
+        if (theme === "town") {
+          const m = b.box(side * 17.6, 3.3, z, 1.8, 0.06, 4.5, mat);
+          m.rotation.z = side * 0.35;
+        } else b.box(side * 18.45, 5.2, z, 0.05, 4.2, 1.6, mat);
+      }
+  } else if (theme === "palace") {
+    // Chandeliers hang over the aisle.
+    const candle = material(b.mats, {
+      color: 0xffe0a0,
+      emissive: 0xffb84a,
+      emissiveIntensity: 2.2,
+    });
+    for (const z of [-14, 4, 20]) {
+      const ring = b.mesh(
+        new T.TorusGeometry(1.4, 0.06, 6, 24),
+        b.gold,
+        0,
+        8.5,
+        z,
+      );
+      ring.rotation.x = Math.PI / 2;
+      b.cyl(0, 10.2, z, 0.03, 0.03, 3.4, b.gold, 4);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        b.mesh(
+          new T.SphereGeometry(0.08, 6, 4),
+          candle,
+          Math.cos(a) * 1.4,
+          8.7,
+          z + Math.sin(a) * 1.4,
+        );
+      }
+    }
+  } else if (theme === "station") {
+    // Yellow safety lines along both platform edges.
+    const paint = material(b.mats, { color: 0xd9b23a, roughness: 0.6 }, true);
+    for (const x of [-12.4, 12.4]) b.box(x, 0.035, 0, 0.3, 0.02, 60, paint);
+  } else if (theme === "military") {
+    // Sandbags along the walls, wire coiled on top.
+    const bag = material(b.mats, { color: 0x6b6047, roughness: 1 });
+    walls((x, z) => {
+      for (let k = 0; k < 3; k++) {
+        const m = b.mesh(
+          new T.SphereGeometry(0.5, 8, 5),
+          bag,
+          x,
+          0.22 + k * 0.32,
+          z + (k % 2) * 0.4,
+        );
+        m.scale.set(0.55, 0.32, 1);
+      }
+    }, 2.4);
+    for (const x of [-26.7, 26.7]) {
+      const coil = b.mesh(
+        new T.TorusGeometry(0.35, 0.015, 4, 12),
+        b.metal,
+        x,
+        b.wallH + 0.4,
+        0,
+      );
+      coil.scale.set(1, 1, 90);
+    }
+  } else if (theme === "docks") {
+    // Rope coils and bollards along the quay.
+    const rope = material(b.mats, { color: 0x8b7450, roughness: 1 });
+    for (let z = -26; z <= 26; z += 9)
+      for (const side of [-1, 1]) {
+        b.cyl(side * 25.3, 0.35, z, 0.22, 0.28, 0.7, b.metal, 10);
+        const coil = b.mesh(
+          new T.TorusGeometry(0.45, 0.07, 5, 16),
+          rope,
+          side * 24.4,
+          0.07,
+          z + 2,
+        );
+        coil.rotation.x = Math.PI / 2;
+      }
+  } else if (theme === "ruins" || theme === "babel") {
+    // Wind-blown sand banks and scattered potsherds.
+    const sand = material(b.mats, {
+      color: theme === "babel" ? 0xc9a676 : 0xb89c70,
+      roughness: 1,
+    });
+    walls((x, z, side) => {
+      const m = b.mesh(
+        new T.SphereGeometry(1, 10, 5),
+        sand,
+        x - side * 0.5,
+        -0.3,
+        z + random() * 3,
+      );
+      m.scale.set(1.6 + random(), 0.5 + random() * 0.4, 2.4 + random() * 2);
+    }, 5);
+  } else if (theme === "tower") {
+    // A star-chart inlay in the floor.
+    for (const r of [5.5, 8]) {
+      const ring = b.mesh(
+        new T.TorusGeometry(r, 0.06, 4, 64),
+        b.gold,
+        0,
+        0.04,
+        0,
+      );
+      ring.rotation.x = Math.PI / 2;
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const m = b.box(
+        Math.cos(a) * 6.75,
+        0.04,
+        Math.sin(a) * 6.75,
+        0.08,
+        0.02,
+        2.4,
+        b.gold,
+      );
+      m.rotation.y = -a;
+    }
+  } else if (theme === "monastery") {
+    // Votive candles along the wall bases.
+    const wax = material(b.mats, { color: 0xe9dfc4, roughness: 0.7 });
+    const wick = material(b.mats, {
+      color: 0xffd28a,
+      emissive: 0xffb04a,
+      emissiveIntensity: 2,
+    });
+    walls((x, z) => {
+      for (let k = 0; k < 4; k++) {
+        const h = 0.15 + random() * 0.25,
+          cx = x + (random() - 0.5) * 0.6,
+          cz = z + (random() - 0.5) * 1.6;
+        b.cyl(cx, h / 2, cz, 0.05, 0.05, h, wax, 6);
+        b.mesh(new T.SphereGeometry(0.035, 5, 4), wick, cx, h + 0.05, cz);
+      }
+    }, 4);
+  } else if (theme === "water") {
+    // Puddles across the flooded squares.
+    const puddle = material(
+      b.mats,
+      {
+        color: 0x24414a,
+        roughness: 0.05,
+        metalness: 0.6,
+      },
+      true,
+    );
+    for (let i = 0; i < 8; i++)
+      pool(
+        (random() - 0.5) * 34,
+        -27 + random() * 54,
+        0.8 + random() * 1.6,
+        puddle,
+      );
+  } else if (theme === "hell") {
+    // Bone piles against the walls.
+    const bone = material(b.mats, { color: 0xc9bfa6, roughness: 0.8 });
+    walls((x, z) => {
+      if (random() > 0.6) return;
+      for (let k = 0; k < 6; k++) {
+        const m = b.cyl(
+          x + (random() - 0.5),
+          0.08,
+          z + (random() - 0.5) * 1.4,
+          0.04,
+          0.05,
+          0.7,
+          bone,
+          5,
+        );
+        m.rotation.set(Math.PI / 2, random() * Math.PI, 0);
+      }
+    }, 5);
+  }
 }
 export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
   // A deferred scene still downloading falls back to its procedural arena; this only
@@ -302,9 +709,39 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
       }
     }
   };
-  // Shared floor, perimeter and a navigable central aisle.
-  box(0, -0.3, 0, 60, 0.6, 72, dark);
-  box(0, 0.018, 0, 7, 0.025, 64, stone);
+  // Shared floor, perimeter and a navigable central aisle. Each theme has its own ground;
+  // its dressing below is cosmetic only and never adds colliders or draws on `random`.
+  const kind = THEME_GROUND[level.theme] || "flagstone";
+  const surface = GROUND_SURFACE[kind],
+    groundTex = ground(kind);
+  const floor = new T.MeshStandardMaterial({
+    color: GROUND_TINT[level.theme] ?? 0xffffff,
+    map: groundTex.map,
+    roughness: surface.roughness,
+    metalness: surface.metalness ?? 0,
+    ...(groundTex.glow
+      ? {
+          emissive: 0xff5a1e,
+          emissiveMap: groundTex.glow,
+          emissiveIntensity: 1.6,
+        }
+      : {}),
+  });
+  const aisle =
+    kind === "flagstone"
+      ? stone
+      : new T.MeshStandardMaterial({
+          color: new T.Color(
+            GROUND_TINT[level.theme] ?? 0xffffff,
+          ).multiplyScalar(0.72),
+          map: groundTex.map,
+          roughness: Math.min(1, surface.roughness + 0.08),
+        });
+  floor.userData.flat = true;
+  if (aisle !== stone) aisle.userData.flat = true;
+  mats.push(floor, aisle);
+  box(0, -0.3, 0, 60, 0.6, 72, floor);
+  box(0, 0.018, 0, 7, 0.025, 64, aisle);
   const wallH = ["crypt", "prison", "asylum"].includes(level.theme) ? 7 : 2.6;
   box(-27, wallH / 2, 0, 1.5, wallH, 65, stone, true);
   box(27, wallH / 2, 0, 1.5, wallH, 65, stone, true);
@@ -634,9 +1071,33 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
   const secret = new T.Vector3(room % 2 ? -23 : 23, 0.9, -26);
   box(secret.x, 0.3, secret.z, 1.8, 0.6, 1.8, trim);
   cross(secret.x, 0.65, secret.z, 0.55, gold);
+  const deco = rng(level.seed * 3 + room * 17 + 5);
+  dressTheme(level.theme, deco, {
+    box,
+    cyl,
+    mesh,
+    mats,
+    metal,
+    rust,
+    wood,
+    gold,
+    dark,
+    trim,
+    red,
+    wallH,
+  });
   for (const x of [-5, 5])
     for (const z of [-24, 13]) {
-      box(x, 0.4, z, 0.9, 0.8, 0.9, dark);
+      plinth(level.theme, x, z, {
+        box,
+        cyl,
+        mesh,
+        mats,
+        dark,
+        metal,
+        rust,
+        trim,
+      });
       torch(x, z, 2.1, true);
     }
   // Cap dynamic lighting; the rest of the flames retain emissive geometry.
@@ -687,7 +1148,8 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
     if (geo) {
       const m = new T.Mesh(geo, mat);
       m.receiveShadow = true;
-      m.castShadow = true;
+      // Floors, pools, carpets and painted lines cannot cast a visible shadow.
+      m.castShadow = !mat.userData.flat;
       root.add(m);
     }
   }

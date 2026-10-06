@@ -53,6 +53,36 @@ What the bot's damage says (after; by share of all damage taken):
 - General sectors: shockwaves 46%, hellfire 29%, own splash 16%, contact with the general 7%. 6 of the 8 deaths in general sectors came from The Barrow and The Abyss, the two sampled generals that cast shockwaves, and the shockwave was the largest damage source in all 6.
 - Ordinary sectors stay easy for this bot even on Torment, while generals are where it dies. That matches the phase-1 finding. Whether that curve is intended is an open question for the owner.
 
+## Procedural arena dressing (round 2)
+
+`src/grounds.ts` draws one 4 × 4 m canvas texture per ground kind (flagstone, tile, marble, planks, parquet, snow, sand, mud, cobble, basalt with an emissive crack map, concrete, dirt). The textures are shared for the session. `dressTheme()` and `plinth()` in `src/world.ts` add per-theme dressing. All of it is non-solid and draws from its own seeded generator, so the arena's `random()` sequence, and with it every collider and spawn point, is unchanged. `tests/arena-checks.js` compares all 104 sectors against `tests/fixtures/arena-colliders.json`, which was recorded before the dressing. Flat dressing (floors, pools, carpets, painted lines) does not cast shadows.
+
+Render cost on High at the sector-1 start view, measured on 2026-10-06 (Radeon 8060S, 1280×800; draw calls include the shadow pass):
+
+| Theme | Draw calls | Triangles |
+| --- | --- | --- |
+| ruins | 74 → 80 | 77,257 → 81,097 |
+| prison | 70 → 76 | 62,601 → 63,713 |
+| opera | 80 → 86 | 84,577 → 87,321 |
+| asylum | 72 → 80 | 63,273 → 64,537 |
+| snow | 74 → 82 | 84,777 → 91,113 |
+| town | 76 → 86 | 78,625 → 78,865 |
+| swamp | 78 → 86 | 83,217 → 84,849 |
+| station | 78 → 84 | 79,025 → 79,873 |
+| military | 74 → 82 | 72,113 → 91,729 |
+| castle | 76 → 82 | 81,361 → 81,601 |
+| palace | 78 → 84 | 85,273 → 89,369 |
+| babel | 76 → 82 | 82,153 → 85,993 |
+| forest | 76 → 86 | 92,849 → 97,041 |
+| tower | 76 → 78 | 88,577 → 90,913 |
+| water | 78 → 84 | 79,321 → 79,705 |
+| docks | 80 → 88 | 71,713 → 77,313 |
+| monastery | 78 → 84 | 101,793 → 114,753 |
+| hell | 96 → 102 | 79,061 → 82,757 |
+| **Total** | **1390 → 1512 (+8.8%)** | **1,447,566 → 1,522,542 (+5.2%)** |
+
+The median render time per theme was about 1 ms both before and after; on this shared machine, single-frame timings vary more than that.
+
 ## Measured performance (internal build 0.7)
 
 Visual inspection used the collaborative Chromium preview at 1280×800. The controlled 24 skeleton/revenant render workload from 0.6 measured 1.5 ms median High, 0.9 ms Medium, and 0.6 ms Low after the changes. A separate 24-enemy mixture of all seven regular archetypes measured 2.2 / 1.4 / 0.8 ms respectively. The mixed scene submitted 2,117,281 / 1,427,358 / 746,220 triangles and 835 / 504 / 334 draw calls. Fixed-step simulation with 24 living actors and eight ragdolls measured 0.7 ms median, 0.8 ms p90 for the mixed scene.
