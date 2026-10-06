@@ -23,7 +23,7 @@
 
 <a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" alt="Play the Purgatory feature trailer (1:57)" width="100%"></a>
 
-*Feature trailer · 1:57 · 1080p · the game's own synthesized music and sound effects. Click the poster to open the [37 MB MP4](docs/media/trailer.mp4); GitHub serves it as a download. All footage is captured from the running game: scripted, rendered in virtual time and edited by [`tools/make_trailer.py`](tools/make_trailer.py).*
+_Feature trailer · 1:57 · 1080p · the game's own synthesized music and sound effects. Click the poster to open the [37 MB MP4](docs/media/trailer.mp4); GitHub serves it as a download. All footage is captured from the running game: scripted, rendered in virtual time and edited by [`tools/make_trailer.py`](tools/make_trailer.py)._
 
 ## About
 
@@ -37,19 +37,19 @@ It runs as an offline Linux desktop game, or in any WebGL 2 browser. No account,
 
 Clear each **sector** by surviving three waves. Red arcs around the crosshair point to whatever just hurt you, a dashed arc warns of hellfire about to hit from off-screen, and when the last few enemies of a wave stay out of sight for a few seconds, chevrons at the screen edge point to them. When the gate turns green, walk into it and press **E**; while it is out of view, a green chevron at the screen edge points to it with its distance. Each level has 3–5 sectors; the last sector of a chapter ends with a **general**. Progress is saved as every wave begins: quit mid-sector and **Continue** resumes that wave with the health, armor, ammunition and souls you had when it started. Death restarts the sector with fresh supplies; the death screen names what killed you, lists what hurt you most in that attempt and says how that attack is avoided.
 
-| Action | Keyboard & mouse | Controller (standard mapping) | Touch |
-| --- | --- | --- | --- |
-| Move / look | WASD / mouse (arrow keys also turn) | Left stick / right stick | Left joystick / drag on the right |
-| Primary / alternate fire | Left / right mouse (or Z / X) | RT / LT | FIRE / ALT |
-| Combo fire (Tempest storm orb) | Both mouse buttons | RT + LT | FIRE + ALT |
-| Next / previous weapon | R / V, mouse wheel, or 1–5 | RB / LB | ▶ / ◀ |
-| Jump (hold to hop) | Space | A | JUMP |
-| Sprint | Shift | Left-stick click | RUN |
-| Use the open gate | E | X | USE |
-| Activate tarot card | Q | Y | TAROT |
-| Inspect weapon | F | B | INSPECT |
-| Pause | Esc or P | Start | Ⅱ |
-| Fullscreen (desktop) | F11 | | |
+| Action                         | Keyboard & mouse                    | Controller (standard mapping) | Touch                             |
+| ------------------------------ | ----------------------------------- | ----------------------------- | --------------------------------- |
+| Move / look                    | WASD / mouse (arrow keys also turn) | Left stick / right stick      | Left joystick / drag on the right |
+| Primary / alternate fire       | Left / right mouse (or Z / X)       | RT / LT                       | FIRE / ALT                        |
+| Combo fire (Tempest storm orb) | Both mouse buttons                  | RT + LT                       | FIRE + ALT                        |
+| Next / previous weapon         | R / V, mouse wheel, or 1–5          | RB / LB                       | ▶ / ◀                             |
+| Jump (hold to hop)             | Space                               | A                             | JUMP                              |
+| Sprint                         | Shift                               | Left-stick click              | RUN                               |
+| Use the open gate              | E                                   | X                             | USE                               |
+| Activate tarot card            | Q                                   | Y                             | TAROT                             |
+| Inspect weapon                 | F                                   | B                             | INSPECT                           |
+| Pause                          | Esc or P                            | Start                         | Ⅱ                                 |
+| Fullscreen (desktop)           | F11                                 |                               |                                   |
 
 These are the defaults. Every keyboard and mouse action can be rebound to any key or mouse button (including side buttons), two per action, under **Options › Controls**, and so can the controller's buttons, including the D-pad and Back, which are free by default and can pick weapons directly. Esc and Start always pause, and the sticks always move and look. The touch layout is fixed. Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch controls appear automatically on coarse-pointer devices or windows narrower than 900 px.
 
@@ -57,13 +57,13 @@ These are the defaults. Every keyboard and mouse action can be rebound to any ke
 
 ### Five weapons, ten fire modes, no reloads
 
-| | Weapon | Primary | Alternate | Trick |
-| --- | --- | --- | --- | --- |
-| I | **Thresher** | Rotating blades (melee) | Hurl the blade head; it returns | Never runs out of ammunition |
-| II | **Shotgun / Freezer** | Ten-pellet scattershot | Freezing bolt | Shotgun a frozen enemy to shatter it |
-| III | **Stake Launcher / Grenade** | Wooden stakes | Bouncing grenades | Stakes ignite over distance and pin bodies to walls; shoot a stake into your own grenade to launch it |
-| IV | **Rocket / Chaingun** | Rockets | Rotary chaingun | Blast impulses fling ragdolls |
-| V | **Tempest** | Shuriken | Chain lightning that leaps between targets | Fire both for a storm orb |
+|     | Weapon                       | Primary                 | Alternate                                  | Trick                                                                                                 |
+| --- | ---------------------------- | ----------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| I   | **Thresher**                 | Rotating blades (melee) | Hurl the blade head; it returns            | Never runs out of ammunition                                                                          |
+| II  | **Shotgun / Freezer**        | Ten-pellet scattershot  | Freezing bolt                              | Shotgun a frozen enemy to shatter it                                                                  |
+| III | **Stake Launcher / Grenade** | Wooden stakes           | Bouncing grenades                          | Stakes ignite over distance and pin bodies to walls; shoot a stake into your own grenade to launch it |
+| IV  | **Rocket / Chaingun**        | Rockets                 | Rotary chaingun                            | Blast impulses fling ragdolls                                                                         |
+| V   | **Tempest**                  | Shuriken                | Chain lightning that leaps between targets | Fire both for a storm orb                                                                             |
 
 ![Freezing a brute, then shattering it with the shotgun](docs/media/screenshots/03-freeze-shatter.jpg)
 
@@ -93,33 +93,33 @@ Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolut
 
 ## Content
 
-| Chapter | Levels | Sectors |
-| --- | --- | --- |
-| I · Ashes of the Faithful | Hallowed Ground · Hall of Vigils · The Ossuary · Cathedral of Ash · The Barrow | 21 |
-| II · The Hollow City | Penitent Cells · The Silent Stage · Ward of Whispers · Frostbound Crossing · Lantern Parish · The Drowned Fen | 25 |
-| III · Engines of Damnation | Last Platform · Soul Foundry · Dead Garrison · Dune Sepulchre | 17 |
-| IV · Kingdom of Dust | Bastion of Thorns · Gilded Court · Spire of Tongues · Weeping Wood · Seraph's Ascent | 22 |
-| V · The Last Descent | Sunken Canals · Black Harbor · Sealed Abbey · The Abyss | 19 |
+| Chapter                    | Levels                                                                                                        | Sectors |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- |
+| I · Ashes of the Faithful  | Hallowed Ground · Hall of Vigils · The Ossuary · Cathedral of Ash · The Barrow                                | 21      |
+| II · The Hollow City       | Penitent Cells · The Silent Stage · Ward of Whispers · Frostbound Crossing · Lantern Parish · The Drowned Fen | 25      |
+| III · Engines of Damnation | Last Platform · Soul Foundry · Dead Garrison · Dune Sepulchre                                                 | 17      |
+| IV · Kingdom of Dust       | Bastion of Thorns · Gilded Court · Spire of Tongues · Weeping Wood · Seraph's Ascent                          | 22      |
+| V · The Last Descent       | Sunken Canals · Black Harbor · Sealed Abbey · The Abyss                                                       | 19      |
 
 That makes **24 levels, 104 sectors and 22 environment themes**, ending in a final confrontation and an ending screen. Each cleared level keeps a record of its fastest clear, most kills, whether its relic was found and whether it was ever cleared without dying. The result screen marks a new best time, and Select level shows the record. All levels are unlocked from the start in **Select level**. Choosing one moves your checkpoint but keeps your cards and records.
 
 ## Screenshots
 
-| | |
-| --- | --- |
-| ![Title screen over the moonlit cemetery](docs/media/screenshots/01-title.jpg) | ![A rocket bursting inside a horde in Hallowed Ground](docs/media/screenshots/02-cemetery-horde.jpg) |
-| ![Chain lightning arcing through skeletons on The Silent Stage](docs/media/screenshots/04-chain-lightning.jpg) | ![Late game: a rocket volley in The Abyss](docs/media/screenshots/07-the-abyss.jpg) |
-| ![Level select with chapter tabs and environment previews](docs/media/screenshots/08-level-select.jpg) | ![The Grave Tarot card screen](docs/media/screenshots/09-grave-tarot.jpg) |
+|                                                                                                                |                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| ![Title screen over the moonlit cemetery](docs/media/screenshots/01-title.jpg)                                 | ![A rocket bursting inside a horde in Hallowed Ground](docs/media/screenshots/02-cemetery-horde.jpg) |
+| ![Chain lightning arcing through skeletons on The Silent Stage](docs/media/screenshots/04-chain-lightning.jpg) | ![Late game: a rocket volley in The Abyss](docs/media/screenshots/07-the-abyss.jpg)                  |
+| ![Level select with chapter tabs and environment previews](docs/media/screenshots/08-level-select.jpg)         | ![The Grave Tarot card screen](docs/media/screenshots/09-grave-tarot.jpg)                            |
 
 ## Play it
 
 Grab the latest build from [**Releases**](https://github.com/nearbycoder/PainKiller/releases/latest):
 
-| Download | How to run |
-| --- | --- |
-| `Purgatory-<version>-x86_64.AppImage` | `chmod +x` it and run it. Without FUSE 2, run it with `--appimage-extract-and-run`. |
-| `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed. |
-| `purgatory-<version>-web.zip` | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
+| Download                               | How to run                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Purgatory-<version>-x86_64.AppImage`  | `chmod +x` it and run it. Without FUSE 2, run it with `--appimage-extract-and-run`.                                                                                                                                                                                                                                                                         |
+| `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed.                                                                                                                                                                                                                                                                                         |
+| `purgatory-<version>-web.zip`          | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
 
 The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`); Firefox and Safari have not been tried. Desktop saves go to `~/.config/Purgatory/`.
 

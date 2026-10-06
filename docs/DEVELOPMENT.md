@@ -4,7 +4,7 @@ Long-form notes that do not fit the storefront README: how saves work, the test 
 
 ## Saves
 
-Desktop campaign progress is atomically written to Electron's per-user data directory, normally `~/.config/Purgatory/campaign.json`. Settings are stored in the desktop application's local storage. Saves record the current sector, unlocked levels, completed-level scores, tarot cards and completion status. As each wave begins, `Game.snapshot()` also stores a `resume` record: the wave number, health, armor, ammunition, weapon, souls, whether the tarot was used, which fixed sector supplies were taken, and the level's running stats. **Continue** (`Game.continueGame()`) restores it and starts that wave after two seconds; earlier waves stay cleared. `parseSave` drops a malformed snapshot, or one for a different sector, without touching the rest of the save. It does not resume a fight at the exact frame where you quit. Death deletes the snapshot and restarts the sector with replenished supplies, as do *Restart sector*, level select and finishing a level. Replaying a level selects it as your current checkpoint. **New game** explicitly resets campaign progress.
+Desktop campaign progress is atomically written to Electron's per-user data directory, normally `~/.config/Purgatory/campaign.json`. Settings are stored in the desktop application's local storage. Saves record the current sector, unlocked levels, completed-level scores, tarot cards and completion status. As each wave begins, `Game.snapshot()` also stores a `resume` record: the wave number, health, armor, ammunition, weapon, souls, whether the tarot was used, which fixed sector supplies were taken, and the level's running stats. **Continue** (`Game.continueGame()`) restores it and starts that wave after two seconds; earlier waves stay cleared. `parseSave` drops a malformed snapshot, or one for a different sector, without touching the rest of the save. It does not resume a fight at the exact frame where you quit. Death deletes the snapshot and restarts the sector with replenished supplies, as do _Restart sector_, level select and finishing a level. Replaying a level selects it as your current checkpoint. **New game** explicitly resets campaign progress.
 
 The development preview uses browser local storage, separate from the desktop save. Desktop smoke tests use an isolated profile under `artifacts/`.
 
@@ -12,7 +12,7 @@ The development preview uses browser local storage, separate from the desktop sa
 
 `npm run package:web` builds and writes `release/purgatory-<version>-web.zip` with `tools/package-web.cjs` (Node's zlib only; no `zip` binary needed). A Vite build plugin keeps the source texture folders that `tools/fetch-art.py` downloads into `public/assets/textures/` out of `dist/`, because the GLBs embed their textures and the runtime only requests `moonrise.hdr`. That took a local `dist/` from 150 MB to 86 MB; the zip is about 42 MB.
 
-Production builds load the actors, weapons, supplies, the cemetery (title backdrop) and the HDR sky before the menu: 50 MB instead of 86 MB. `prefetchArt()` then fetches the cathedral, crypt and factory scenes one at a time. `Game.start()` waits on a loading screen if the chosen level's scene is still downloading, and offers *Try again* if the download fails. Development builds load everything up front so scripted checks and trailer capture never wait. `state().environmentsPending` lists scenes not yet loaded.
+Production builds load the actors, weapons, supplies, the cemetery (title backdrop) and the HDR sky before the menu: 50 MB instead of 86 MB. `prefetchArt()` then fetches the cathedral, crypt and factory scenes one at a time. `Game.start()` waits on a loading screen if the chosen level's scene is still downloading, and offers _Try again_ if the download fails. Development builds load everything up front so scripted checks and trailer capture never wait. `state().environmentsPending` lists scenes not yet loaded.
 
 Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server`: in an offscreen Electron (Chromium) window driven through the real menus, jumping straight to Soul Foundry with its download delayed showed the loading screen and then the authored foundry, a blocked crypt download showed the retry screen and recovered, and the background-prefetched cathedral started without waiting; in Playwright's cached `chrome-headless-shell` 151 (SwiftShader WebGL 2) it reached the menu and Hallowed Ground with no console errors. Firefox and Safari were not tested.
 
@@ -20,7 +20,7 @@ Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server
 
 Key bindings live in `src/bindings.ts` and are saved inside the options (`purgatory.options` › `bindings`). Each action has up to two codes: `KeyboardEvent.code` values or `Mouse0`–`Mouse4`. `parseBindings` drops unknown actions, unbindable codes and duplicates, and Escape is never bindable. `Game.held()`, `Game.press()` and `Game.firing()` route all keyboard and mouse input through the bindings; controller and touch input are unchanged. `Game.mouse` is still honoured as a fire input for scripted checks.
 
-Per-level records are kept in `save.records` (`mergeRecord` in `src/core.ts`): the fastest clear, most kills, most relics in one clear, and whether the level was ever cleared without dying. Deaths are counted per level and carried through *Rise again* and the wave snapshot.
+Per-level records are kept in `save.records` (`mergeRecord` in `src/core.ts`): the fastest clear, most kills, most relics in one clear, and whether the level was ever cleared without dying. Deaths are counted per level and carried through _Rise again_ and the wave snapshot.
 
 Controller buttons are saved alongside (`purgatory.options` › `padBindings`): one standard-mapping button index per action, or `null`. `parsePadBindings` drops Start (9), Home (16) and anything outside 0–15, and keeps a button for one action only. `Controls.poll()` routes held actions (fire, jump, sprint) and one-shot actions (`Game.press()`) through them; Start always pauses, and menu navigation (D-pad, A, B) is fixed. While the Controls page waits for a button, `Controls.capture` receives every newly pressed button instead of the menus.
 
@@ -28,7 +28,7 @@ Controller buttons are saved alongside (`purgatory.options` › `padBindings`): 
 
 ## Death recap (round 3)
 
-`Game.hurt(damage, from, cause, source)` adds each hit to `Game.damageLog`, keyed by cause plus, for hellfire, the caster (`hellfire:witch`, `hellfire:boss`). Each hit is capped at the health and armor the player had, so a killing blow's overkill is not counted. `loadArena()` clears the log, so it covers one sector attempt: *Rise again*, a new sector and *Continue* all start fresh. On death `deathRecap()` in `src/recap.ts` turns it into the killing blow, the top three sources and a tip for the killing source. The tips describe existing mechanics only; no numbers changed.
+`Game.hurt(damage, from, cause, source)` adds each hit to `Game.damageLog`, keyed by cause plus, for hellfire, the caster (`hellfire:witch`, `hellfire:boss`). Each hit is capped at the health and armor the player had, so a killing blow's overkill is not counted. `loadArena()` clears the log, so it covers one sector attempt: _Rise again_, a new sector and _Continue_ all start fresh. On death `deathRecap()` in `src/recap.ts` turns it into the killing blow, the top three sources and a tip for the killing source. The tips describe existing mechanics only; no numbers changed.
 
 ## Gate guide (round 3)
 
@@ -54,14 +54,14 @@ The default set covers six ordinary sectors (Hallowed Ground 1 and 4, Penitent C
 
 Results on 2026-10-06, before (v0.1.0, `4672978`) and after the October improvement round:
 
-| Sectors | Difficulty | Cleared / died / timed out, before | Cleared / died / timed out, after | Median damage, before → after | Median clear time, before → after |
-| --- | --- | --- | --- | --- | --- |
-| Ordinary (12 runs) | Reverie | 11 / 0 / 1 | 12 / 0 / 0 | 0 → 2 | 76 s → 79 s |
-| Ordinary (12 runs) | Purgatory | 12 / 0 / 0 | 12 / 0 / 0 | 15 → 15 | 79 s → 89 s |
-| Ordinary (12 runs) | Torment | 11 / 0 / 1 | 10 / 2 / 0 | 11 → 30 | 91 s → 88 s |
-| General (8 runs) | Reverie | 8 / 0 / 0 | 8 / 0 / 0 | 60 → 42 | 83 s → 79 s |
-| General (8 runs) | Purgatory | 2 / 6 / 0 | 4 / 4 / 0 | 168 → 162 | 82 s → 90 s |
-| General (8 runs) | Torment | 2 / 6 / 0 | 4 / 4 / 0 | 158 → 149 | 84 s → 84 s |
+| Sectors            | Difficulty | Cleared / died / timed out, before | Cleared / died / timed out, after | Median damage, before → after | Median clear time, before → after |
+| ------------------ | ---------- | ---------------------------------- | --------------------------------- | ----------------------------- | --------------------------------- |
+| Ordinary (12 runs) | Reverie    | 11 / 0 / 1                         | 12 / 0 / 0                        | 0 → 2                         | 76 s → 79 s                       |
+| Ordinary (12 runs) | Purgatory  | 12 / 0 / 0                         | 12 / 0 / 0                        | 15 → 15                       | 79 s → 89 s                       |
+| Ordinary (12 runs) | Torment    | 11 / 0 / 1                         | 10 / 2 / 0                        | 11 → 30                       | 91 s → 88 s                       |
+| General (8 runs)   | Reverie    | 8 / 0 / 0                          | 8 / 0 / 0                         | 60 → 42                       | 83 s → 79 s                       |
+| General (8 runs)   | Purgatory  | 2 / 6 / 0                          | 4 / 4 / 0                         | 168 → 162                     | 82 s → 90 s                       |
+| General (8 runs)   | Torment    | 2 / 6 / 0                          | 4 / 4 / 0                         | 158 → 149                     | 84 s → 84 s                       |
 
 The round changed no balance values on purpose; how hard ordinary sectors should be is the owner's decision. Apart from the timeouts, the before/after differences are run-to-run variance: the code changes shift the seeded random sequence. In this sample that variance is about ±2 deaths per cell, so do not read the changed death counts as an effect.
 
@@ -79,26 +79,26 @@ What the bot's damage says (after; by share of all damage taken):
 
 Render cost on High at the sector-1 start view, measured on 2026-10-06 (Radeon 8060S, 1280×800; draw calls include the shadow pass):
 
-| Theme | Draw calls | Triangles |
-| --- | --- | --- |
-| ruins | 74 → 80 | 77,257 → 81,097 |
-| prison | 70 → 76 | 62,601 → 63,713 |
-| opera | 80 → 86 | 84,577 → 87,321 |
-| asylum | 72 → 80 | 63,273 → 64,537 |
-| snow | 74 → 82 | 84,777 → 91,113 |
-| town | 76 → 86 | 78,625 → 78,865 |
-| swamp | 78 → 86 | 83,217 → 84,849 |
-| station | 78 → 84 | 79,025 → 79,873 |
-| military | 74 → 82 | 72,113 → 91,729 |
-| castle | 76 → 82 | 81,361 → 81,601 |
-| palace | 78 → 84 | 85,273 → 89,369 |
-| babel | 76 → 82 | 82,153 → 85,993 |
-| forest | 76 → 86 | 92,849 → 97,041 |
-| tower | 76 → 78 | 88,577 → 90,913 |
-| water | 78 → 84 | 79,321 → 79,705 |
-| docks | 80 → 88 | 71,713 → 77,313 |
-| monastery | 78 → 84 | 101,793 → 114,753 |
-| hell | 96 → 102 | 79,061 → 82,757 |
+| Theme     | Draw calls              | Triangles                         |
+| --------- | ----------------------- | --------------------------------- |
+| ruins     | 74 → 80                 | 77,257 → 81,097                   |
+| prison    | 70 → 76                 | 62,601 → 63,713                   |
+| opera     | 80 → 86                 | 84,577 → 87,321                   |
+| asylum    | 72 → 80                 | 63,273 → 64,537                   |
+| snow      | 74 → 82                 | 84,777 → 91,113                   |
+| town      | 76 → 86                 | 78,625 → 78,865                   |
+| swamp     | 78 → 86                 | 83,217 → 84,849                   |
+| station   | 78 → 84                 | 79,025 → 79,873                   |
+| military  | 74 → 82                 | 72,113 → 91,729                   |
+| castle    | 76 → 82                 | 81,361 → 81,601                   |
+| palace    | 78 → 84                 | 85,273 → 89,369                   |
+| babel     | 76 → 82                 | 82,153 → 85,993                   |
+| forest    | 76 → 86                 | 92,849 → 97,041                   |
+| tower     | 76 → 78                 | 88,577 → 90,913                   |
+| water     | 78 → 84                 | 79,321 → 79,705                   |
+| docks     | 80 → 88                 | 71,713 → 77,313                   |
+| monastery | 78 → 84                 | 101,793 → 114,753                 |
+| hell      | 96 → 102                | 79,061 → 82,757                   |
 | **Total** | **1390 → 1512 (+8.8%)** | **1,447,566 → 1,522,542 (+5.2%)** |
 
 The median render time per theme was about 1 ms both before and after; on this shared machine, single-frame timings vary more than that.
