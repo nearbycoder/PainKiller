@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { freshSave, parseResume, parseSave, type Resume } from "../src/core";
+import {
+  formatTime,
+  freshSave,
+  mergeRecord,
+  parseResume,
+  parseSave,
+  type Resume,
+} from "../src/core";
 
 const snapshot = (): Resume => ({
   level: 3,
@@ -17,6 +24,7 @@ const snapshot = (): Resume => ({
   levelSouls: 30,
   secrets: 1,
   elapsed: 311,
+  deaths: 2,
   sector: { kills: 52, souls: 18, secrets: 0 },
 });
 
@@ -44,6 +52,7 @@ describe("wave resume snapshots", () => {
       { taken: [9] },
       { sector: null },
       { level: 30 },
+      { deaths: -1 },
     ]) {
       expect(parseResume({ ...snapshot(), ...bad })).toBeUndefined();
       const save = parseSave(
@@ -66,5 +75,51 @@ describe("wave resume snapshots", () => {
     const save = parseSave(JSON.stringify(old));
     expect(save.level).toBe(5);
     expect(save.resume).toBeUndefined();
+  });
+});
+
+describe("per-level records", () => {
+  const run = { time: 300, kills: 80, secrets: 0, deathless: false };
+  it("keeps the fastest time and the best of everything else", () => {
+    const first = mergeRecord(undefined, run);
+    expect(first.fastest).toBe(true);
+    const slower = mergeRecord(first.record, {
+      time: 420,
+      kills: 95,
+      secrets: 1,
+      deathless: true,
+    });
+    expect(slower.fastest).toBe(false);
+    expect(slower.record).toEqual({
+      time: 300,
+      kills: 95,
+      secrets: 1,
+      deathless: true,
+    });
+    const faster = mergeRecord(slower.record, { ...run, time: 250 });
+    expect(faster.fastest).toBe(true);
+    expect(faster.record.time).toBe(250);
+    expect(faster.record.deathless).toBe(true);
+  });
+  it("saves valid records and drops corrupt ones", () => {
+    const save = parseSave(
+      JSON.stringify({
+        ...freshSave(),
+        records: {
+          "2": run,
+          "3": { ...run, time: -5 },
+          "40": run,
+          x: run,
+          "5": { ...run, deathless: "yes" },
+        },
+      }),
+    );
+    expect(save.records).toEqual({ "2": run });
+    expect(parseSave(JSON.stringify(freshSave())).records).toEqual({});
+  });
+  it("formats times as minutes and seconds", () => {
+    expect(formatTime(0)).toBe("0:00");
+    expect(formatTime(65.9)).toBe("1:05");
+    expect(formatTime(3725)).toBe("62:05");
   });
 });

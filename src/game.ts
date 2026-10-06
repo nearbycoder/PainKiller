@@ -37,6 +37,7 @@ import {
   freshSave,
   damageAfterArmor,
   segmentSphere,
+  mergeRecord,
   spatialCue,
   bearing,
   type Resume,
@@ -166,6 +167,11 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  /** Deaths in the current level; a clear with none is deathless. */
+  levelDeaths = 0;
+  /** What the last completed level achieved, for the result screen. */
+  lastClear: { fastest: boolean; deathless: boolean; best: number } | null =
+    null;
   /** Fixed sector supplies collected in this sector (see Resume.taken). */
   taken = new Set<number>();
   /** The level waiting on a deferred environment download, while mode is "loading". */
@@ -508,6 +514,7 @@ export class Game {
     this.levelSouls = 0;
     this.secrets = 0;
     this.elapsed = 0;
+    this.levelDeaths = 0;
     this.ammo = WEAPONS.map((w) => w.ammo);
     this.altAmmo = WEAPONS.map((w) => w.alt);
     this.loadArena();
@@ -528,12 +535,12 @@ export class Game {
     this.start(this.save.level, this.save.room, true, true);
   }
   /** Record the player's state as the next wave begins, so quitting loses at most one wave. */
-  snapshot(): Resume {
+  snapshot(wave = this.wave + 1): Resume {
     const finite = (v: number) => (Number.isFinite(v) ? Math.floor(v) : -1);
     return {
       level: this.level,
       room: this.room,
-      wave: this.wave + 1,
+      wave,
       health: Math.max(1, Math.ceil(this.health)),
       armor: Math.max(0, Math.round(this.armor)),
       ammo: this.ammo.map(finite),
@@ -546,6 +553,7 @@ export class Game {
       levelSouls: this.levelSouls,
       secrets: this.secrets,
       elapsed: Math.round(this.elapsed),
+      deaths: this.levelDeaths,
       sector: {
         kills: this.sectorStart.kills,
         souls: this.sectorStart.souls,
@@ -565,6 +573,7 @@ export class Game {
     this.levelSouls = r.levelSouls;
     this.secrets = r.secrets;
     this.elapsed = r.elapsed;
+    this.levelDeaths = r.deaths;
     this.sectorStart = { level: this.level, ...r.sector };
     for (const slot of r.taken) {
       this.taken.add(slot);
@@ -602,7 +611,6 @@ export class Game {
     this.lock();
   }
   checkpoint() {
-    delete this.save.resume;
     this.sectorStart = {
       level: this.level,
       kills: this.levelKills,
@@ -612,21 +620,27 @@ export class Game {
     this.save.level = this.level;
     this.save.room = this.room;
     this.save.unlocked = Math.max(this.save.unlocked, this.level);
+    // The sector start is itself a snapshot, so quitting before wave 1 keeps level stats.
+    this.save.resume = this.snapshot(1);
     this.persist();
   }
   retry() {
     // Restarting a sector keeps what the earlier sectors of this level earned.
     const kept =
         this.sectorStart.level === this.level ? this.sectorStart : null,
-      elapsed = this.elapsed;
+      elapsed = this.elapsed,
+      deaths = this.levelDeaths;
     this.start(this.level, this.room);
     if (kept) {
       this.levelKills = kept.kills;
       this.levelSouls = kept.souls;
       this.secrets = kept.secrets;
       this.elapsed = elapsed;
+      this.levelDeaths = deaths;
       this.sectorStart = { ...kept };
     }
+    this.save.resume = this.snapshot(1);
+    this.persist();
   }
   /** Queue a one-time hint; it appears in its own HUD line when nothing blocks it. */
   hint(id: HintId) {
@@ -774,6 +788,18 @@ export class Game {
   }
   completeLevel() {
     delete this.save.resume;
+    const { record, fastest } = mergeRecord(this.save.records?.[this.level], {
+      time: Math.max(1, Math.round(this.elapsed)),
+      kills: this.levelKills,
+      secrets: this.secrets,
+      deathless: this.levelDeaths === 0,
+    });
+    this.save.records = { ...this.save.records, [this.level]: record };
+    this.lastClear = {
+      fastest,
+      deathless: this.levelDeaths === 0,
+      best: record.time,
+    };
     this.save.best[this.level] = Math.max(
       this.save.best[this.level] || 0,
       this.levelKills,
@@ -1107,8 +1133,22 @@ export class Game {
     this.sound.tone(65, 0.2, "sawtooth", 0.17, 25);
     if (this.health <= 0) {
       this.health = 0;
-      // Death restarts the sector, even if the player quits from the death screen.
-      delete this.save.resume;
+      this.levelDeaths++;
+      // Death restarts the sector with fresh supplies; record exactly that, so quitting
+      // from the death screen and continuing matches Rise again (deaths included).
+      this.save.resume = {
+        ...this.snapshot(1),
+        health: 100,
+        armor: 50,
+        ammo: WEAPONS.map((w) => (Number.isFinite(w.ammo) ? w.ammo : -1)),
+        altAmmo: WEAPONS.map((w) => (Number.isFinite(w.alt) ? w.alt : -1)),
+        souls: 0,
+        cardUsed: false,
+        taken: [],
+        kills: this.sectorStart.kills,
+        levelSouls: this.sectorStart.souls,
+        secrets: this.sectorStart.secrets,
+      };
       this.persist();
       this.setMode("dead");
     }

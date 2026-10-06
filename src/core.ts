@@ -64,6 +64,66 @@ export interface Save {
   completed: boolean;
   /** Snapshot at the start of the current wave; Continue resumes there. */
   resume?: Resume;
+  /** Best results per completed level, keyed by level index. */
+  records?: Record<string, LevelRecord>;
+}
+export interface LevelRecord {
+  /** Fastest clear, seconds. */
+  time: number;
+  kills: number;
+  /** Most relics found in one clear. */
+  secrets: number;
+  /** Cleared at least once without dying. */
+  deathless: boolean;
+}
+/** Fold one clear into a level's record; `fastest` is true when the time improved. */
+export function mergeRecord(
+  previous: LevelRecord | undefined,
+  run: LevelRecord,
+) {
+  const record: LevelRecord = previous
+    ? {
+        time: Math.min(previous.time, run.time),
+        kills: Math.max(previous.kills, run.kills),
+        secrets: Math.max(previous.secrets, run.secrets),
+        deathless: previous.deathless || run.deathless,
+      }
+    : { ...run };
+  return { record, fastest: !previous || run.time < previous.time };
+}
+export function formatTime(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function parseRecords(raw: unknown): Record<string, LevelRecord> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, LevelRecord> = {};
+  for (const [key, v] of Object.entries(raw as Record<string, unknown>)) {
+    const r = v as Record<string, unknown> | null;
+    const level = Number(key);
+    if (
+      !Number.isInteger(level) ||
+      level < 0 ||
+      level > 23 ||
+      !r ||
+      typeof r.time !== "number" ||
+      !Number.isFinite(r.time) ||
+      r.time <= 0 ||
+      typeof r.kills !== "number" ||
+      !(r.kills >= 0) ||
+      typeof r.secrets !== "number" ||
+      !(r.secrets >= 0 && r.secrets <= 100) ||
+      typeof r.deathless !== "boolean"
+    )
+      continue;
+    out[String(level)] = {
+      time: r.time,
+      kills: Math.floor(r.kills),
+      secrets: Math.floor(r.secrets),
+      deathless: r.deathless,
+    };
+  }
+  return out;
 }
 /** Player state when a wave began. Ammunition of -1 stands for the Thresher's infinite supply. */
 export interface Resume {
@@ -84,6 +144,8 @@ export interface Resume {
   levelSouls: number;
   secrets: number;
   elapsed: number;
+  /** Deaths so far in this level. */
+  deaths: number;
   /** Level stats when the sector began, restored by a retry after death. */
   sector: { kills: number; souls: number; secrets: number };
 }
@@ -117,6 +179,7 @@ export function parseResume(r: unknown): Resume | undefined {
     !num(x.levelSouls, 0, 1e6) ||
     !num(x.secrets, 0, 100) ||
     !num(x.elapsed, 0, 1e7) ||
+    !num(x.deaths, 0, 1e5) ||
     !sector ||
     !num(sector.kills, 0, 1e6) ||
     !num(sector.souls, 0, 1e6) ||
@@ -139,6 +202,7 @@ export function parseResume(r: unknown): Resume | undefined {
     levelSouls: x.levelSouls as number,
     secrets: x.secrets as number,
     elapsed: x.elapsed as number,
+    deaths: Math.floor(x.deaths as number),
     sector: {
       kills: sector.kills as number,
       souls: sector.souls as number,
@@ -157,6 +221,7 @@ export const freshSave = (): Save => ({
   selectedCard: 0,
   best: {},
   completed: false,
+  records: {},
 });
 export function parseSave(raw: string | null): Save {
   try {
@@ -190,6 +255,7 @@ export function parseSave(raw: string | null): Save {
             ) as Record<string, number>)
           : {},
       completed: s.completed === true,
+      records: parseRecords(s.records),
       ...(() => {
         const resume = parseResume(s.resume);
         // A snapshot only counts for the sector the save points at.

@@ -1,6 +1,6 @@
 import { Game } from "./game";
 import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
-import { freshSave } from "./core";
+import { formatTime, freshSave } from "./core";
 import { AMMUNITION } from "./ammunition";
 import { defaults, type Settings } from "./settings";
 import {
@@ -193,6 +193,17 @@ export class UI {
         `[data-action="rebind"][data-value="${target.action}:${target.slot}"]`,
       )
       ?.focus();
+  }
+  /** A level's best clear for the level select. */
+  recordLine(level: number) {
+    const r = this.game.save.records?.[level];
+    return `<p class="record-line">${
+      r
+        ? `BEST ${formatTime(r.time)} · ${r.kills} SLAIN · ${r.secrets ? "RELIC FOUND" : "RELIC MISSED"}${r.deathless ? " · DEATHLESS" : ""}`
+        : this.game.save.best[level]
+          ? "CLEARED · NO RECORDED TIME"
+          : "NOT YET CLEARED"
+    }</p>`;
   }
   bindingRows() {
     const b = this.game.bindings;
@@ -405,15 +416,12 @@ export class UI {
         [g.levelKills, "ENEMIES SLAIN"],
         [g.levelSouls, "SOULS TAKEN"],
         [g.secrets, "RELICS FOUND"],
-        [
-          `${Math.floor(g.elapsed / 60)}:${String(Math.floor(g.elapsed % 60)).padStart(2, "0")}`,
-          "TIME",
-        ],
+        [formatTime(g.elapsed), "TIME"],
       ]
         .map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`)
         .join(
           "",
-        )}</div><nav>${this.button(g.mode === "ending" ? "Main menu" : "Continue", "" + (g.mode === "ending" ? "menu" : "next"), undefined, "data-default")}${g.mode === "ending" ? "" : this.button("Main menu", "menu")}</nav></main>`;
+        )}</div>${g.lastClear ? `<p class="record-line">${g.lastClear.fastest ? "<b>NEW BEST TIME</b>" : `BEST ${formatTime(g.lastClear.best)}`}${g.lastClear.deathless ? " · <b>DEATHLESS</b>" : ""}</p>` : ""}<nav>${this.button(g.mode === "ending" ? "Main menu" : "Continue", "" + (g.mode === "ending" ? "menu" : "next"), undefined, "data-default")}${g.mode === "ending" ? "" : this.button("Main menu", "menu")}</nav></main>`;
     else if (this.page === "home")
       content = paused ? this.pause() : this.home();
     else
@@ -470,7 +478,7 @@ export class UI {
     if (this.page === "settings") return this.settings();
     if (this.page === "campaign") {
       const l = LEVELS[this.selectedLevel];
-      return `<div class="chapter-select" aria-label="Chapters">${CHAPTERS.map((c, i) => `<button class="${this.chapter === i + 1 ? "selected" : ""}" data-action="chapter" data-value="${i + 1}" aria-pressed="${this.chapter === i + 1}"><b>${roman[i]}</b><span>${c}</span></button>`).join("")}</div><div class="campaign-layout"><nav class="level-list" aria-label="Levels">${LEVELS.map((level, i) => (level.chapter === this.chapter ? `<button class="${this.selectedLevel === i ? "selected" : ""}" data-action="select-level" data-value="${i}" aria-pressed="${this.selectedLevel === i}"><small>${String(i + 1).padStart(2, "0")}</small><span>${level.name}</span><i>${g.save.best[i] ? "✓" : level.boss ? "†" : "◆"}</i></button>` : "")).join("")}</nav><section class="level-preview"><img src="${import.meta.env.BASE_URL}assets/previews/level-${this.selectedLevel}.jpg" alt="${l.name} environment"><div class="preview-caption"><p class="menu-kicker">CHAPTER ${roman[l.chapter - 1]} · ${l.rooms} SECTORS ${l.boss ? "· BOSS ENCOUNTER" : ""}</p><h2>${l.name}</h2><p>${l.subtitle}</p>${this.button("Enter level", "level", String(this.selectedLevel))}</div></section></div><p class="screen-note">All 24 levels are available. Selecting a level changes your checkpoint and keeps your earned cards and scores.</p>`;
+      return `<div class="chapter-select" aria-label="Chapters">${CHAPTERS.map((c, i) => `<button class="${this.chapter === i + 1 ? "selected" : ""}" data-action="chapter" data-value="${i + 1}" aria-pressed="${this.chapter === i + 1}"><b>${roman[i]}</b><span>${c}</span></button>`).join("")}</div><div class="campaign-layout"><nav class="level-list" aria-label="Levels">${LEVELS.map((level, i) => (level.chapter === this.chapter ? `<button class="${this.selectedLevel === i ? "selected" : ""}" data-action="select-level" data-value="${i}" aria-pressed="${this.selectedLevel === i}"><small>${String(i + 1).padStart(2, "0")}</small><span>${level.name}</span><i>${g.save.best[i] ? "✓" : level.boss ? "†" : "◆"}</i></button>` : "")).join("")}</nav><section class="level-preview"><img src="${import.meta.env.BASE_URL}assets/previews/level-${this.selectedLevel}.jpg" alt="${l.name} environment"><div class="preview-caption"><p class="menu-kicker">CHAPTER ${roman[l.chapter - 1]} · ${l.rooms} SECTORS ${l.boss ? "· BOSS ENCOUNTER" : ""}</p><h2>${l.name}</h2><p>${l.subtitle}</p>${this.recordLine(this.selectedLevel)}${this.button("Enter level", "level", String(this.selectedLevel))}</div></section></div><p class="screen-note">All 24 levels are available. Selecting a level changes your checkpoint and keeps your earned cards and scores.</p>`;
     }
     if (this.page === "arsenal") {
       const w = WEAPONS[this.armory];

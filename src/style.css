@@ -529,6 +529,17 @@ body[data-mode="dead"] #world {
   font-size: 12px;
   color: #ccb98f;
 }
+.record-line {
+  margin: 6px 0 12px;
+  font:
+    600 13px/1.4 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.12em;
+  color: #b59c75;
+}
+.record-line b {
+  color: #f0d49a;
+}
 .rebind-list {
   display: grid;
   grid-template-columns: 1fr 1fr;

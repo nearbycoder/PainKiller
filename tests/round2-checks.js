@@ -221,15 +221,16 @@
     g.invulnerable = 0;
     g.hurt(9999);
     assert(g.mode === "dead", "Did not die");
+    const after = JSON.parse(localStorage.getItem("purgatory.save")).resume;
     assert(
-      !JSON.parse(localStorage.getItem("purgatory.save")).resume,
-      "Snapshot survived death",
+      after?.wave === 1 && after.health === 100 && after.deaths === 1,
+      "Death did not save a sector restart: " + JSON.stringify(after),
     );
     g.setMode("menu");
     g.continueGame();
     assert(
-      g.wave === 0 && g.health === 100,
-      `wave ${g.wave}, health ${g.health}`,
+      g.wave === 0 && g.health === 100 && g.levelDeaths === 1,
+      `wave ${g.wave}, health ${g.health}, deaths ${g.levelDeaths}`,
     );
   });
 
@@ -243,6 +244,74 @@
     g.beginWave();
     g.completeLevel();
     assert(!g.save.resume, "Snapshot survived the level's end");
+    g.setMode("menu");
+  });
+
+  check("finishing a level records and shows the best clear", () => {
+    g.save.records = {};
+    setup(6, 4);
+    g.invulnerable = 0;
+    g.hurt(9999);
+    assert(g.levelDeaths === 1, "Death not counted");
+    g.retry();
+    assert(g.levelDeaths === 1, "Retry forgot the death");
+    g.elapsed = 200;
+    g.levelKills = 90;
+    g.completeLevel();
+    let r = g.save.records[6];
+    assert(
+      r && r.time === 200 && !r.deathless && r.kills === 90,
+      JSON.stringify(r),
+    );
+    let text = document.querySelector(".end-screen").textContent;
+    assert(/NEW BEST TIME/.test(text) && !/DEATHLESS/.test(text), text);
+    // A slower, deathless clear with the relic keeps the time and adds the rest.
+    setup(6, 4);
+    g.elapsed = 250;
+    g.secrets = 1;
+    g.levelKills = 70;
+    g.completeLevel();
+    r = g.save.records[6];
+    assert(
+      r.time === 200 && r.deathless && r.secrets === 1 && r.kills === 90,
+      JSON.stringify(r),
+    );
+    text = document.querySelector(".end-screen").textContent;
+    assert(
+      /BEST 3:20/.test(text) &&
+        /DEATHLESS/.test(text) &&
+        !/NEW BEST/.test(text),
+      text,
+    );
+    assert(
+      JSON.parse(localStorage.getItem("purgatory.save")).records["6"].time ===
+        200,
+      "Record not saved",
+    );
+    // Level select shows it.
+    g.setMode("menu");
+    click('[data-action="page"][data-value="campaign"]');
+    click('[data-action="chapter"][data-value="2"]');
+    click('[data-action="select-level"][data-value="6"]');
+    const line = document.querySelector(
+      ".level-preview .record-line",
+    ).textContent;
+    assert(/BEST 3:20 · 90 SLAIN · RELIC FOUND · DEATHLESS/.test(line), line);
+    click('[data-action="select-level"][data-value="7"]');
+    const none = document.querySelector(
+      ".level-preview .record-line",
+    ).textContent;
+    assert(/NOT YET CLEARED|CLEARED/.test(none), none);
+  });
+
+  check("quitting from the death screen cannot erase a death", () => {
+    setup(6, 1);
+    g.invulnerable = 0;
+    g.hurt(9999);
+    g.setMode("menu");
+    g.continueGame();
+    assert(g.levelDeaths === 1, "Death erased by quitting");
+    assert(g.health === 100 && g.wave === 0, "Did not restart the sector");
     g.setMode("menu");
   });
 

@@ -101,7 +101,7 @@ Low / Medium / High graphics presets (shadows, ambient occlusion, FXAA), resolut
 | IV · Kingdom of Dust | Bastion of Thorns · Gilded Court · Spire of Tongues · Weeping Wood · Seraph's Ascent | 22 |
 | V · The Last Descent | Sunken Canals · Black Harbor · Sealed Abbey · The Abyss | 19 |
 
-That makes **24 levels, 104 sectors and 22 environment themes**, ending in a final confrontation and an ending screen. All levels are unlocked from the start in **Select level**. Choosing one moves your checkpoint but keeps your cards and records.
+That makes **24 levels, 104 sectors and 22 environment themes**, ending in a final confrontation and an ending screen. Each cleared level keeps a record of its fastest clear, most kills, whether its relic was found and whether it was ever cleared without dying. The result screen marks a new best time, and Select level shows the record. All levels are unlocked from the start in **Select level**. Choosing one moves your checkpoint but keeps your cards and records.
 
 ## Screenshots
 
