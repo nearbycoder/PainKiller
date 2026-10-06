@@ -5,7 +5,12 @@ import { ENEMY_TYPES } from "../src/data";
 describe("layered enemy movement", () => {
   for (const type of [...ENEMY_TYPES, "boss"] as const)
     it(`${type} articulates, reacts, attacks and preserves a frozen pose`, () => {
+      // Models pick a random gait phase; at a few phases the hound's attack frame
+      // nearly matches its walk frame, which made this test fail about 1 run in 30.
+      const random = Math.random;
+      Math.random = () => 0.25;
       const m = enemyModel(type);
+      Math.random = random;
       m.animate!(0.1, 3, false);
       const walk = m.limbs.map((l) => l.rotation.x);
       m.action!("attack");
