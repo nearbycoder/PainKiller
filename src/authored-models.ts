@@ -5,9 +5,251 @@ import { asset, bakeStatic, cloneActor } from "./assets";
 import type { EnemyModel, WeaponModel } from "./models";
 
 const wardrobeCache = new Map<string, T.Group[]>();
+/**
+ * The five generals share the skeleton rig and armour. Each chapter's general gets its own
+ * palette, glow and silhouette pieces fixed to its bones. Purely visual: health, speed,
+ * attacks and the hit sphere are unchanged.
+ */
+export const GENERAL_LOOKS = [
+  // I · The Gravewarden: grave-pale bone, green corpse-light, a tall iron crown.
+  {
+    armor: 0x7d917f,
+    tint: 0xd9d6c4,
+    glow: 0x7dff9a,
+    metal: 0x4b4f47,
+    crown: "spikes",
+    horns: false,
+    wings: false,
+    halo: false,
+  },
+  // II · The Mire King: bog-black and slick, a crown of antlers, sickly yellow light.
+  {
+    armor: 0x5c6438,
+    tint: 0x58604a,
+    glow: 0xd9e05a,
+    metal: 0x3d3a26,
+    crown: "antlers",
+    horns: false,
+    wings: false,
+    halo: false,
+  },
+  // III · The Sand Colossus: sandstone bone, amber light, curled ram horns.
+  {
+    armor: 0xb0915e,
+    tint: 0xc9a46c,
+    glow: 0xffb347,
+    metal: 0x8a6a3a,
+    crown: "none",
+    horns: true,
+    wings: false,
+    halo: false,
+  },
+  // IV · The Iron Seraph: blued iron, white-gold halo and iron wings.
+  {
+    armor: 0x9eabc4,
+    tint: 0x8d97a8,
+    glow: 0xdfe8ff,
+    metal: 0x9aa4b5,
+    crown: "none",
+    horns: false,
+    wings: true,
+    halo: true,
+  },
+  // V · The First Fallen: charred black with ember cracks, horns and a burning crown.
+  {
+    armor: 0x4a2a22,
+    tint: 0x3a2622,
+    glow: 0xff5a1e,
+    metal: 0x2a1a16,
+    crown: "spikes",
+    horns: true,
+    wings: true,
+    halo: false,
+  },
+] as const;
+const generalMaterials = new Map<string, T.Material>();
+function generalMaterial(key: string, make: () => T.Material) {
+  if (!generalMaterials.has(key)) generalMaterials.set(key, make());
+  return generalMaterials.get(key)!;
+}
+function dressGeneral(character: T.Object3D, chapter: number) {
+  const index = Math.max(0, Math.min(4, chapter - 1)),
+    look = GENERAL_LOOKS[index];
+  // Recolour the body (shared per general, so spawning one allocates nothing).
+  character.traverse((o) => {
+    if (!(o instanceof T.Mesh)) return;
+    const recolour = (m: T.Material) =>
+      generalMaterial(`${index}:${m.uuid}`, () => {
+        const c = m.clone() as T.MeshStandardMaterial;
+        // Armour and cloth take the general's colours; bone is tinted.
+        if (/armor|trim|wool|hide/i.test(c.name)) c.color.set(look.armor);
+        else if (c.color) c.color.multiply(new T.Color(look.tint));
+        // Arenas are dim; any body glow would swamp the armour, so only the First
+        // Fallen smoulders.
+        if (index === 4 && "emissive" in c) {
+          c.emissive = new T.Color(look.glow);
+          c.emissiveIntensity = 0.025;
+        }
+        return c;
+      });
+    o.material = Array.isArray(o.material)
+      ? o.material.map(recolour)
+      : recolour(o.material);
+  });
+  const metal = generalMaterial(
+      `${index}:metal`,
+      () =>
+        new T.MeshStandardMaterial({
+          color: look.metal,
+          metalness: 0.85,
+          roughness: 0.35,
+        }),
+    ),
+    glow = generalMaterial(
+      `${index}:glow`,
+      () =>
+        new T.MeshStandardMaterial({
+          color: look.glow,
+          emissive: look.glow,
+          emissiveIntensity: 2.4,
+        }),
+    );
+  character.updateMatrixWorld(true);
+  const bone = (suffix: string) => {
+    let found: T.Object3D | undefined;
+    character.traverse((o) => {
+      if (!found && o instanceof T.Bone && o.name.endsWith(suffix)) found = o;
+    });
+    return found;
+  };
+  const head = bone("Head"),
+    chest = bone("Spine2");
+  if (!head || !chest) return;
+  const headAt = head.getWorldPosition(new T.Vector3()),
+    chestAt = chest.getWorldPosition(new T.Vector3());
+  // Height of the bind pose, so pieces scale with the rig's units.
+  const unit = Math.max(0.01, headAt.y / 1.6);
+  // Build in the character's space, then attach() keeps the pose while following the bone.
+  const add = (
+    parent: T.Object3D,
+    geo: T.BufferGeometry,
+    mat: T.Material,
+    at: T.Vector3,
+    rotation = new T.Euler(),
+    scale = new T.Vector3(1, 1, 1),
+  ) => {
+    const m = new T.Mesh(geo, mat);
+    m.position.copy(at);
+    m.rotation.copy(rotation);
+    m.scale.copy(scale).multiplyScalar(unit);
+    m.castShadow = true;
+    character.add(m);
+    parent.attach(m);
+    return m;
+  };
+  const top = headAt.clone().add(new T.Vector3(0, 0.16 * unit, 0));
+  // Silhouette pieces are oversized so they read from across the arena.
+  const big = 1.5;
+  // Glowing eyes.
+  for (const side of [-1, 1])
+    add(
+      head,
+      new T.SphereGeometry(0.022, 8, 6),
+      glow,
+      headAt
+        .clone()
+        .add(new T.Vector3(side * 0.035 * unit, 0.05 * unit, 0.09 * unit)),
+    );
+  if (look.crown === "spikes")
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      add(
+        head,
+        new T.ConeGeometry(0.025 * big, 0.2 * big, 5),
+        i % 2 ? metal : glow,
+        top
+          .clone()
+          .add(
+            new T.Vector3(
+              Math.cos(a) * 0.08 * unit,
+              0.05 * unit,
+              Math.sin(a) * 0.08 * unit,
+            ),
+          ),
+        new T.Euler(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25),
+      );
+    }
+  if (look.crown === "antlers")
+    for (const side of [-1, 1]) {
+      add(
+        head,
+        new T.CylinderGeometry(0.012 * big, 0.022 * big, 0.32 * big, 5),
+        metal,
+        top.clone().add(new T.Vector3(side * 0.1 * unit, 0.08 * unit, 0)),
+        new T.Euler(0, 0, side * -0.7),
+      );
+      for (const k of [0, 1])
+        add(
+          head,
+          new T.ConeGeometry(0.012 * big, 0.14 * big, 4),
+          metal,
+          top
+            .clone()
+            .add(
+              new T.Vector3(
+                side * (0.16 + k * 0.05) * unit,
+                (0.16 + k * 0.06) * unit,
+                0,
+              ),
+            ),
+          new T.Euler(0, 0, side * (0.2 - k * 0.5)),
+        );
+    }
+  if (look.horns)
+    for (const side of [-1, 1]) {
+      const horn = add(
+        head,
+        new T.TorusGeometry(0.1 * big, 0.03 * big, 6, 14, Math.PI * 1.3),
+        metal,
+        headAt
+          .clone()
+          .add(new T.Vector3(side * 0.13 * unit, 0.12 * unit, -0.01 * unit)),
+        new T.Euler(0, Math.PI / 2, side > 0 ? 0 : Math.PI),
+      );
+      horn.scale.z *= 1.4;
+    }
+  if (look.halo)
+    add(
+      head,
+      new T.TorusGeometry(0.13 * big, 0.01 * big, 6, 32),
+      glow,
+      top.clone().add(new T.Vector3(0, 0.1 * unit, -0.04 * unit)),
+      new T.Euler(Math.PI / 2 - 0.25, 0, 0),
+    );
+  if (look.wings)
+    for (const side of [-1, 1])
+      for (let k = 0; k < 3; k++)
+        add(
+          chest,
+          new T.ConeGeometry(0.05 * big, (0.75 - k * 0.15) * big, 4),
+          metal,
+          chestAt
+            .clone()
+            .add(
+              new T.Vector3(
+                side * (0.22 + k * 0.08) * unit,
+                (0.12 + k * 0.06) * unit,
+                -0.14 * unit,
+              ),
+            ),
+          new T.Euler(0, 0, side * (-1.05 + k * 0.32)),
+          new T.Vector3(1, 1, 0.25),
+        );
+}
 export function revenantModel(
   name = "revenant",
   type: EnemyType = name === "skeleton" ? "skeleton" : "shambler",
+  chapter = 1,
 ): EnemyModel {
   const source = asset(name)!,
     root = new T.Group(),
@@ -52,6 +294,7 @@ export function revenantModel(
       bone.add(piece);
     }
   }
+  if (type === "boss") dressGeneral(character, chapter);
   if (type === "brute") root.scale.set(1.65, 1.55, 1.5);
   if (type === "boss") root.scale.setScalar(3.4);
   if (type === "knight") root.scale.setScalar(1.15);

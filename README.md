@@ -212,7 +212,7 @@ Painkiller is a trademark of its respective owners and is mentioned here only to
 Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played start to finish, but it is not a finished commercial-quality game:
 
 - Four themes (cemetery, cathedral, crypt, foundry) use Blender-authored scenes. The other 18 are compact procedural arenas. Each has its own ground (snow, sand, tile, marble, planks, cobbles, lava-cracked basalt and more) and some dressing, but they are much plainer than the authored scenes, and sectors reuse each theme's layout with varied cover.
-- The five generals share one rig and differ in attack patterns, not in bespoke models. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
+- The five generals share one rig and differ in attack patterns. Each has its own crown, antlers, horns, halo or wings, glowing eyes and colours, but these are pieces fixed to the shared skeleton, not bespoke models, and the colour differences are subtle under torchlight. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
 - Campaign length and balance have not been measured end to end with human playtesters. A scripted autopilot ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#balance-autopilot)) samples ten sectors on every difficulty. For it, ordinary sectors are easy even on Torment and the generals, especially their shockwaves, cause most deaths. A bot is not a player, though.
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.

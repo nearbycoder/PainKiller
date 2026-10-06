@@ -315,6 +315,52 @@
     g.setMode("menu");
   });
 
+  check(
+    "each general looks different but keeps the same combat numbers",
+    () => {
+      const looks = [],
+        stats = [];
+      for (const [i, l] of window.__PURGATORY__.campaign.entries()) {
+        if (!l.boss) continue;
+        setup(i, 0);
+        const e = g.spawnEnemy("boss", new V(0, 0, -16));
+        const mats = new Set(),
+          meshes = [];
+        e.model.root.traverse((o) => {
+          if (!o.isMesh) return;
+          meshes.push(o);
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) =>
+            mats.add(m.uuid),
+          );
+        });
+        looks.push(mats);
+        const base = 1800 + i * 110;
+        stats.push(
+          e.hp ===
+            base * (g.difficulty === 0 ? 0.75 : g.difficulty === 2 ? 1.3 : 1) &&
+            e.speed === 2 &&
+            e.radius === 2 &&
+            Math.abs(e.model.root.scale.x - 3.4) < 1e-6,
+        );
+        // The dressed rig still dies into a ragdoll.
+        const corpses = g.corpses.length;
+        g.hitEnemy(e, 1e6, "explosion");
+        assert(g.corpses.length === corpses + 1, "General did not ragdoll");
+      }
+      assert(looks.length === 5, "Expected five generals");
+      for (let a = 0; a < 5; a++)
+        for (let b = a + 1; b < 5; b++)
+          assert(
+            [...looks[a]].some((u) => !looks[b].has(u)),
+            `Generals ${a + 1} and ${b + 1} share every material`,
+          );
+      assert(
+        stats.every(Boolean),
+        "A general's health, speed, radius or scale changed",
+      );
+    },
+  );
+
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");
   else localStorage.setItem("purgatory.options", storedOptions);

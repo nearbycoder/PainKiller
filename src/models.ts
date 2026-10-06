@@ -116,6 +116,7 @@ export function enemyModel(type: EnemyType, chapter = 1): EnemyModel {
         ? "skeleton"
         : "revenant",
       type,
+      chapter,
     );
   const root = new T.Group(),
     body = new T.Group();
