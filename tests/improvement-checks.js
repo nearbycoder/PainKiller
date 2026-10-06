@@ -162,6 +162,133 @@
       assert(cues.includes(name), `missing ${name}: ${cues.join(",")}`);
   });
 
+  const threat = (kind) => g.threatIndicators().filter((t) => t.kind === kind);
+  const near = (a, b) =>
+    Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < 0.25;
+
+  check("hit-direction arcs point at the attacker", () => {
+    const angles = {};
+    for (const [side, offset, expected] of [
+      ["behind", new V(0, 0, 1.5), Math.PI],
+      ["left", new V(-1.5, 0, 0), -Math.PI / 2],
+      ["right", new V(1.5, 0, 0), Math.PI / 2],
+    ]) {
+      setup();
+      g.yaw = 0;
+      const e = g.spawnEnemy("knight", g.position.clone().setY(0).add(offset));
+      e.cooldown = 0;
+      for (let i = 0; i < 40 && g.damageMarks.length === 0; i++)
+        g.updateEnemies(1 / 60);
+      const arcs = threat("damage");
+      assert(arcs.length === 1, `${side}: ${arcs.length} arcs`);
+      assert(near(arcs[0].angle, expected), `${side}: angle ${arcs[0].angle}`);
+      angles[side] = +arcs[0].angle.toFixed(2);
+    }
+    // The arc follows the camera: turning to face the attacker centres it.
+    g.yaw = -Math.PI / 2;
+    assert(near(threat("damage")[0].angle, 0), "Arc did not follow the view");
+    g.enemies.forEach((e) => e.model.dispose());
+    g.enemies = [];
+    step(70);
+    assert(threat("damage").length === 0, "Arc did not fade");
+    document.querySelector("#threat-ring") ||
+      (() => {
+        throw Error("No HUD ring");
+      })();
+    return angles;
+  });
+
+  check("hellfire about to hit from behind shows an incoming marker", () => {
+    setup();
+    g.yaw = 0;
+    g.projectile(
+      "hellfire",
+      g.position.clone().add(new V(0, -0.4, 6)),
+      new V(0, 0, -1),
+      14,
+      15,
+      5,
+      true,
+    );
+    step(8);
+    const marks = threat("incoming");
+    assert(
+      marks.length === 1 && near(Math.abs(marks[0].angle), Math.PI),
+      JSON.stringify(marks),
+    );
+    setup();
+    g.projectile(
+      "hellfire",
+      g.position.clone().add(new V(0, -0.4, -6)),
+      new V(0, 0, 1),
+      14,
+      15,
+      5,
+      true,
+    );
+    step(8);
+    assert(threat("incoming").length === 0, "Marker shown for on-screen fire");
+  });
+
+  check("the last enemies are located only when out of sight", () => {
+    setup();
+    g.yaw = 0;
+    g.remaining = 0;
+    const e = g.spawnEnemy("monk", new V(0, 0, 30));
+    e.speed = 0;
+    step(60);
+    assert(threat("locator").length === 0, "Locator shown too early");
+    step(60 * 4);
+    const marks = threat("locator");
+    assert(
+      marks.length === 1 && near(Math.abs(marks[0].angle), Math.PI),
+      JSON.stringify(marks),
+    );
+    g.yaw = Math.PI;
+    step(2);
+    assert(
+      threat("locator").length === 0,
+      "Locator stayed with the enemy in view",
+    );
+    setup();
+    g.remaining = 3;
+    g.spawnEnemy("monk", new V(0, 0, 30)).speed = 0;
+    step(60 * 6);
+    assert(
+      threat("locator").length === 0,
+      "Locator shown while more are coming",
+    );
+  });
+
+  check("an enemy walled in for 20 s is moved to open ground", () => {
+    setup();
+    g.remaining = 0;
+    const spot = new V(-20, 0, -24),
+      walls = [
+        { x: spot.x - 1.2, z: spot.z, w: 0.4, d: 3, h: 4 },
+        { x: spot.x + 1.2, z: spot.z, w: 0.4, d: 3, h: 4 },
+        { x: spot.x, z: spot.z - 1.2, w: 3, d: 0.4, h: 4 },
+        { x: spot.x, z: spot.z + 1.2, w: 3, d: 0.4, h: 4 },
+      ];
+    g.arena.colliders.push(...walls);
+    try {
+      const e = g.spawnEnemy("shambler", spot);
+      step(60 * 10);
+      assert(e.model.root.position.distanceTo(spot) < 1, "Escaped too early");
+      step(60 * 11);
+      const p = e.model.root.position,
+        d = Math.hypot(p.x - g.position.x, p.z - g.position.z);
+      assert(p.distanceTo(spot) > 3, "Still walled in");
+      assert(d >= 11 && d <= 26, "Relocated to distance " + d.toFixed(1));
+      return { to: p.toArray().map((v) => +v.toFixed(1)) };
+    } finally {
+      g.arena.colliders.splice(
+        g.arena.colliders.length - walls.length,
+        walls.length,
+      );
+    }
+  });
+
   g.save = saved;
   g.persist();
   g.level = saved.level;

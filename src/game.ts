@@ -38,6 +38,7 @@ import {
   damageAfterArmor,
   segmentSphere,
   spatialCue,
+  bearing,
   type Save,
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
@@ -71,6 +72,15 @@ interface Enemy {
   knockback: T.Vector3;
   stagger: number;
   animationTime: number;
+  /** Seconds spent trying to walk without leaving `anchor`. */
+  stuck: number;
+  anchor: T.Vector3;
+}
+export interface ThreatIndicator {
+  kind: "damage" | "incoming" | "locator";
+  /** Bearing from the view direction, radians, positive to the right. */
+  angle: number;
+  strength: number;
 }
 interface Projectile {
   mesh: T.Object3D;
@@ -130,6 +140,10 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  /** World positions that recently hurt the player, for the HUD's hit-direction arcs. */
+  damageMarks: { x: number; z: number; life: number }[] = [];
+  /** Seconds since any living enemy was in view; drives the last-enemies locator. */
+  unseenTime = 0;
   sectorStart = { level: -1, kills: 0, souls: 0, secrets: 0 };
   totalTime = 0;
   health = 100;
@@ -584,6 +598,8 @@ export class Game {
     this.cardTime = 0;
     this.cooldown = 0;
     this.damageFlash = this.hitFlash = this.recoil = 0;
+    this.damageMarks = [];
+    this.unseenTime = 0;
     this.accumulator = 0;
     this.weaponMotion.equip(this.weapon);
     this.invulnerable = 1;
@@ -864,6 +880,8 @@ export class Game {
       knockback: new T.Vector3(),
       stagger: 0,
       animationTime: 0,
+      stuck: 0,
+      anchor: p.clone(),
     };
     this.enemies.push(e);
     this.burst(p.clone().add(new T.Vector3(0, 1, 0)), 0xb8d98a, 5, 3);
@@ -887,7 +905,7 @@ export class Game {
     }
     this.spawnTimer = 0;
   }
-  hurt(damage: number) {
+  hurt(damage: number, from?: T.Vector3) {
     if (
       this.invulnerable > 0 ||
       this.demon > 0 ||
@@ -903,6 +921,10 @@ export class Game {
     this.health -= result.health;
     this.damageFlash = 0.5;
     this.invulnerable = 0.3;
+    if (from) {
+      this.damageMarks.push({ x: from.x, z: from.z, life: 1 });
+      if (this.damageMarks.length > 4) this.damageMarks.shift();
+    }
     this.sound.tone(65, 0.2, "sawtooth", 0.17, 25);
     if (this.health <= 0) {
       this.health = 0;
@@ -1368,7 +1390,10 @@ export class Game {
       }
     const distance = this.position.distanceTo(pos);
     if (distance < radius)
-      this.hurt(damage * (hostile ? 0.25 : 0.35) * (1 - distance / radius));
+      this.hurt(
+        damage * (hostile ? 0.25 : 0.35) * (1 - distance / radius),
+        pos,
+      );
     this.recoil = 0.18;
   }
   update(dt: number) {
@@ -1486,6 +1511,20 @@ export class Game {
     }
     this.updateEnemies(dt);
     if (this.mode !== "playing") return;
+    for (const m of this.damageMarks) m.life -= dt;
+    this.damageMarks = this.damageMarks.filter((m) => m.life > 0);
+    // Line-of-sight tests only matter once the locator could appear.
+    if (
+      this.remaining === 0 &&
+      this.enemies.length > 0 &&
+      this.enemies.length <= 3
+    )
+      this.unseenTime = this.enemies.some((e) =>
+        this.inView(e.model.root.position.clone().setY(1.2)),
+      )
+        ? 0
+        : this.unseenTime + dt;
+    else this.unseenTime = 0;
     this.physics.step(dt);
     this.updateProjectiles(dt);
     this.updatePickups(dt);
@@ -1501,7 +1540,7 @@ export class Game {
         Math.abs(d - ring.radius) < 1.2 &&
         this.position.y < 2.4
       ) {
-        this.hurt(24);
+        this.hurt(24, ring.mesh.position);
         ring.hit = true;
       }
       if (ring.radius > 48) {
@@ -1533,6 +1572,92 @@ export class Game {
         1,
         2,
       );
+  }
+  /** Move a stuck enemy to open ground 12–25 m away, in view when possible. */
+  relocate(e: Enemy) {
+    const pos = e.model.root.position;
+    let fallback: T.Vector3 | null = null;
+    for (let i = 0; i < 300; i++) {
+      const q = new T.Vector3(
+        (Math.random() - 0.5) * 46,
+        0,
+        (Math.random() - 0.5) * 54,
+      );
+      const d = Math.hypot(q.x - this.position.x, q.z - this.position.z);
+      if (d < 12 || d > 25 || blocked(q.x, q.z, e.radius, this.arena.colliders))
+        continue;
+      fallback ??= q;
+      if (this.inView(q.clone().setY(1))) {
+        fallback = q;
+        break;
+      }
+    }
+    pos.copy(fallback ?? new T.Vector3(0, 0, -20));
+    e.anchor.copy(pos);
+    e.stuck = 0;
+    e.knockback.set(0, 0, 0);
+    this.burst(pos.clone().add(new T.Vector3(0, 1, 0)), 0xb8d98a, 5, 3);
+  }
+  /** Horizontal half field of view, radians. */
+  halfFov() {
+    return Math.atan(
+      Math.tan(T.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect,
+    );
+  }
+  /** Whether a point is inside the view cone with a clear line of sight. */
+  inView(point: T.Vector3) {
+    const angle = bearing(
+      this.position.x,
+      this.position.z,
+      this.yaw,
+      point.x,
+      point.z,
+    );
+    if (Math.abs(angle) > this.halfFov()) return false;
+    const delta = point.clone().sub(this.position),
+      distance = delta.length();
+    return (
+      this.wallDistance(this.position, delta.normalize(), distance) >=
+      distance - 0.3
+    );
+  }
+  /** Hit-direction arcs, off-screen incoming fire and the last-enemies locator. */
+  threatIndicators(): ThreatIndicator[] {
+    const out: ThreatIndicator[] = [];
+    const at = (x: number, z: number) =>
+      bearing(this.position.x, this.position.z, this.yaw, x, z);
+    for (const m of this.damageMarks)
+      out.push({ kind: "damage", angle: at(m.x, m.z), strength: m.life });
+    const edge = this.halfFov() * 0.8;
+    for (const p of this.projectiles) {
+      if (!p.hostile) continue;
+      const rel = p.mesh.position.clone().sub(this.position),
+        speed2 = p.velocity.lengthSq();
+      const t = speed2 > 0 ? -rel.dot(p.velocity) / speed2 : -1;
+      if (t <= 0 || t > 0.9) continue;
+      const miss = rel.addScaledVector(p.velocity, t).length();
+      const angle = at(p.mesh.position.x, p.mesh.position.z);
+      if (miss < 1.6 && Math.abs(angle) > edge)
+        out.push({ kind: "incoming", angle, strength: 1 - t / 0.9 });
+    }
+    if (this.locatorActive())
+      for (const e of this.enemies)
+        out.push({
+          kind: "locator",
+          angle: at(e.model.root.position.x, e.model.root.position.z),
+          strength: 1,
+        });
+    return out;
+  }
+  /** The final few enemies of a wave have stayed out of sight for 4 s. */
+  locatorActive() {
+    return (
+      !this.arenaCleared &&
+      this.remaining === 0 &&
+      this.enemies.length > 0 &&
+      this.enemies.length <= 3 &&
+      this.unseenTime > 4
+    );
   }
   updateEnemies(dt: number) {
     for (const e of [...this.enemies]) {
@@ -1573,7 +1698,10 @@ export class Game {
             ) >=
               distance - 0.15
           )
-            this.hurt(e.type === "brute" ? 25 : e.type === "hound" ? 9 : 13);
+            this.hurt(
+              e.type === "brute" ? 25 : e.type === "hound" ? 9 : 13,
+              pos,
+            );
         }
         moveSpeed = 0;
       }
@@ -1664,7 +1792,8 @@ export class Game {
           e.model.action?.("attack");
         }
       }
-      if (e.type === "boss" && distance < 3.6 && e.frozen <= 0) this.hurt(22);
+      if (e.type === "boss" && distance < 3.6 && e.frozen <= 0)
+        this.hurt(22, pos);
       const separation = new T.Vector3();
       for (const other of this.enemies) {
         if (other === e) continue;
@@ -1707,6 +1836,14 @@ export class Game {
       pos.x = nextX;
       pos.z = nextZ;
       pos.y = e.type === "witch" ? 0.45 + Math.sin(e.age * 2) * 0.2 : 0;
+      // An enemy that makes no headway for 20 s (walled in or wedged in scenery)
+      // is moved to open ground so the gate can still open. Net displacement is
+      // used because wall sliding jitters in place.
+      if (pos.distanceTo(e.anchor) > 1.5) {
+        e.anchor.copy(pos);
+        e.stuck = 0;
+      } else if (Math.abs(moveSpeed) > 0.5 && distance > 3) e.stuck += dt;
+      if (e.stuck > 20) this.relocate(e);
       e.animationTime += dt;
       if (distance < 20 || e.animationTime >= 1 / 30) {
         e.model.animate?.(e.animationTime, actualSpeed, e.frozen > 0);
@@ -1786,7 +1923,12 @@ export class Game {
             0.65,
           )
         ) {
-          this.hurt(p.damage);
+          this.hurt(
+            p.damage,
+            this.position
+              .clone()
+              .addScaledVector(p.velocity.clone().normalize(), -10),
+          );
           remove = true;
           this.burst(p.mesh.position, 0xffa365, 4, 3);
         }

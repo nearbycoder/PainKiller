@@ -1118,6 +1118,9 @@ body[data-mode="dead"] #world {
   button {
     transition: none;
   }
+  #threat-ring i.incoming {
+    animation: none;
+  }
 }
 .hud-top {
   position: absolute;
@@ -1370,6 +1373,63 @@ body[data-mode="dead"] #world {
   font-size: 38px;
   color: #ffca9b;
   opacity: 0;
+}
+#threat-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+/* Each mark is a circle rotated to its bearing, clipped to a wedge of its top edge. */
+#threat-ring i {
+  position: absolute;
+  display: none;
+  border-radius: 50%;
+  border: 0 solid transparent;
+  transform: rotate(var(--angle));
+  clip-path: polygon(50% 50%, 15% -5%, 85% -5%);
+}
+#threat-ring i.damage {
+  left: -105px;
+  top: -105px;
+  width: 210px;
+  height: 210px;
+  border-top: 7px solid #e0331f;
+  filter: drop-shadow(0 0 6px #7d0b04);
+}
+#threat-ring i.incoming {
+  left: -135px;
+  top: -135px;
+  width: 270px;
+  height: 270px;
+  border-top: 4px dashed #ffb35a;
+  filter: drop-shadow(0 0 5px #a2470a);
+  animation: threat-pulse 0.28s ease-in-out infinite alternate;
+}
+#threat-ring i.locator {
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  clip-path: none;
+  transform: rotate(var(--angle)) translateY(-34vh);
+}
+#threat-ring i.locator::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: -8px;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 16px solid #e7d3a3;
+  filter: drop-shadow(0 0 4px #000);
+}
+@keyframes threat-pulse {
+  to {
+    border-top-color: #ffe0b0;
+  }
 }
 #toast {
   position: absolute;

@@ -35,7 +35,7 @@ It runs as an offline Linux desktop game, or in any WebGL 2 browser. No account,
 
 ## How to play
 
-Clear each **sector** by surviving three waves. When the gate turns green, walk into it and press **E**. Each level has 3–5 sectors; the last sector of a chapter ends with a **general**. Progress is saved at the start of every sector, and death restarts the sector with fresh supplies.
+Clear each **sector** by surviving three waves. Red arcs around the crosshair point to whatever just hurt you, a dashed arc warns of hellfire about to hit from off-screen, and when the last few enemies of a wave stay out of sight for a few seconds, chevrons at the screen edge point to them. When the gate turns green, walk into it and press **E**. Each level has 3–5 sectors; the last sector of a chapter ends with a **general**. Progress is saved at the start of every sector, and death restarts the sector with fresh supplies.
 
 | Action | Keyboard & mouse | Controller (standard mapping) | Touch |
 | --- | --- | --- | --- |

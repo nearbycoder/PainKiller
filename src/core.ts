@@ -188,3 +188,18 @@ export function spatialCue(
   // Keep some of every cue in both ears; hard pans are fatiguing on headphones.
   return { pan: right * 0.6, gain, behind, distance };
 }
+/** Signed bearing (radians, positive to the right, ±π behind) of (sx, sz) seen from a listener facing `yaw`. */
+export function bearing(
+  lx: number,
+  lz: number,
+  yaw: number,
+  sx: number,
+  sz: number,
+) {
+  const dx = sx - lx,
+    dz = sz - lz;
+  return Math.atan2(
+    dx * Math.cos(yaw) - dz * Math.sin(yaw),
+    -dx * Math.sin(yaw) - dz * Math.cos(yaw),
+  );
+}
