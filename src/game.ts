@@ -905,7 +905,7 @@ export class Game {
     }
     this.spawnTimer = 0;
   }
-  hurt(damage: number, from?: T.Vector3) {
+  hurt(damage: number, from?: T.Vector3, cause = "unknown") {
     if (
       this.invulnerable > 0 ||
       this.demon > 0 ||
@@ -1393,6 +1393,7 @@ export class Game {
       this.hurt(
         damage * (hostile ? 0.25 : 0.35) * (1 - distance / radius),
         pos,
+        "explosion",
       );
     this.recoil = 0.18;
   }
@@ -1540,7 +1541,7 @@ export class Game {
         Math.abs(d - ring.radius) < 1.2 &&
         this.position.y < 2.4
       ) {
-        this.hurt(24, ring.mesh.position);
+        this.hurt(24, ring.mesh.position, "shockwave");
         ring.hit = true;
       }
       if (ring.radius > 48) {
@@ -1701,6 +1702,7 @@ export class Game {
             this.hurt(
               e.type === "brute" ? 25 : e.type === "hound" ? 9 : 13,
               pos,
+              e.type,
             );
         }
         moveSpeed = 0;
@@ -1793,7 +1795,7 @@ export class Game {
         }
       }
       if (e.type === "boss" && distance < 3.6 && e.frozen <= 0)
-        this.hurt(22, pos);
+        this.hurt(22, pos, "general contact");
       const separation = new T.Vector3();
       for (const other of this.enemies) {
         if (other === e) continue;
@@ -1928,6 +1930,7 @@ export class Game {
             this.position
               .clone()
               .addScaledVector(p.velocity.clone().normalize(), -10),
+            "hellfire",
           );
           remove = true;
           this.burst(p.mesh.position, 0xffa365, 4, 3);

@@ -2,7 +2,8 @@
 //
 //   npm run test:browser                               # every scenario check
 //   npm run test:browser -- --checks menu,improvement  # a subset
-//   npm run test:browser -- --checks balance-autopilot --out artifacts/balance.json
+//   npm run test:browser -- --checks tests/balance-autopilot.js --out artifacts/balance.json
+//   npm run test:browser -- --before 'window.__AUTOPILOT__ = { seeds: 1 }' --checks tests/balance-autopilot.js
 //   npm run test:browser -- --url http://localhost:5187/   # reuse a running dev server
 //
 // Without --url it starts its own Vite dev server on a free port and stops it afterwards.
@@ -93,9 +94,12 @@ app.whenReady().then(async () => {
         throw new Error("The game did not boot");
       await new Promise((r) => setTimeout(r, 300));
     }
+    if (option("before")) await js(option("before"));
     for (const name of names) {
       const t0 = Date.now();
-      const file = path.join(root, "tests", `${name}-checks.js`);
+      const file = name.endsWith(".js")
+        ? path.resolve(name)
+        : path.join(root, "tests", `${name}-checks.js`);
       try {
         const result = await js(fs.readFileSync(file, "utf8"));
         report[name] = result;
