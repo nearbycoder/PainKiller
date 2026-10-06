@@ -2,6 +2,21 @@
 
 This is a review of Purgatory v0.1.0 as a player would meet it. It is grounded in the code, the automated checks, a headless autopilot, and screenshots of the running game. It ranks what to fix next and proposes the scope for the next round of work.
 
+## Outcome of this round (2026-10-06)
+
+The orchestrator approved items 1, 2, 3, 5 and 6 as planned. Item 4 was narrowed: commit the autopilot and its before/after table, fix only clearly broken encounters, and leave the difficulty direction to the owner. Weapon progression (#14) is out of scope.
+
+| Item | Status | Verified by |
+| --- | --- | --- |
+| 1. Bug-fix pass | Done | `tests/core.test.ts` (arch rings at 1.7–45 m spans); `tests/improvement-checks.js` (no visible particles at the eye after a hellfire hit, level stats survive a sector retry, singular kill count), each shown failing on the old code first; before/after captures `docs/media/improvements/01-*.jpg` |
+| 2. Enemy audio telegraphs | Done | `tests/audio.test.ts` (pan, gain, range, voice budget); browser checks that a left-side wind-up pans left and a right-side cast pans right; offline render levels (cue peaks 10–15 dB under gunfire); a 24 s bot-fight mix, `02-enemy-cues-combat-mix.mp3`. **Not listened to by a person.** |
+| 3. Threat direction and last-enemy locator | Done, plus the stuck-enemy rescue | Browser checks for arcs (behind, left, right, following the view, fading), off-screen incoming fire, locator conditions, artificial walls and a real Hallowed Ground corner trap; capture `03-threat-indicators.jpg` |
+| 4. Encounter pacing | Narrowed as directed: autopilot committed, table recorded, one broken encounter fixed (enemies wedged in a headstone corner), no balance values changed | `tests/balance-autopilot.js`, 60-run before/after table in [DEVELOPMENT.md](DEVELOPMENT.md#balance-autopilot) |
+| 5. Hostable web build | Done; Pages workflow added but not enabled or run | Served zip driven through the menus in Electron (delayed, failed-then-retried and prefetched environments) and in `chrome-headless-shell` 151; boot download 86 MB → 50 MB; `05-web-loading-error-and-play.jpg` |
+| 6. First-run combat hints | Done | `tests/hints.test.ts`; browser check (once each, saved, held during a general's introduction, never when disabled); captures `06-*.jpg` including the touch layout |
+
+Still open: everything below rank 6 in the list, the owner decisions at the end, and human checks (a listening pass on the new audio, playtesting the difficulty curve, physical controllers and phones, Firefox and Safari).
+
 ## Baseline (2026-10-06, `main` at 4672978)
 
 | Check | Result |

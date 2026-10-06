@@ -271,17 +271,26 @@
         { x: spot.x, z: spot.z + 1.2, w: 3, d: 0.4, h: 4 },
       ];
     g.arena.colliders.push(...walls);
+    let landed = null;
+    g.relocate = function (enemy) {
+      Object.getPrototypeOf(g).relocate.call(this, enemy);
+      const p = enemy.model.root.position;
+      landed = Math.hypot(p.x - g.position.x, p.z - g.position.z);
+    };
     try {
       const e = g.spawnEnemy("shambler", spot);
       step(60 * 10);
       assert(e.model.root.position.distanceTo(spot) < 1, "Escaped too early");
       step(60 * 11);
-      const p = e.model.root.position,
-        d = Math.hypot(p.x - g.position.x, p.z - g.position.z);
-      assert(p.distanceTo(spot) > 3, "Still walled in");
-      assert(d >= 11 && d <= 26, "Relocated to distance " + d.toFixed(1));
-      return { to: p.toArray().map((v) => +v.toFixed(1)) };
+      assert(e.model.root.position.distanceTo(spot) > 3, "Still walled in");
+      // Measured at the moment of relocation; afterwards it walks toward the player.
+      assert(
+        landed !== null && landed >= 12 && landed <= 25,
+        "Relocated to distance " + landed,
+      );
+      return { distance: +landed.toFixed(1) };
     } finally {
+      delete g.relocate;
       g.arena.colliders.splice(
         g.arena.colliders.length - walls.length,
         walls.length,

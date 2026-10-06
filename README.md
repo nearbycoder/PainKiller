@@ -121,7 +121,7 @@ Grab the latest build from [**Releases**](https://github.com/nearbycoder/PainKil
 | `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed. |
 | `purgatory-<version>-web.zip` | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
 
-The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested; the web build should run in current Chromium and Firefox. Desktop saves go to `~/.config/Purgatory/`.
+The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`); Firefox and Safari have not been tried. Desktop saves go to `~/.config/Purgatory/`.
 
 ## Build from source
 
@@ -177,6 +177,7 @@ src/
   combat-effects.ts  muzzle flashes, smoke, impacts, explosions, shell casings
   audio.ts           synthesized sound effects and combat music
   ui.ts, style.css   menus, options, level select, tarot, HUD; controls.ts: gamepad + touch
+  hints.ts           one-time combat hints
   data.ts            campaign, chapters, weapons and tarot definitions; core.ts: pure combat/save logic
 desktop/             Electron main process and narrow preload bridge (saves, fullscreen, quit)
 public/assets/       runtime GLB models, HDR sky, level-select previews
@@ -212,9 +213,10 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 
 - Four themes (cemetery, cathedral, crypt, foundry) use Blender-authored scenes. The other 18 are compact procedural arenas, and sectors reuse each theme's layout with varied cover.
 - The five generals share one rig and differ in attack patterns, not in bespoke models. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
-- Campaign length and balance have not been measured end to end with human playtesters.
+- Campaign length and balance have not been measured end to end with human playtesters. A scripted autopilot ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#balance-autopilot)) samples ten sectors on every difficulty. For it, ordinary sectors are easy even on Torment and the generals, especially their shockwaves, cause most deaths. A bot is not a player, though.
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
+- The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run.
 - Key bindings are fixed. Saves restore the start of the current sector, not the exact moment you quit.
 - The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark.
 
