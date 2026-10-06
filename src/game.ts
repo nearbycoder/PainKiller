@@ -39,6 +39,7 @@ import {
   segmentSphere,
   spatialCue,
   bearing,
+  type Resume,
   type Save,
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
@@ -122,6 +123,8 @@ interface Pickup {
   mesh: T.Object3D;
   kind: "soul" | "health" | "armor" | "ammo" | "secret";
   age: number;
+  /** Index of a fixed sector supply, so a resumed wave does not hand it out twice. */
+  slot?: number;
 }
 interface Particle {
   mesh: T.Mesh;
@@ -163,6 +166,8 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  /** Fixed sector supplies collected in this sector (see Resume.taken). */
+  taken = new Set<number>();
   /** The level waiting on a deferred environment download, while mode is "loading". */
   loading = { level: 0, room: 0, error: "" };
   /** One-time combat hints; which ones were shown is kept in local storage. */
@@ -467,6 +472,7 @@ export class Game {
     level = this.save.level,
     room = level === this.save.level ? this.save.room : 0,
     lock = true,
+    resume = false,
   ) {
     const theme = LEVELS[clamp(level, 0, 23)].theme;
     if (!hasArt(theme)) {
@@ -475,7 +481,7 @@ export class Game {
       this.setMode("loading");
       ensureArt(theme).then(
         () => {
-          if (this.mode === "loading") this.start(level, room, lock);
+          if (this.mode === "loading") this.start(level, room, lock, resume);
         },
         (error) => {
           this.loading.error = String(error);
@@ -484,6 +490,12 @@ export class Game {
       );
       return;
     }
+    const snapshot =
+      resume &&
+      this.save.resume?.level === clamp(level, 0, 23) &&
+      this.save.resume.room === room
+        ? this.save.resume
+        : undefined;
     this.level = clamp(level, 0, 23);
     this.room = clamp(room, 0, LEVELS[this.level].rooms - 1);
     this.health = 100;
@@ -508,7 +520,67 @@ export class Game {
         LEVELS[this.level].subtitle,
       5,
     );
+    if (snapshot) this.restore(snapshot);
     if (lock) this.lock();
+  }
+  /** Continue from the saved checkpoint, resuming the saved wave if there is one. */
+  continueGame() {
+    this.start(this.save.level, this.save.room, true, true);
+  }
+  /** Record the player's state as the next wave begins, so quitting loses at most one wave. */
+  snapshot(): Resume {
+    const finite = (v: number) => (Number.isFinite(v) ? Math.floor(v) : -1);
+    return {
+      level: this.level,
+      room: this.room,
+      wave: this.wave + 1,
+      health: Math.max(1, Math.ceil(this.health)),
+      armor: Math.max(0, Math.round(this.armor)),
+      ammo: this.ammo.map(finite),
+      altAmmo: this.altAmmo.map(finite),
+      weapon: this.weapon,
+      souls: this.souls,
+      cardUsed: this.cardUsed,
+      taken: [...this.taken],
+      kills: this.levelKills,
+      levelSouls: this.levelSouls,
+      secrets: this.secrets,
+      elapsed: Math.round(this.elapsed),
+      sector: {
+        kills: this.sectorStart.kills,
+        souls: this.sectorStart.souls,
+        secrets: this.sectorStart.secrets,
+      },
+    };
+  }
+  private restore(r: Resume) {
+    const amount = (v: number) => (v < 0 ? Infinity : v);
+    this.health = r.health;
+    this.armor = r.armor;
+    this.ammo = r.ammo.map(amount);
+    this.altAmmo = r.altAmmo.map(amount);
+    this.souls = r.souls;
+    this.cardUsed = r.cardUsed;
+    this.levelKills = r.kills;
+    this.levelSouls = r.levelSouls;
+    this.secrets = r.secrets;
+    this.elapsed = r.elapsed;
+    this.sectorStart = { level: this.level, ...r.sector };
+    for (const slot of r.taken) {
+      this.taken.add(slot);
+      const p = this.pickups.find((x) => x.slot === slot);
+      if (p) {
+        p.mesh.removeFromParent();
+        this.pickups.splice(this.pickups.indexOf(p), 1);
+      }
+    }
+    this.equip(r.weapon);
+    // The saved wave begins shortly; earlier waves of this sector stay cleared.
+    this.wave = r.wave - 1;
+    this.waveDelay = 2;
+    this.save.resume = r;
+    this.persist();
+    this.notify(`RESUMED  /  WAVE ${r.wave} OF 3`, 3);
   }
   lock() {
     if (this.controls.mobile || this.controls.connected) return;
@@ -530,6 +602,7 @@ export class Game {
     this.lock();
   }
   checkpoint() {
+    delete this.save.resume;
     this.sectorStart = {
       level: this.level,
       kills: this.levelKills,
@@ -675,11 +748,12 @@ export class Game {
     this.accumulator = 0;
     this.weaponMotion.equip(this.weapon);
     this.invulnerable = 1;
-    this.addPickup("health", new T.Vector3(-5, 0.65, 8));
-    this.addPickup("armor", new T.Vector3(5, 0.65, 8));
-    this.addPickup("ammo", new T.Vector3(-5, 0.65, -15));
-    this.addPickup("ammo", new T.Vector3(5, 0.65, -15));
-    this.addPickup("secret", this.arena.secret);
+    this.taken = new Set();
+    this.addPickup("health", new T.Vector3(-5, 0.65, 8), 0);
+    this.addPickup("armor", new T.Vector3(5, 0.65, 8), 1);
+    this.addPickup("ammo", new T.Vector3(-5, 0.65, -15), 2);
+    this.addPickup("ammo", new T.Vector3(5, 0.65, -15), 3);
+    this.addPickup("secret", this.arena.secret, 4);
   }
   nextArena() {
     if (!this.arenaCleared) return;
@@ -699,6 +773,7 @@ export class Game {
     } else this.completeLevel();
   }
   completeLevel() {
+    delete this.save.resume;
     this.save.best[this.level] = Math.max(
       this.save.best[this.level] || 0,
       this.levelKills,
@@ -855,7 +930,7 @@ export class Game {
       this.projectileMats.set(color, new T.MeshBasicMaterial({ color }));
     return this.projectileMats.get(color)!;
   }
-  addPickup(kind: Pickup["kind"], pos: T.Vector3) {
+  addPickup(kind: Pickup["kind"], pos: T.Vector3, slot?: number) {
     if (this.pickups.length > 160) {
       const old = this.pickups.shift();
       old?.mesh.removeFromParent();
@@ -875,7 +950,7 @@ export class Game {
         kind === "secret" ? 0.32 : kind === "soul" ? 0.17 : 0.3,
       );
     this.scene.add(m);
-    this.pickups.push({ mesh: m, kind, age: 0 });
+    this.pickups.push({ mesh: m, kind, age: 0, slot });
   }
   burst(pos: T.Vector3, color: number, count = 10, speed = 6) {
     // Particles are flat unlit solids; one spawned beside the camera covers the view.
@@ -984,6 +1059,8 @@ export class Game {
     return e;
   }
   beginWave() {
+    this.save.resume = this.snapshot();
+    this.persist();
     this.wave++;
     if (this.wave === 1) this.hint("arsenal");
     if (
@@ -1030,6 +1107,9 @@ export class Game {
     this.sound.tone(65, 0.2, "sawtooth", 0.17, 25);
     if (this.health <= 0) {
       this.health = 0;
+      // Death restarts the sector, even if the player quits from the death screen.
+      delete this.save.resume;
+      this.persist();
       this.setMode("dead");
     }
   }
@@ -2209,6 +2289,7 @@ export class Game {
           this.notify("SECRET RELIC FOUND  /  TAROT CONDITION MET", 4);
         }
         this.sound.pickup();
+        if (p.slot !== undefined) this.taken.add(p.slot);
         p.mesh.removeFromParent();
         this.pickups.splice(this.pickups.indexOf(p), 1);
       } else if (p.age > 120 && p.kind !== "secret") {

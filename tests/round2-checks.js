@@ -150,6 +150,102 @@
     return document.querySelector(".rebind-note").textContent;
   });
 
+  check("quitting in wave 3 and continuing resumes wave 3", () => {
+    setup(5, 1);
+    const supply = g.pickups.find((p) => p.slot === 0);
+    g.position.copy(supply.mesh.position).setY(1.75);
+    g.health = 60;
+    step(2);
+    assert(g.taken.has(0), "Health supply was not collected");
+    g.beginWave();
+    g.enemies.forEach((e) => e.model.dispose());
+    g.enemies = [];
+    g.remaining = 0;
+    g.beginWave();
+    g.enemies.forEach((e) => e.model.dispose());
+    g.enemies = [];
+    g.remaining = 0;
+    g.health = 55;
+    g.armor = 9;
+    g.ammo[1] = 7;
+    g.souls = 23;
+    g.levelKills = 40;
+    g.beginWave();
+    assert(g.wave === 3, "Not in wave 3");
+    // Quit to the main menu through the pause menu, as a player would.
+    g.setMode("paused");
+    const pause = document.querySelector(".checkpoint-caption").textContent;
+    assert(/start of wave 3/.test(pause), pause);
+    click('[data-action="menu"]');
+    click('[data-action="confirm"]');
+    assert(g.mode === "menu", "Did not return to the menu");
+    const stored = JSON.parse(localStorage.getItem("purgatory.save"));
+    assert(stored.resume?.wave === 3, JSON.stringify(stored.resume));
+    const caption = document.querySelector(".checkpoint-caption").textContent;
+    assert(/SECTOR 2 · WAVE 3/.test(caption), caption);
+    click('[data-action="start"]');
+    assert(
+      g.mode === "playing" && g.level === 5 && g.room === 1,
+      "Wrong sector",
+    );
+    assert(
+      g.health === 55 && g.armor === 9,
+      `health ${g.health}, armor ${g.armor}`,
+    );
+    assert(
+      g.ammo[1] === 7 && g.ammo[0] === Infinity,
+      "Ammunition not restored",
+    );
+    assert(
+      g.souls === 23 && g.levelKills === 40,
+      "Souls or kills not restored",
+    );
+    assert(!g.pickups.some((p) => p.slot === 0), "Collected supply came back");
+    assert(
+      g.pickups.some((p) => p.slot === 1),
+      "Uncollected supply missing",
+    );
+    g.waveDelay = 0.1;
+    step(10);
+    assert(
+      g.wave === 3 && g.remaining + g.enemies.length > 0,
+      "Wave 3 did not begin",
+    );
+  });
+
+  check("death returns the save to the sector start", () => {
+    setup(5, 1);
+    g.beginWave();
+    g.beginWave();
+    assert(g.save.resume?.wave === 2, "No snapshot");
+    g.invulnerable = 0;
+    g.hurt(9999);
+    assert(g.mode === "dead", "Did not die");
+    assert(
+      !JSON.parse(localStorage.getItem("purgatory.save")).resume,
+      "Snapshot survived death",
+    );
+    g.setMode("menu");
+    g.continueGame();
+    assert(
+      g.wave === 0 && g.health === 100,
+      `wave ${g.wave}, health ${g.health}`,
+    );
+  });
+
+  check("level select and finishing a level ignore the snapshot", () => {
+    setup(5, 0);
+    g.beginWave();
+    g.health = 30;
+    g.beginWave();
+    g.start(5, 0, false);
+    assert(g.health === 100 && g.wave === 0, "Level select resumed a wave");
+    g.beginWave();
+    g.completeLevel();
+    assert(!g.save.resume, "Snapshot survived the level's end");
+    g.setMode("menu");
+  });
+
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");
   else localStorage.setItem("purgatory.options", storedOptions);

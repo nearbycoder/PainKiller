@@ -35,7 +35,7 @@ It runs as an offline Linux desktop game, or in any WebGL 2 browser. No account,
 
 ## How to play
 
-Clear each **sector** by surviving three waves. Red arcs around the crosshair point to whatever just hurt you, a dashed arc warns of hellfire about to hit from off-screen, and when the last few enemies of a wave stay out of sight for a few seconds, chevrons at the screen edge point to them. When the gate turns green, walk into it and press **E**. Each level has 3–5 sectors; the last sector of a chapter ends with a **general**. Progress is saved at the start of every sector, and death restarts the sector with fresh supplies.
+Clear each **sector** by surviving three waves. Red arcs around the crosshair point to whatever just hurt you, a dashed arc warns of hellfire about to hit from off-screen, and when the last few enemies of a wave stay out of sight for a few seconds, chevrons at the screen edge point to them. When the gate turns green, walk into it and press **E**. Each level has 3–5 sectors; the last sector of a chapter ends with a **general**. Progress is saved as every wave begins: quit mid-sector and **Continue** resumes that wave with the health, armor, ammunition and souls you had when it started. Death restarts the sector with fresh supplies.
 
 | Action | Keyboard & mouse | Controller (standard mapping) | Touch |
 | --- | --- | --- | --- |
@@ -217,7 +217,7 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run.
-- Keyboard and mouse bindings can be changed; controller buttons cannot. Saves restore the start of the current sector, not the exact moment you quit.
+- Keyboard and mouse bindings can be changed; controller buttons cannot. Saves resume the start of the current wave, not the exact moment you quit.
 - The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.

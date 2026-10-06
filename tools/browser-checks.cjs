@@ -60,7 +60,12 @@ app.whenReady().then(async () => {
     width: 1280,
     height: 800,
     useContentSize: true,
-    webPreferences: { offscreen: true, backgroundThrottling: false },
+    // An in-memory session: saves and options left by earlier runs cannot leak in.
+    webPreferences: {
+      offscreen: true,
+      backgroundThrottling: false,
+      partition: "browser-checks",
+    },
   });
   const wc = win.webContents;
   wc.setAudioMuted(true);

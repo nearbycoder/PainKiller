@@ -290,7 +290,7 @@ export class UI {
     }
     if (action === "start") {
       this.page = "home";
-      g.start();
+      g.continueGame();
     }
     if (action === "level") {
       this.page = "home";
@@ -433,11 +433,11 @@ export class UI {
   home() {
     const g = this.game,
       saved = g.save.kills > 0 || g.save.unlocked > 0 || g.save.room > 0;
-    return `<main class="title-screen"><div class="title-crest" aria-hidden="true">${seal}</div><div class="logo"><h1>PURGATORY</h1><div class="logo-rule"><i></i><span>A REQUIEM IN STEEL</span><i></i></div></div><nav class="title-commands" aria-label="Main menu">${this.button(saved ? "Continue" : "Enter Purgatory", "start", undefined, "data-default")}${this.button("New game", "new")}${this.button("Select level", "page", "campaign")}${this.button("Options", "page", "settings")}${this.button("The arsenal", "page", "arsenal")}${this.button("Grave tarot", "page", "tarot")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${saved ? `CONTINUE · ${LEVELS[g.save.level].name} · SECTOR ${g.save.room + 1}` : "A SOUL BETWEEN HEAVEN AND HELL"}</p></main>`;
+    return `<main class="title-screen"><div class="title-crest" aria-hidden="true">${seal}</div><div class="logo"><h1>PURGATORY</h1><div class="logo-rule"><i></i><span>A REQUIEM IN STEEL</span><i></i></div></div><nav class="title-commands" aria-label="Main menu">${this.button(saved ? "Continue" : "Enter Purgatory", "start", undefined, "data-default")}${this.button("New game", "new")}${this.button("Select level", "page", "campaign")}${this.button("Options", "page", "settings")}${this.button("The arsenal", "page", "arsenal")}${this.button("Grave tarot", "page", "tarot")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${saved ? `CONTINUE · ${LEVELS[g.save.level].name} · SECTOR ${g.save.room + 1}${g.save.resume ? ` · WAVE ${g.save.resume.wave}` : ""}` : "A SOUL BETWEEN HEAVEN AND HELL"}</p></main>`;
   }
   pause() {
     const g = this.game;
-    return `<main class="pause-screen"><p class="menu-kicker">${LEVELS[g.level].name} · SECTOR ${g.room + 1}</p><h1>Paused</h1><div class="small-ornament">— ◆ —</div><nav aria-label="Pause menu">${this.button("Resume game", "resume", undefined, "data-default")}${this.button("Options", "page", "settings")}${this.button("Restart checkpoint", "retry")}${this.button("Main menu", "menu")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">Progress saved at the start of this sector</p></main>`;
+    return `<main class="pause-screen"><p class="menu-kicker">${LEVELS[g.level].name} · SECTOR ${g.room + 1}</p><h1>Paused</h1><div class="small-ornament">— ◆ —</div><nav aria-label="Pause menu">${this.button("Resume game", "resume", undefined, "data-default")}${this.button("Options", "page", "settings")}${this.button("Restart sector", "retry")}${this.button("Main menu", "menu")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${g.save.resume?.level === g.level && g.save.resume.room === g.room ? `Progress saved at the start of wave ${g.save.resume.wave}` : "Progress saved at the start of this sector"}</p></main>`;
   }
   confirmation() {
     const copy: Record<string, [string, string, string]> = {
@@ -447,8 +447,8 @@ export class UI {
         "Begin pilgrimage",
       ],
       retry: [
-        "Restart checkpoint?",
-        "The current fight will restart with replenished supplies.",
+        "Restart this sector?",
+        "The sector restarts from its first wave with replenished supplies.",
         "Restart",
       ],
       menu: [

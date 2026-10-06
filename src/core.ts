@@ -62,6 +62,89 @@ export interface Save {
   selectedCard: number;
   best: Record<string, number>;
   completed: boolean;
+  /** Snapshot at the start of the current wave; Continue resumes there. */
+  resume?: Resume;
+}
+/** Player state when a wave began. Ammunition of -1 stands for the Thresher's infinite supply. */
+export interface Resume {
+  level: number;
+  room: number;
+  /** The wave about to begin, 1–3. */
+  wave: number;
+  health: number;
+  armor: number;
+  ammo: number[];
+  altAmmo: number[];
+  weapon: number;
+  souls: number;
+  cardUsed: boolean;
+  /** Fixed sector supplies already collected (0 health, 1 armor, 2–3 ammunition, 4 relic). */
+  taken: number[];
+  kills: number;
+  levelSouls: number;
+  secrets: number;
+  elapsed: number;
+  /** Level stats when the sector began, restored by a retry after death. */
+  sector: { kills: number; souls: number; secrets: number };
+}
+export function parseResume(r: unknown): Resume | undefined {
+  if (!r || typeof r !== "object") return undefined;
+  const x = r as Record<string, unknown>;
+  const num = (v: unknown, min: number, max: number) =>
+    typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
+  const ammo = (v: unknown) =>
+    Array.isArray(v) &&
+    v.length === 5 &&
+    v.every((n) => num(n, -1, 10000) && Number.isInteger(n));
+  const sector = x.sector as Record<string, unknown> | undefined;
+  if (
+    !num(x.level, 0, 23) ||
+    !Number.isInteger(x.level) ||
+    !num(x.room, 0, 4) ||
+    !Number.isInteger(x.room) ||
+    !num(x.wave, 1, 3) ||
+    !Number.isInteger(x.wave) ||
+    !num(x.health, 1, 200) ||
+    !num(x.armor, 0, 200) ||
+    !ammo(x.ammo) ||
+    !ammo(x.altAmmo) ||
+    !num(x.weapon, 0, 4) ||
+    !num(x.souls, 0, 66) ||
+    typeof x.cardUsed !== "boolean" ||
+    !Array.isArray(x.taken) ||
+    !x.taken.every((n) => Number.isInteger(n) && n >= 0 && n <= 4) ||
+    !num(x.kills, 0, 1e6) ||
+    !num(x.levelSouls, 0, 1e6) ||
+    !num(x.secrets, 0, 100) ||
+    !num(x.elapsed, 0, 1e7) ||
+    !sector ||
+    !num(sector.kills, 0, 1e6) ||
+    !num(sector.souls, 0, 1e6) ||
+    !num(sector.secrets, 0, 100)
+  )
+    return undefined;
+  return {
+    level: x.level as number,
+    room: x.room as number,
+    wave: x.wave as number,
+    health: x.health as number,
+    armor: x.armor as number,
+    ammo: [...(x.ammo as number[])],
+    altAmmo: [...(x.altAmmo as number[])],
+    weapon: Math.floor(x.weapon as number),
+    souls: Math.floor(x.souls as number),
+    cardUsed: x.cardUsed,
+    taken: [...new Set(x.taken as number[])],
+    kills: x.kills as number,
+    levelSouls: x.levelSouls as number,
+    secrets: x.secrets as number,
+    elapsed: x.elapsed as number,
+    sector: {
+      kills: sector.kills as number,
+      souls: sector.souls as number,
+      secrets: sector.secrets as number,
+    },
+  };
 }
 export const freshSave = (): Save => ({
   version: 1,
@@ -107,6 +190,13 @@ export function parseSave(raw: string | null): Save {
             ) as Record<string, number>)
           : {},
       completed: s.completed === true,
+      ...(() => {
+        const resume = parseResume(s.resume);
+        // A snapshot only counts for the sector the save points at.
+        return resume && resume.level === s.level && resume.room === s.room
+          ? { resume }
+          : {};
+      })(),
     };
   } catch {
     return freshSave();
