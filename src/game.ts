@@ -108,10 +108,12 @@ interface Enemy {
   anchor: T.Vector3;
 }
 export interface ThreatIndicator {
-  kind: "damage" | "incoming" | "locator";
+  kind: "damage" | "incoming" | "locator" | "gate";
   /** Bearing from the view direction, radians, positive to the right. */
   angle: number;
   strength: number;
+  /** Text shown with the marker (the gate's distance). */
+  label?: string;
 }
 interface Projectile {
   mesh: T.Object3D;
@@ -1892,6 +1894,8 @@ export class Game {
     const out: ThreatIndicator[] = [];
     const at = (x: number, z: number) =>
       bearing(this.position.x, this.position.z, this.yaw, x, z);
+    const gate = this.gateGuide();
+    if (gate) out.push({ kind: "gate", strength: 1, ...gate });
     for (const m of this.damageMarks)
       out.push({ kind: "damage", angle: at(m.x, m.z), strength: m.life });
     const edge = this.halfFov() * 0.8;
@@ -1914,6 +1918,27 @@ export class Game {
           strength: 1,
         });
     return out;
+  }
+  /**
+   * Once the sector is cleared, where the open gate is while it is off-screen: its
+   * bearing and distance. Null when the gate is shut, in view, or you stand in it.
+   */
+  gateGuide() {
+    if (!this.arenaCleared || !this.arena?.portal.visible) return null;
+    const gate = this.arena.portal.getWorldPosition(new T.Vector3());
+    const distance = Math.hypot(
+      gate.x - this.position.x,
+      gate.z - this.position.z,
+    );
+    const angle = bearing(
+      this.position.x,
+      this.position.z,
+      this.yaw,
+      gate.x,
+      gate.z,
+    );
+    if (distance < 5 || Math.abs(angle) < this.halfFov() * 0.85) return null;
+    return { angle, label: `GATE ${Math.round(distance)} M` };
   }
   /** The final few enemies of a wave have stayed out of sight for 4 s. */
   locatorActive() {

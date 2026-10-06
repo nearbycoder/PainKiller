@@ -815,6 +815,7 @@ export class UI {
         return;
       }
       el.className = mark.kind;
+      (el as HTMLElement).dataset.label = mark.label || "";
       style.display = "block";
       style.setProperty("--angle", mark.angle + "rad");
       style.opacity = String(Math.min(1, 0.25 + mark.strength));

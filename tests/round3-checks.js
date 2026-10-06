@@ -382,6 +382,61 @@
     },
   );
 
+  check("the gate guide points to the open gate while it is off-screen", () => {
+    setup(0, 1);
+    g.position.set(4, 1.75, 20);
+    g.yaw = Math.PI;
+    assert(g.gateGuide() === null, "Guide shown before the sector is clear");
+    // Clear the sector the way the game does: the last wave ends.
+    g.wave = 3;
+    g.remaining = 0;
+    g.waveDelay = 0.01;
+    step(2);
+    assert(g.arenaCleared && g.arena.portal.visible, "Sector did not clear");
+    g.position.set(4, 1.75, 20);
+    const at = (yaw) => {
+      g.yaw = yaw;
+      return g.gateGuide();
+    };
+    assert(at(0) === null, "Guide shown with the gate ahead");
+    const behind = at(Math.PI),
+      left = at(-Math.PI / 2),
+      right = at(Math.PI / 2);
+    assert(behind && Math.abs(behind.angle) > 2.8, JSON.stringify(behind));
+    assert(left && right, "No guide with the gate to the side");
+    assert(
+      Math.sign(left.angle) !== Math.sign(right.angle) &&
+        Math.abs(Math.abs(left.angle) - Math.PI / 2) < 0.3,
+      JSON.stringify({ left, right }),
+    );
+    // The arena's gate is 48 m from (4, 20) in this layout.
+    const metres = Math.round(Math.hypot(4, 48));
+    assert(behind.label === `GATE ${metres} M`, behind.label);
+    // Drawn on the HUD, distinct from the enemy locator.
+    g.yaw = Math.PI;
+    g.onHUD();
+    const mark = document.querySelector("#threat-ring i.gate");
+    assert(mark && mark.style.display === "block", "Gate marker not drawn");
+    assert(mark.dataset.label === behind.label, mark.dataset.label);
+    assert(
+      getComputedStyle(mark, "::after").borderTopColor !==
+        getComputedStyle(document.body).color,
+      "Gate marker has no colour",
+    );
+    // Standing in the gate: the prompt takes over.
+    g.position.set(0, 1.75, -26);
+    assert(g.gateGuide() === null, "Guide shown at the gate");
+    g.useGate();
+    assert(g.room === 2 && g.gateGuide() === null, "Guide in the next sector");
+    g.onHUD();
+    assert(
+      !document.querySelector("#threat-ring i.gate") ||
+        document.querySelector("#threat-ring i.gate").style.display === "none",
+      "Marker left on the HUD",
+    );
+    return { behind, left, right };
+  });
+
   g.controls.poll(1 / 60, []);
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");
