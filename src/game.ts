@@ -52,6 +52,8 @@ declare global {
     __PURGATORY__?: unknown;
   }
 }
+/** Particle bursts closer than this to the eye are skipped (metres). */
+const NEAR_PARTICLE_DISTANCE = 1.5;
 type Mode = "menu" | "playing" | "paused" | "dead" | "result" | "ending";
 interface Enemy {
   model: EnemyModel;
@@ -127,6 +129,7 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  sectorStart = { level: -1, kills: 0, souls: 0, secrets: 0 };
   totalTime = 0;
   health = 100;
   armor = 50;
@@ -460,13 +463,30 @@ export class Game {
     this.lock();
   }
   checkpoint() {
+    this.sectorStart = {
+      level: this.level,
+      kills: this.levelKills,
+      souls: this.levelSouls,
+      secrets: this.secrets,
+    };
     this.save.level = this.level;
     this.save.room = this.room;
     this.save.unlocked = Math.max(this.save.unlocked, this.level);
     this.persist();
   }
   retry() {
+    // Restarting a sector keeps what the earlier sectors of this level earned.
+    const kept =
+        this.sectorStart.level === this.level ? this.sectorStart : null,
+      elapsed = this.elapsed;
     this.start(this.level, this.room);
+    if (kept) {
+      this.levelKills = kept.kills;
+      this.levelSouls = kept.souls;
+      this.secrets = kept.secrets;
+      this.elapsed = elapsed;
+      this.sectorStart = { ...kept };
+    }
   }
   notify(text: string, time = 3) {
     this.toast = text;
@@ -735,6 +755,8 @@ export class Game {
     this.pickups.push({ mesh: m, kind, age: 0 });
   }
   burst(pos: T.Vector3, color: number, count = 10, speed = 6) {
+    // Particles are flat unlit solids; one spawned beside the camera covers the view.
+    if (pos.distanceTo(this.position) < NEAR_PARTICLE_DISTANCE) return;
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= 200) break;
       const m = new T.Mesh(this.geometry, this.mat(color));
@@ -1490,7 +1512,7 @@ export class Game {
     this.sound.update(!this.arenaCleared);
     if (this.demon > 0 && this.frame % 12 === 0)
       this.burst(
-        this.position.clone().add(new T.Vector3(0, -0.6, 0)),
+        this.position.clone().add(new T.Vector3(0, -1.65, 0)),
         0x9ae9cc,
         1,
         2,
@@ -1925,6 +1947,7 @@ export class Game {
       p.mesh.position.addScaledVector(p.velocity, dt);
       p.velocity.y -= dt * 8;
       p.mesh.scale.multiplyScalar(Math.exp(-dt * 2));
+      p.mesh.visible = p.mesh.position.distanceToSquared(this.position) > 0.64;
       if (p.life <= 0) {
         p.mesh.removeFromParent();
         if (p.mesh.geometry !== this.geometry) p.mesh.geometry.dispose();

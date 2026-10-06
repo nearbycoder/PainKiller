@@ -3,7 +3,7 @@ import { authoredCemetery, authoredThemes } from "./authored-world";
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { type Level, type Theme } from "./data";
-import { rng, type Collider } from "./core";
+import { archSegments, rng, type Collider } from "./core";
 export interface Arena {
   root: T.Group;
   colliders: Collider[];
@@ -213,27 +213,29 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
     depth = 1,
     mat: T.Material = stone,
     rotation = 0,
+    solidPiers = false,
   ) => {
     const group = new T.Group();
     root.add(group);
     const created: T.Object3D[] = [];
     const sideH = height - width * 0.5;
-    created.push(
-      box(-width / 2, sideH / 2, 0, 0.8, sideH, depth, mat),
-      box(width / 2, sideH / 2, 0, 0.8, sideH, depth, mat),
-    );
-    for (let i = 0; i < 12; i++) {
-      const angle = ((i + 0.5) / 12) * Math.PI;
-      const m = box(
-        (Math.cos(angle) * width) / 2,
-        sideH + (Math.sin(angle) * width) / 2,
-        0,
-        0.78,
-        width * 0.16,
-        depth,
-        mat,
+    if (sideH > 0)
+      created.push(
+        box(-width / 2, sideH / 2, 0, 0.8, sideH, depth, mat),
+        box(width / 2, sideH / 2, 0, 0.8, sideH, depth, mat),
       );
-      m.rotation.z = angle - Math.PI / 2;
+    if (solidPiers && rotation === 0)
+      for (const side of [-1, 1])
+        colliders.push({
+          x: x + (side * width) / 2,
+          z,
+          w: 0.8,
+          d: depth,
+          h: Math.max(sideH, 3),
+        });
+    for (const s of archSegments(width, height)) {
+      const m = box(s.x, s.y, 0, s.tangential, s.radial, depth, mat);
+      m.rotation.z = s.rotation;
       created.push(m);
     }
     for (const m of created) group.attach(m);
@@ -563,7 +565,7 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
   }
   if (theme === "snow") {
     for (let z = -24; z <= 24; z += 12) {
-      arch(0, z, 45, 17, 1.2, trim);
+      arch(0, z, 40, 24, 1.2, trim, 0, true);
       for (const x of [-20, 20]) {
         box(x, 0.2, z, 7, 0.4, 8, trim);
       }

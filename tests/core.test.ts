@@ -7,6 +7,7 @@ import {
   damageAfterArmor,
   segmentSphere,
   freshSave,
+  archSegments,
 } from "../src/core";
 import { LEVELS, WEAPONS, waveCount } from "../src/data";
 describe("campaign contracts", () => {
@@ -98,5 +99,32 @@ describe("reproducibility and persistence", () => {
       selectedCard: 2,
     };
     expect(parseSave(JSON.stringify(s))).toEqual(s);
+  });
+});
+describe("procedural arches", () => {
+  it("closes the voussoir ring at every span the arenas use", () => {
+    for (const [width, height] of [
+      [1.7, 8],
+      [5, 10],
+      [6, 13],
+      [13, 13],
+      [29, 18],
+      [40, 24],
+      [45, 17],
+    ]) {
+      const stones = archSegments(width, height);
+      expect(stones.length).toBeGreaterThanOrEqual(12);
+      for (let i = 1; i < stones.length; i++) {
+        const gap = Math.hypot(
+          stones[i].x - stones[i - 1].x,
+          stones[i].y - stones[i - 1].y,
+        );
+        expect(gap).toBeLessThanOrEqual(stones[i].tangential);
+      }
+      // The crown stone lies flat across the top of the arch.
+      const crown = stones.reduce((a, b) => (b.y > a.y ? b : a));
+      expect(Math.abs(Math.cos(crown.rotation))).toBeGreaterThan(0.99);
+      expect(crown.radial).toBeLessThanOrEqual(1.4);
+    }
   });
 });

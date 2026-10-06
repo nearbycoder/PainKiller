@@ -139,3 +139,21 @@ export function segmentSphere(
   );
   return Math.hypot(ax + dx * t - cx, ay + dy * t - cy, az + dz * t - cz) <= r;
 }
+/** Voussoir layout for a round arch: wide spans get more stones so the ring stays closed. */
+export function archSegments(width: number, height: number) {
+  const radius = width / 2,
+    springing = height - radius,
+    tangential = 0.78,
+    radial = Math.min(width * 0.16, 1.4),
+    count = Math.max(12, Math.ceil((Math.PI * radius) / (tangential * 0.9)));
+  return Array.from({ length: count }, (_, i) => {
+    const angle = ((i + 0.5) / count) * Math.PI;
+    return {
+      x: Math.cos(angle) * radius,
+      y: springing + Math.sin(angle) * radius,
+      rotation: angle - Math.PI / 2,
+      tangential,
+      radial,
+    };
+  });
+}
