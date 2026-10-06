@@ -3,6 +3,17 @@ import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
 import { freshSave } from "./core";
 import { AMMUNITION } from "./ammunition";
 import { defaults, type Settings } from "./settings";
+import {
+  ACTIONS,
+  bind,
+  bindable,
+  cloneBindings,
+  DEFAULT_BINDINGS,
+  keyLabel,
+  SLOTS,
+  unbind,
+  type Action,
+} from "./bindings";
 declare const __APP_VERSION__: string;
 const seal = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 2 44 13v22L24 46 4 35V13Z" fill="none" stroke="currentColor"/><path d="M21 9h6v11h10v5H27v15h-6V25H11v-5h10z" fill="currentColor"/><path d="M24 2v7M24 40v6M4 13l9 5m22 12 9 5M4 35l9-5m22-12 9-5" stroke="currentColor"/></svg>`;
 const roman = ["I", "II", "III", "IV", "V"];
@@ -26,8 +37,36 @@ export class UI {
   dialog = "";
   lastMode = "";
   lastHover = 0;
+  /** The binding slot waiting for a key or mouse button, if any. */
+  rebinding: { action: Action; slot: number } | null = null;
+  rebindNote = "";
+  private swallowClick = false;
   constructor(public game: Game) {
     this.root = document.getElementById("app")!;
+    // While a binding slot is listening, the next mouse button is the binding.
+    window.addEventListener(
+      "mousedown",
+      (e) => {
+        if (!this.rebinding) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.swallowClick = true;
+        this.capture("Mouse" + e.button);
+      },
+      true,
+    );
+    for (const type of ["click", "auxclick", "contextmenu", "mouseup"])
+      window.addEventListener(
+        type,
+        (e) => {
+          if (!this.swallowClick) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (type === "click" || type === "auxclick")
+            this.swallowClick = false;
+        },
+        true,
+      );
     game.onChange = () => this.render();
     game.onHUD = () => this.hud();
     this.root.addEventListener("click", (e) => {
@@ -66,6 +105,12 @@ export class UI {
   }
   key(e: KeyboardEvent) {
     if (this.game.mode === "playing") return;
+    if (this.rebinding) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!e.repeat) this.capture(e.code);
+      return;
+    }
     if (e.code === "Escape") {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -121,8 +166,75 @@ export class UI {
     }
     if (this.game.mode === "paused") this.action("resume");
   }
+  /** Finish a pending rebind: Escape cancels, Backspace or Delete clears the slot. */
+  capture(code: string) {
+    const target = this.rebinding;
+    if (!target) return;
+    this.rebinding = null;
+    const name = (a: Action) => ACTIONS.find(([x]) => x === a)![1];
+    const s = this.game.settings();
+    if (code === "Escape") this.rebindNote = "Unchanged.";
+    else if (code === "Backspace" || code === "Delete") {
+      unbind(s.bindings, target.action, target.slot);
+      this.rebindNote = `${name(target.action)}: slot cleared.`;
+    } else if (!bindable(code)) {
+      this.rebindNote = `${code} cannot be bound.`;
+    } else {
+      const moved = bind(s.bindings, target.action, target.slot, code);
+      this.rebindNote = moved
+        ? `${keyLabel(code)} moved from ${name(moved)} to ${name(target.action)}.`
+        : `${name(target.action)}: ${keyLabel(code)}.`;
+    }
+    this.game.applySettings(s);
+    this.game.saveOptions();
+    this.render();
+    this.root
+      .querySelector<HTMLElement>(
+        `[data-action="rebind"][data-value="${target.action}:${target.slot}"]`,
+      )
+      ?.focus();
+  }
+  bindingRows() {
+    const b = this.game.bindings;
+    return `<div class="rebind-list" aria-label="Keyboard and mouse bindings"><p class="rebind-note" role="status">${this.rebindNote || "Select a slot, then press a key or mouse button. Backspace clears it; Esc cancels. Esc always pauses."}</p>${ACTIONS.map(
+      ([action, label]) =>
+        `<div class="rebind-row"><span>${label}</span>${Array.from(
+          { length: SLOTS },
+          (_, slot) => {
+            const listening =
+              this.rebinding?.action === action && this.rebinding.slot === slot;
+            const code = b[action][slot];
+            const shown = listening
+              ? "PRESS A KEY…"
+              : code
+                ? keyLabel(code)
+                : "—";
+            return `<button class="rebind-slot${listening ? " listening" : ""}${code ? "" : " empty"}" data-action="rebind" data-value="${action}:${slot}" aria-label="${label}, slot ${slot + 1}: ${listening ? "press a key" : code ? keyLabel(code) : "unbound"}">${shown}</button>`;
+          },
+        ).join("")}</div>`,
+    ).join(
+      "",
+    )}<button class="rebind-reset" data-action="reset-bindings">Reset key bindings</button></div>`;
+  }
   action(action: string, value?: string) {
     const g = this.game;
+    if (action === "rebind") {
+      const [name, slot] = value!.split(":");
+      this.rebinding = { action: name as Action, slot: Number(slot) };
+      this.rebindNote = "";
+      this.render();
+      this.root.querySelector<HTMLElement>(`[data-value="${value}"]`)?.focus();
+      return;
+    }
+    if (action === "reset-bindings") {
+      const s = g.settings();
+      s.bindings = cloneBindings(DEFAULT_BINDINGS);
+      g.applySettings(s);
+      g.saveOptions();
+      this.rebindNote = "Key bindings reset.";
+      this.render();
+      return;
+    }
     if (action === "cycle-weapon") {
       g.cycleWeapon(Number(value));
       return;
@@ -364,7 +476,7 @@ export class UI {
       const w = WEAPONS[this.armory];
       return `<div class="arsenal-layout"><nav class="level-list" aria-label="Weapons">${WEAPONS.map((x, i) => `<button data-action="weapon" data-value="${i}" class="${this.armory === i ? "selected" : ""}"><small>0${i + 1}</small><span>${x.short}</span></button>`).join("")}</nav><section class="weapon-inscription"><div class="weapon-etching">${gunIcon(this.armory)}</div><p class="menu-kicker">WEAPON 0${this.armory + 1}</p><h2>${w.name}</h2><p>${w.hint}</p><div class="fire-modes"><p><kbd>LMB</kbd><span>PRIMARY<b>${w.primary}</b></span></p><p><kbd>RMB</kbd><span>SECONDARY<b>${w.secondary}</b></span></p></div></section></div><p class="screen-note">No reloading. Select with 1–5, R / V, or the mouse wheel. Inspect with F.</p>`;
     }
-    return `<p class="screen-note">Find a relic or collect 25 souls, then finish the level to earn a card.</p><div class="tarot-grid">${CARDS.map((c, i) => `<button class="tarot-card ${g.save.selectedCard === i ? "selected" : ""} ${g.save.cards.includes(i) ? "" : "locked"}" data-action="card" data-value="${i}" ${g.save.cards.includes(i) ? "" : "disabled"}><span class="menu-kicker">${roman[i]}</span><div class="tarot-symbol">${["⚔", "☄", "♜"][i]}</div><h2>${c.name}</h2><p>${c.detail}</p><span class="card-state">${g.save.cards.includes(i) ? (g.save.selectedCard === i ? "EQUIPPED" : "EQUIP CARD") : "SEALED"}</span></button>`).join("")}</div><p class="screen-note">Press Q in combat. One activation per sector. Collect 66 souls to become the Wraith.</p>`;
+    return `<p class="screen-note">Find a relic or collect 25 souls, then finish the level to earn a card.</p><div class="tarot-grid">${CARDS.map((c, i) => `<button class="tarot-card ${g.save.selectedCard === i ? "selected" : ""} ${g.save.cards.includes(i) ? "" : "locked"}" data-action="card" data-value="${i}" ${g.save.cards.includes(i) ? "" : "disabled"}><span class="menu-kicker">${roman[i]}</span><div class="tarot-symbol">${["⚔", "☄", "♜"][i]}</div><h2>${c.name}</h2><p>${c.detail}</p><span class="card-state">${g.save.cards.includes(i) ? (g.save.selectedCard === i ? "EQUIPPED" : "EQUIP CARD") : "SEALED"}</span></button>`).join("")}</div><p class="screen-note">Press ${g.keyFor("tarot")} in combat. One activation per sector. Collect 66 souls to become the Wraith.</p>`;
   }
   range(
     key: keyof Settings,
@@ -496,17 +608,9 @@ export class UI {
             ["On", true],
           ],
         ) +
+        this.bindingRows() +
         `<div class="binding-list">${[
-          ["W A S D", "Move"],
-          ["MOUSE", "Look"],
-          ["LMB / RMB", "Primary / secondary fire"],
-          ["R / V", "Next / previous weapon"],
-          ["1–5 / WHEEL", "Select weapon"],
-          ["SPACE / SHIFT", "Jump / sprint"],
-          ["F", "Inspect weapon"],
-          ["E / Q", "Use gate / tarot card"],
-          ["ESC / P", "Pause"],
-          ["ARROWS · Z / X", "Keyboard aim / fire"],
+          ["MOUSE · WHEEL", "Look · next / previous weapon"],
           ["LEFT / RIGHT STICK", "Controller move / look"],
           ["RT / LT", "Primary / alternate fire"],
           ["LB / RB", "Previous / next weapon"],
@@ -561,7 +665,7 @@ export class UI {
     return `<div class="settings-layout"><nav class="settings-categories" aria-label="Settings categories">${tabs.map(([id, label]) => `<button class="${id === this.settingsTab ? "selected" : ""}" data-action="settings-tab" data-value="${id}" aria-pressed="${id === this.settingsTab}"><span>◆</span>${label}</button>`).join("")}</nav><section class="settings-options" aria-label="${this.settingsTab} settings"><h2>${tabs.find((t) => t[0] === this.settingsTab)![1]}</h2>${content}<div class="settings-bottom"><span>Changes are saved automatically.</span><button data-action="defaults">Restore all defaults</button></div></section></div>`;
   }
   renderHUD() {
-    this.root.innerHTML = `<div id="damage-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}</button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ V</button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon">R ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
+    this.root.innerHTML = `<div id="damage-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}</button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ <span id="hud-prev-key"></span></button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon"><span id="hud-next-key"></span> ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
     this.root
       .querySelector('[data-action="pause"]')
       ?.addEventListener("click", () => this.game.setMode("paused"));
@@ -658,7 +762,7 @@ export class UI {
     set(
       "gate-prompt",
       g.arenaCleared && Math.hypot(g.position.x, g.position.z + 28) < 5
-        ? "[ E ]  " +
+        ? `[ ${g.controls.connected ? "X" : g.keyFor("use")} ]  ` +
             (g.room === level.rooms - 1 ? "FINISH LEVEL" : "NEXT SECTOR")
         : "",
     );
@@ -680,7 +784,9 @@ export class UI {
       (g.souls / 66) * 100 + "%";
     document.getElementById("hud-help")!.textContent = g.controls.connected
       ? "LEFT STICK MOVE · RIGHT STICK LOOK · RT / LT FIRE · LB / RB WEAPONS · A JUMP · X USE · START PAUSE"
-      : "WASD MOVE · SPACE JUMP · LMB / RMB FIRE · R / V SWITCH · F INSPECT · ESC PAUSE";
+      : `${g.moveKeys()} MOVE · ${g.keyFor("jump")} JUMP · ${g.keyFor("primary")} / ${g.keyFor("alternate")} FIRE · ${g.keyFor("next")} / ${g.keyFor("previous")} SWITCH · ${g.keyFor("inspect")} INSPECT · ESC PAUSE`;
+    set("hud-prev-key", g.controls.connected ? "LB" : g.keyFor("previous"));
+    set("hud-next-key", g.controls.connected ? "RB" : g.keyFor("next"));
     document.getElementById("hud-help")!.style.opacity =
       g.elapsed < 20 ? "1" : "0";
     for (let i = 0; i < 5; i++)

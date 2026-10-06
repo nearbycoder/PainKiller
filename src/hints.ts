@@ -1,4 +1,5 @@
 /** One-time combat hints, shown once each the first time their situation comes up. */
+import { actionLabel, DEFAULT_BINDINGS, type Action } from "./bindings";
 export type HintId =
   "arsenal" | "freeze" | "grenade" | "storm" | "souls" | "tarot";
 export type InputKind = "keyboard" | "controller" | "touch";
@@ -6,25 +7,26 @@ export type InputKind = "keyboard" | "controller" | "touch";
 const TEXT: Record<HintId, Record<InputKind, string>> = {
   arsenal: {
     keyboard:
-      "All five weapons are yours · 1–5 or R / V to switch · right mouse fires each alternate mode",
+      "All five weapons are yours · {weapon1}–{weapon5} or {next} / {previous} to switch · {alternate} fires each alternate mode",
     controller:
       "All five weapons are yours · RB / LB to switch · LT fires each alternate mode",
     touch:
       "All five weapons are yours · ◀ ▶ to switch · ALT fires each alternate mode",
   },
   freeze: {
-    keyboard: "Frozen · switch to the shotgun's left-mouse blast to shatter it",
+    keyboard:
+      "Frozen · hit it with the shotgun's {primary} blast to shatter it",
     controller: "Frozen · hit it with the shotgun's RT blast to shatter it",
     touch: "Frozen · hit it with the shotgun's FIRE blast to shatter it",
   },
   grenade: {
-    keyboard: "Shoot a stake (left mouse) into your own grenade to launch it",
+    keyboard: "Shoot a stake ({primary}) into your own grenade to launch it",
     controller: "Shoot a stake (RT) into your own grenade to launch it",
     touch: "Shoot a stake (FIRE) into your own grenade to launch it",
   },
   storm: {
     keyboard:
-      "Hold both mouse buttons for a storm orb · costs 1 shuriken + 16 charge",
+      "Hold {primary} and {alternate} together for a storm orb · costs 1 shuriken + 16 charge",
     controller: "Hold RT + LT for a storm orb · costs 1 shuriken + 16 charge",
     touch: "Hold FIRE + ALT for a storm orb · costs 1 shuriken + 16 charge",
   },
@@ -38,14 +40,19 @@ const TEXT: Record<HintId, Record<InputKind, string>> = {
   },
   tarot: {
     keyboard:
-      "Press Q to awaken your tarot card for 30 seconds, once per sector",
+      "Press {tarot} to awaken your tarot card for 30 seconds, once per sector",
     controller:
       "Press Y to awaken your tarot card for 30 seconds, once per sector",
     touch: "Tap TAROT to awaken your card for 30 seconds, once per sector",
   },
 };
 export const HINT_IDS = Object.keys(TEXT) as HintId[];
-export const hintText = (id: HintId, input: InputKind) => TEXT[id][input];
+/** Hint text for an input device; `{action}` placeholders become the bound keys. */
+export const hintText = (
+  id: HintId,
+  input: InputKind,
+  key: (action: Action) => string = (a) => actionLabel(DEFAULT_BINDINGS, a),
+) => TEXT[id][input].replace(/\{(\w+)\}/g, (_, a: Action) => key(a));
 
 export class HintQueue {
   readonly seen: Set<HintId>;

@@ -44,6 +44,14 @@ import {
 import { Sound, type EnemyCue } from "./audio";
 import { parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
+import {
+  actionLabel,
+  actionsByCode,
+  cloneBindings,
+  DEFAULT_BINDINGS,
+  moveLabel,
+  type Action,
+} from "./bindings";
 declare global {
   interface Window {
     desktop?: {
@@ -203,6 +211,8 @@ export class Game {
   brightness = 1;
   invertY = false;
   headBob = true;
+  bindings = cloneBindings(DEFAULT_BINDINGS);
+  private codeActions = actionsByCode(this.bindings);
   crosshair = true;
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
@@ -377,6 +387,7 @@ export class Game {
       headBob: this.headBob,
       crosshair: this.crosshair,
       hints: this.hints.enabled,
+      bindings: cloneBindings(this.bindings),
     };
   }
   applySettings(s: Settings) {
@@ -395,6 +406,8 @@ export class Game {
       crosshair: s.crosshair,
     });
     this.hints.setEnabled(s.hints);
+    this.bindings = cloneBindings(s.bindings);
+    this.codeActions = actionsByCode(this.bindings);
     this.sound.music = s.music;
     this.sound.setVolume(s.volume);
     this.sound.setChannels(s.effectsVolume, s.musicVolume);
@@ -557,6 +570,7 @@ export class Game {
         : this.controls.mobile
           ? "touch"
           : "keyboard",
+      (a) => this.keyFor(a),
     );
   }
   notify(text: string, time = 3) {
@@ -730,37 +744,15 @@ export class Game {
         e.target.matches("input,select,button")
       )
         return;
-      if (
-        [
-          "Space",
-          "Tab",
-          "ArrowUp",
-          "ArrowDown",
-          "ArrowLeft",
-          "ArrowRight",
-        ].includes(e.code)
-      )
-        e.preventDefault();
+      const bound = this.codeActions.get(e.code);
+      if (bound || ["Space", "Tab"].includes(e.code)) e.preventDefault();
       if (e.repeat) {
         this.keys.add(e.code);
         return;
       }
-      if (e.code === "Escape" && this.mode === "playing")
-        this.setMode("paused");
-      if (e.code === "KeyP" && this.mode === "playing") this.setMode("paused");
-      if (e.code === "KeyR") this.cycleWeapon(1);
-      if (e.code === "KeyV") this.cycleWeapon(-1);
-      if (e.code === "KeyF" && this.mode === "playing")
-        this.weaponMotion.inspect = 1.7;
-      if (e.code === "KeyQ") this.activateCard();
-      if (
-        e.code === "KeyE" &&
-        this.mode === "playing" &&
-        this.arenaCleared &&
-        this.position.distanceTo(new T.Vector3(0, 1.75, -28)) < 5
-      )
-        this.nextArena();
-      if (/^Digit[1-5]$/.test(e.code)) this.equip(Number(e.code.slice(-1)) - 1);
+      // Escape always pauses, whatever else is bound.
+      if (e.code === "Escape") this.setMode("paused");
+      else for (const action of bound || []) this.press(action);
       this.keys.add(e.code);
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
@@ -791,10 +783,15 @@ export class Game {
     this.canvas.addEventListener("mousedown", (e) => {
       if (this.mode !== "playing") return;
       if (!document.pointerLockElement) this.lock();
-      this.mouse[e.button === 2 ? 1 : 0] = true;
+      const code = "Mouse" + e.button;
+      if (this.codeActions.has(code)) e.preventDefault();
+      for (const action of this.codeActions.get(code) || []) this.press(action);
+      this.keys.add(code);
     });
     window.addEventListener("mouseup", (e) => {
-      this.mouse[e.button === 2 ? 1 : 0] = false;
+      this.keys.delete("Mouse" + e.button);
+      // Side buttons otherwise navigate the browser back or forward.
+      if (this.mode === "playing" && e.button > 2) e.preventDefault();
     });
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     let lastWheel = -Infinity;
@@ -812,6 +809,46 @@ export class Game {
       },
       { passive: false },
     );
+  }
+  /** Whether any key or mouse button bound to `action` is held. */
+  held(action: Action) {
+    return this.bindings[action].some((code) => this.keys.has(code));
+  }
+  /** Primary or alternate fire from any device; `mouse` is also set by scripted tests. */
+  firing(alt: boolean) {
+    return (
+      this.mouse[alt ? 1 : 0] ||
+      this.held(alt ? "alternate" : "primary") ||
+      (alt ? this.controls.secondary : this.controls.primary)
+    );
+  }
+  /** One-shot actions when their key or button goes down. */
+  press(action: Action) {
+    if (this.mode !== "playing") return;
+    if (action === "pause") this.setMode("paused");
+    else if (action === "next") this.cycleWeapon(1);
+    else if (action === "previous") this.cycleWeapon(-1);
+    else if (action === "inspect") this.weaponMotion.inspect = 1.7;
+    else if (action === "tarot") this.activateCard();
+    else if (action === "use") this.useGate();
+    else if (action.startsWith("weapon"))
+      this.equip(Number(action.slice(-1)) - 1);
+  }
+  /** Walk through the open gate when standing at it. */
+  useGate() {
+    if (
+      this.mode === "playing" &&
+      this.arenaCleared &&
+      Math.hypot(this.position.x, this.position.z + 28) < 5
+    )
+      this.nextArena();
+  }
+  /** Label of the keys bound to an action, for prompts. */
+  keyFor(action: Action) {
+    return actionLabel(this.bindings, action);
+  }
+  moveKeys() {
+    return moveLabel(this.bindings);
   }
   private mat(color: number) {
     if (!this.projectileMats.has(color))
@@ -1239,7 +1276,7 @@ export class Game {
       this.notify("OUT OF AMMO  /  SWITCH WEAPON", 1);
       return;
     }
-    const storm = id === 4 && alt && (this.mouse[0] || this.controls.primary);
+    const storm = id === 4 && alt && this.firing(false);
     if (storm && (this.ammo[4] < 1 || this.altAmmo[4] < 16)) {
       this.cooldown = 0.2;
       this.notify("STORM REQUIRES 1 SHURIKEN + 16 CHARGE", 1);
@@ -1481,15 +1518,15 @@ export class Game {
     this.damageFlash = Math.max(0, this.damageFlash - dt);
     const haste = this.cardTime > 0 && this.save.selectedCard === 1;
     const speed =
-      (this.keys.has("ShiftLeft") || this.controls.sprint ? 13 : 10) *
+      (this.held("sprint") || this.controls.sprint ? 13 : 10) *
       (haste ? 1.4 : 1);
     let x =
-        Number(this.keys.has("KeyD")) -
-        Number(this.keys.has("KeyA")) +
+        Number(this.held("right")) -
+        Number(this.held("left")) +
         this.controls.moveX,
       z =
-        Number(this.keys.has("KeyS")) -
-        Number(this.keys.has("KeyW")) +
+        Number(this.held("back")) -
+        Number(this.held("forward")) +
         this.controls.moveY;
     const len = Math.max(1, Math.hypot(x, z));
     x /= len;
@@ -1499,13 +1536,11 @@ export class Game {
     const smoothing = 1 - Math.exp(-dt * (this.grounded ? 16 : 5));
     this.velocity.x = T.MathUtils.lerp(this.velocity.x, desiredX, smoothing);
     this.velocity.z = T.MathUtils.lerp(this.velocity.z, desiredZ, smoothing);
-    if (this.keys.has("ArrowLeft")) this.yaw += dt * 1.8;
-    if (this.keys.has("ArrowRight")) this.yaw -= dt * 1.8;
-    if (this.keys.has("ArrowUp"))
-      this.pitch = clamp(this.pitch + dt, -1.45, 1.45);
-    if (this.keys.has("ArrowDown"))
-      this.pitch = clamp(this.pitch - dt, -1.45, 1.45);
-    if ((this.keys.has("Space") || this.controls.jump) && this.grounded) {
+    if (this.held("lookLeft")) this.yaw += dt * 1.8;
+    if (this.held("lookRight")) this.yaw -= dt * 1.8;
+    if (this.held("lookUp")) this.pitch = clamp(this.pitch + dt, -1.45, 1.45);
+    if (this.held("lookDown")) this.pitch = clamp(this.pitch - dt, -1.45, 1.45);
+    if ((this.held("jump") || this.controls.jump) && this.grounded) {
       this.velocity.y = 8;
       this.grounded = false;
     }
@@ -1543,10 +1578,8 @@ export class Game {
       this.velocity.y = 0;
       this.grounded = true;
     }
-    if (this.mouse[1] || this.controls.secondary || this.keys.has("KeyX"))
-      this.shoot(true);
-    else if (this.mouse[0] || this.controls.primary || this.keys.has("KeyZ"))
-      this.shoot(false);
+    if (this.firing(true)) this.shoot(true);
+    else if (this.firing(false)) this.shoot(false);
     if (!this.arenaCleared) {
       if (this.remaining > 0) {
         this.spawnTimer -= dt;
@@ -2286,7 +2319,7 @@ export class Game {
       this.velocity.x * Math.cos(this.yaw) -
         this.velocity.z * Math.sin(this.yaw),
       this.grounded,
-      this.keys.has("ShiftLeft"),
+      this.held("sprint"),
     );
     w.root.position.set(pose.x, pose.y, pose.z);
     w.root.rotation.set(pose.rx, pose.ry, pose.rz);
@@ -2294,7 +2327,7 @@ export class Game {
       pose.mechanical,
       this.weaponMotion.alt,
       animDt,
-      this.mouse[0] || this.mouse[1] || this.cooldown > 0,
+      this.firing(false) || this.firing(true) || this.cooldown > 0,
     );
     w.flash.visible = this.weaponMotion.flash > 0 && this.mode === "playing";
     w.flash.rotation.z = this.elapsed * 37;

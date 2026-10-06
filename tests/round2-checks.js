@@ -1,0 +1,163 @@
+// Scenario checks for the second improvement round (see docs/IMPROVEMENTS.md).
+// Evaluate against `npm run dev`, or run with `npm run test:browser -- --checks round2`.
+(() => {
+  const g = window.__PURGATORY__.game,
+    results = [],
+    saved = structuredClone(g.save),
+    options = g.settings(),
+    storedOptions = localStorage.getItem("purgatory.options"),
+    V = g.position.constructor;
+  const assert = (x, m) => {
+    if (!x) throw Error(m);
+  };
+  const check = (name, fn) => {
+    try {
+      results.push({ name, passed: true, detail: fn() });
+    } catch (e) {
+      results.push({ name, passed: false, error: String(e) });
+    }
+  };
+  const setup = (level = 0, room = 0) => {
+    g.start(level, room, false);
+    g.waveDelay = 9999;
+    g.invulnerable = 0;
+    g.sound.setVolume(0);
+  };
+  const step = (frames) => {
+    for (let i = 0; i < frames; i++) g.update(1 / 60);
+  };
+  const key = (type, code, target = document.body) =>
+    target.dispatchEvent(
+      new KeyboardEvent(type, { code, key: code, bubbles: true }),
+    );
+  const tap = (code) => {
+    key("keydown", code);
+    key("keyup", code);
+  };
+  const mouse = (type, button, target) =>
+    target.dispatchEvent(
+      new MouseEvent(type, { button, bubbles: true, cancelable: true }),
+    );
+  const click = (selector) => {
+    const el = document.querySelector(selector);
+    assert(el, "Missing " + selector);
+    el.click();
+  };
+  /** Rebind through the real Options › Controls page. */
+  const rebind = (action, slot, input) => {
+    g.setMode("menu");
+    if (!document.querySelector('[data-action="settings-tab"]'))
+      click('[data-action="page"][data-value="settings"]');
+    click('[data-action="settings-tab"][data-value="controls"]');
+    click(`[data-action="rebind"][data-value="${action}:${slot}"]`);
+    assert(
+      document.querySelector(".rebind-slot.listening"),
+      "Slot is not listening",
+    );
+    if (typeof input === "number") {
+      mouse("mousedown", input, window);
+      mouse("mouseup", input, window);
+      mouse("auxclick", input, window);
+    } else key("keydown", input, window);
+    return document.querySelector(".rebind-note")?.textContent || "";
+  };
+
+  check("a rebound movement key moves and the old key does not", () => {
+    const note = rebind("forward", 0, "KeyI");
+    assert(/Move forward: I/.test(note), note);
+    setup();
+    let z = g.position.z;
+    key("keydown", "KeyW");
+    step(30);
+    key("keyup", "KeyW");
+    assert(Math.abs(g.position.z - z) < 0.01, "Old key W still moves");
+    key("keydown", "KeyI");
+    step(30);
+    key("keyup", "KeyI");
+    assert(g.position.z < z - 2, "Rebound key I did not move");
+    assert(
+      document
+        .getElementById("hud-help")
+        .textContent.startsWith("I A S D MOVE"),
+      document.getElementById("hud-help").textContent,
+    );
+  });
+
+  check("a key taken from another action is moved, and says so", () => {
+    const note = rebind("jump", 0, "KeyA");
+    assert(/A moved from Strafe left to Jump/.test(note), note);
+    assert(g.bindings.left.length === 0, "Strafe left kept A");
+    setup();
+    key("keydown", "KeyA");
+    step(2);
+    key("keyup", "KeyA");
+    assert(g.velocity.y > 0 || g.position.y > 1.76, "A did not jump");
+  });
+
+  check("rebound fire and weapon keys work", () => {
+    rebind("alternate", 1, "KeyJ");
+    rebind("weapon4", 0, "KeyU");
+    setup();
+    tap("KeyU");
+    assert(g.weapon === 3, "U did not select weapon 4");
+    const before = g.altAmmo[3];
+    key("keydown", "KeyJ");
+    step(3);
+    key("keyup", "KeyJ");
+    assert(g.altAmmo[3] < before, "J did not fire the chaingun");
+  });
+
+  check("a mouse side button can use the gate", () => {
+    const note = rebind("use", 0, 3);
+    assert(/Use gate: MOUSE 4/.test(note), note);
+    setup();
+    g.arenaCleared = true;
+    g.position.set(0, 1.75, -27);
+    mouse("mousedown", 3, g.canvas);
+    mouse("mouseup", 3, window);
+    assert(g.room === 1, "Side button did not use the gate");
+    g.onHUD();
+  });
+
+  check("bindings persist with the options and Escape always pauses", () => {
+    rebind("pause", 0, "KeyO");
+    const stored = JSON.parse(localStorage.getItem("purgatory.options"));
+    assert(
+      stored.bindings.use[0] === "Mouse3",
+      JSON.stringify(stored.bindings.use),
+    );
+    assert(stored.bindings.pause[0] === "KeyO", "Pause binding not saved");
+    setup();
+    tap("KeyP");
+    assert(g.mode === "playing", "Unbound P still paused");
+    tap("KeyO");
+    assert(g.mode === "paused", "O did not pause");
+    g.setMode("playing");
+    tap("Escape");
+    assert(g.mode === "paused", "Escape did not pause");
+  });
+
+  check("Escape cancels a capture and reset restores defaults", () => {
+    const note = rebind("tarot", 0, "Escape");
+    assert(/Unchanged/.test(note) && g.bindings.tarot[0] === "KeyQ", note);
+    rebind("inspect", 0, "Backspace");
+    assert(g.bindings.inspect.length === 0, "Backspace did not clear");
+    click('[data-action="reset-bindings"]');
+    assert(
+      g.bindings.forward[0] === "KeyW" && g.bindings.left[0] === "KeyA",
+      "Reset did not restore defaults",
+    );
+    return document.querySelector(".rebind-note").textContent;
+  });
+
+  g.applySettings(options);
+  if (storedOptions === null) localStorage.removeItem("purgatory.options");
+  else localStorage.setItem("purgatory.options", storedOptions);
+  g.save = saved;
+  g.persist();
+  g.level = saved.level;
+  g.room = 0;
+  g.loadArena();
+  g.setMode("menu");
+  return results;
+})();

@@ -144,12 +144,7 @@ export class Controls {
     if (action === "previous") g.equip((g.weapon + 4) % 5);
     if (action === "next") g.equip((g.weapon + 1) % 5);
     if (action === "inspect") g.weaponMotion.inspect = 1.7;
-    if (
-      action === "use" &&
-      g.arenaCleared &&
-      Math.hypot(g.position.x, g.position.z + 28) < 5
-    )
-      g.nextArena();
+    if (action === "use") g.useGate();
     if (action === "tarot") g.activateCard();
     if (action === "pause") g.setMode("paused");
   }

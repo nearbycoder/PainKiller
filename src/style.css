@@ -529,6 +529,67 @@ body[data-mode="dead"] #world {
   font-size: 12px;
   color: #ccb98f;
 }
+.rebind-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 28px;
+  margin-top: 18px;
+}
+.rebind-note {
+  grid-column: 1 / -1;
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #a08c6e;
+}
+.rebind-row {
+  display: grid;
+  grid-template-columns: 1fr 92px 92px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid #b89b6330;
+  font-size: 15px;
+  color: #bdb098;
+}
+.rebind-slot {
+  padding: 5px 4px;
+  border: 1px solid #b89b6355;
+  background: #0b0a0980;
+  color: #e3cfa4;
+  font:
+    600 12px/1.2 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.rebind-slot.empty {
+  color: #6f6352;
+}
+.rebind-slot:hover,
+.rebind-slot:focus-visible {
+  border-color: #e3c698;
+}
+.rebind-slot.listening {
+  border-color: #e0331f;
+  color: #ffd9a0;
+}
+.rebind-reset {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 1px solid #b89b6355;
+  background: none;
+  color: #b59c75;
+  font:
+    600 13px "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.rebind-reset:hover {
+  color: #e3c698;
+}
 .difficulty-note {
   font-size: 15px;
   color: #a08c6e;
