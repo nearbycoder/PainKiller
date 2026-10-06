@@ -119,7 +119,7 @@ Grab the latest build from [**Releases**](https://github.com/nearbycoder/PainKil
 | --- | --- |
 | `Purgatory-<version>-x86_64.AppImage` | `chmod +x` it and run it. Without FUSE 2, run it with `--appimage-extract-and-run`. |
 | `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed. |
-| `purgatory-<version>-web.zip` | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. |
+| `purgatory-<version>-web.zip` | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
 
 The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested; the web build should run in current Chromium and Firefox. Desktop saves go to `~/.config/Purgatory/`.
 
@@ -134,7 +134,10 @@ npm run dev             # browser build with hot reload at http://localhost:5187
 npm run build           # type-check + production bundle in dist/
 npm run desktop         # run dist/ in the Electron desktop shell
 npm run package:linux   # AppImage + portable tar.gz in release/
+npm run package:web     # static site zip in release/ (purgatory-<version>-web.zip)
 ```
+
+The web build is a plain static site (relative paths, no server code), so it can be hosted from any static host. `.github/workflows/pages.yml` can publish it to GitHub Pages, but it only runs when started by hand and needs Pages enabled for the repository first; nothing is hosted yet.
 
 If npm's install-script policy skipped the Electron download, run `node node_modules/electron/install.js`. `./play.sh` runs a packaged build if one exists, otherwise it builds and launches the desktop shell.
 

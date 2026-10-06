@@ -7,24 +7,28 @@ import "./touch.css";
 import { Game } from "./game";
 import { UI } from "./ui";
 import { LEVELS } from "./data";
-import { loadArt } from "./assets";
+import { loadArt, prefetchArt } from "./assets";
 import { initPhysics } from "./physics";
 async function boot() {
   try {
     const app = document.querySelector("#app")!;
     app.innerHTML = `<main class="art-loading"><span>PURGATORY</span><h1>Opening Purgatory</h1><p>Loading models and materials…</p><progress max="1" value="0"></progress></main>`;
     await initPhysics();
-    await loadArt((name, value) => {
-      const progress = app.querySelector("progress");
-      if (progress) progress.value = value;
-      const label = app.querySelector("p");
-      if (label)
-        label.textContent = `Preparing ${name.replaceAll("-", " ")} · ${Math.round(value * 100)}%`;
-    });
+    // Production builds open the menu before the cathedral, crypt and factory scenes arrive.
+    await loadArt(
+      (name, value) => {
+        const progress = app.querySelector("progress");
+        if (progress) progress.value = value;
+        const label = app.querySelector("p");
+        if (label)
+          label.textContent = `Preparing ${name.replaceAll("-", " ")} · ${Math.round(value * 100)}%`;
+      },
+      import.meta.env.DEV,
+    );
     app.innerHTML = "";
     const game = new Game(document.querySelector<HTMLCanvasElement>("#world")!);
     new UI(game);
-    void game.init();
+    void game.init().then(prefetchArt);
     // Read-only inspection is available in every build. Test controls are dev-only.
     window.__PURGATORY__ = {
       state: () => game.state(),

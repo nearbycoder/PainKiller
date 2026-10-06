@@ -7,7 +7,7 @@ import { projectileModel } from "./projectile-models";
 import { Controls } from "./controls";
 import { refillAmmo } from "./ammunition";
 import { authoredPickup } from "./authored-models";
-import { art } from "./assets";
+import { art, DEFERRED_ART, ensureArt, hasArt } from "./assets";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -70,7 +70,8 @@ function writeSeenHints(seen: Iterable<string>) {
 }
 /** Particle bursts closer than this to the eye are skipped (metres). */
 const NEAR_PARTICLE_DISTANCE = 1.5;
-type Mode = "menu" | "playing" | "paused" | "dead" | "result" | "ending";
+type Mode =
+  "menu" | "loading" | "playing" | "paused" | "dead" | "result" | "ending";
 interface Enemy {
   model: EnemyModel;
   type: EnemyType;
@@ -154,6 +155,8 @@ export class Game {
   levelSouls = 0;
   secrets = 0;
   elapsed = 0;
+  /** The level waiting on a deferred environment download, while mode is "loading". */
+  loading = { level: 0, room: 0, error: "" };
   /** One-time combat hints; which ones were shown is kept in local storage. */
   hints = new HintQueue(readSeenHints());
   /** World positions that recently hurt the player, for the HUD's hit-direction arcs. */
@@ -340,6 +343,8 @@ export class Game {
     this.applySettings(settings);
     this.level = this.save.level;
     this.room = 0;
+    // The saved level is the title backdrop; wait for its scene if it is still loading.
+    await ensureArt(LEVELS[this.level].theme).catch(() => (this.level = 0));
     this.loadArena();
     this.onChange();
   }
@@ -450,6 +455,22 @@ export class Game {
     room = level === this.save.level ? this.save.room : 0,
     lock = true,
   ) {
+    const theme = LEVELS[clamp(level, 0, 23)].theme;
+    if (!hasArt(theme)) {
+      // Web builds fetch some environments after the menu appears; wait for this one.
+      this.loading = { level: clamp(level, 0, 23), room, error: "" };
+      this.setMode("loading");
+      ensureArt(theme).then(
+        () => {
+          if (this.mode === "loading") this.start(level, room, lock);
+        },
+        (error) => {
+          this.loading.error = String(error);
+          this.onChange();
+        },
+      );
+      return;
+    }
     this.level = clamp(level, 0, 23);
     this.room = clamp(room, 0, LEVELS[this.level].rooms - 1);
     this.health = 100;
@@ -2358,6 +2379,7 @@ export class Game {
   state() {
     return {
       mode: this.mode,
+      environmentsPending: DEFERRED_ART.filter((t) => !hasArt(t)),
       level: this.level,
       room: this.room,
       wave: this.wave,

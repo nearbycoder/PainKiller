@@ -11,15 +11,22 @@ export const art = {
   materials: new Map<string, T.MeshStandardMaterial>(),
 };
 const base = `${import.meta.env.BASE_URL}assets/`;
+const loader = new GLTFLoader();
+/** Environment scenes only some levels use; the web build fetches them after the menu is up. */
+export const DEFERRED_ART = ["cathedral", "crypt", "factory"];
+const pending = new Map<string, Promise<void>>();
+/**
+ * Load actors, weapons, supplies, the cemetery (the title backdrop) and the sky. With
+ * `everything`, the deferred environments load up front too, so development builds and
+ * scripted checks never wait on them; otherwise call prefetchArt() once the menu is up.
+ */
 export async function loadArt(
   progress: (label: string, fraction: number) => void,
+  everything = true,
 ) {
-  const loader = new GLTFLoader();
   const names = [
     "cemetery",
-    "cathedral",
-    "crypt",
-    "factory",
+    ...(everything ? DEFERRED_ART : []),
     "revenant",
     "skeleton",
     "enemy-wardrobe",
@@ -31,39 +38,7 @@ export async function loadArt(
   for (let i = 0; i < names.length; i += 2) {
     await Promise.all(
       names.slice(i, i + 2).map(async (name) => {
-        const gltf = await loader.loadAsync(`${base}models/${name}.glb`);
-        gltf.scene.traverse((o) => {
-          if (o instanceof T.Mesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
-            for (const mat of Array.isArray(o.material)
-              ? o.material
-              : [o.material]) {
-              if (mat instanceof T.MeshStandardMaterial) {
-                if (name === "enemy-wardrobe") {
-                  mat.color.set(
-                    mat.name === "Soot wool"
-                      ? 0x414747
-                      : mat.name === "Weathered armor"
-                        ? 0x52646a
-                        : mat.name === "Worn hide"
-                          ? 0x77665a
-                          : 0x988564,
-                  );
-                  mat.roughness = mat.name === "Weathered armor" ? 0.63 : 0.9;
-                }
-                for (const t of [mat.map, mat.normalMap, mat.roughnessMap])
-                  if (t) t.anisotropy = 8;
-                if (
-                  (name === "cemetery" || name === "weapon-0") &&
-                  !art.materials.has(mat.name)
-                )
-                  art.materials.set(mat.name, mat);
-              }
-            }
-          }
-        });
-        library.set(name, gltf);
+        await loadModel(name);
         progress(name, ++completed / (names.length + 1));
       }),
     );
@@ -72,6 +47,63 @@ export async function loadArt(
   art.sky.mapping = T.EquirectangularReflectionMapping;
   art.ready = true;
   progress("Ready", 1);
+}
+/** Whether a theme's scene is loaded; procedural themes never need one. */
+export function hasArt(theme: string) {
+  return !DEFERRED_ART.includes(theme) || library.has(theme);
+}
+/** Load one deferred environment, sharing the request with a prefetch already under way. */
+export function ensureArt(theme: string): Promise<void> {
+  if (hasArt(theme)) return Promise.resolve();
+  if (!pending.has(theme))
+    pending.set(
+      theme,
+      loadModel(theme).catch((error) => {
+        pending.delete(theme);
+        throw error;
+      }),
+    );
+  return pending.get(theme)!;
+}
+/** Fetch the remaining environments one at a time in the background. */
+export async function prefetchArt() {
+  for (const theme of DEFERRED_ART)
+    try {
+      await ensureArt(theme);
+    } catch (error) {
+      console.warn(`Could not prefetch ${theme}; retrying when needed`, error);
+    }
+}
+async function loadModel(name: string) {
+  const gltf = await loader.loadAsync(`${base}models/${name}.glb`);
+  gltf.scene.traverse((o) => {
+    if (!(o instanceof T.Mesh)) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    for (const mat of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!(mat instanceof T.MeshStandardMaterial)) continue;
+      if (name === "enemy-wardrobe") {
+        mat.color.set(
+          mat.name === "Soot wool"
+            ? 0x414747
+            : mat.name === "Weathered armor"
+              ? 0x52646a
+              : mat.name === "Worn hide"
+                ? 0x77665a
+                : 0x988564,
+        );
+        mat.roughness = mat.name === "Weathered armor" ? 0.63 : 0.9;
+      }
+      for (const t of [mat.map, mat.normalMap, mat.roughnessMap])
+        if (t) t.anisotropy = 8;
+      if (
+        (name === "cemetery" || name === "weapon-0") &&
+        !art.materials.has(mat.name)
+      )
+        art.materials.set(mat.name, mat);
+    }
+  });
+  library.set(name, gltf);
 }
 export function asset(name: string): GLTF | undefined {
   return library.get(name);

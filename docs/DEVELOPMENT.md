@@ -8,6 +8,14 @@ Desktop campaign progress is atomically written to Electron's per-user data dire
 
 The development preview uses browser local storage, separate from the desktop save. Desktop smoke tests use an isolated profile under `artifacts/`.
 
+## Web build
+
+`npm run package:web` builds and writes `release/purgatory-<version>-web.zip` with `tools/package-web.cjs` (Node's zlib only; no `zip` binary needed). A Vite build plugin keeps the source texture folders that `tools/fetch-art.py` downloads into `public/assets/textures/` out of `dist/`, because the GLBs embed their textures and the runtime only requests `moonrise.hdr`. That took a local `dist/` from 150 MB to 86 MB; the zip is about 42 MB.
+
+Production builds load the actors, weapons, supplies, the cemetery (title backdrop) and the HDR sky before the menu: 50 MB instead of 86 MB. `prefetchArt()` then fetches the cathedral, crypt and factory scenes one at a time. `Game.start()` waits on a loading screen if the chosen level's scene is still downloading, and offers *Try again* if the download fails. Development builds load everything up front so scripted checks and trailer capture never wait. `state().environmentsPending` lists scenes not yet loaded.
+
+Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server`: in an offscreen Electron (Chromium) window driven through the real menus, jumping straight to Soul Foundry with its download delayed showed the loading screen and then the authored foundry, a blocked crypt download showed the retry screen and recovered, and the background-prefetched cathedral started without waiting; in Playwright's cached `chrome-headless-shell` 151 (SwiftShader WebGL 2) it reached the menu and Hallowed Ground with no console errors. Firefox and Safari were not tested.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.

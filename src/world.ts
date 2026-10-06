@@ -1,4 +1,4 @@
-import { art } from "./assets";
+import { art, hasArt } from "./assets";
 import { authoredCemetery, authoredThemes } from "./authored-world";
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -66,7 +66,9 @@ function texture(seed: number) {
   return t;
 }
 export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
-  if (art.ready && authoredThemes.has(level.theme))
+  // A deferred scene still downloading falls back to its procedural arena; this only
+  // happens for a menu backdrop, because Game.start() waits for the scene.
+  if (art.ready && authoredThemes.has(level.theme) && hasArt(level.theme))
     return authoredCemetery(scene, room, level.theme);
   const random = rng(level.seed + room * 191);
   const root = new T.Group();
