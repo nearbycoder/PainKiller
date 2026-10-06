@@ -2,7 +2,7 @@
 
 This is a review of Purgatory v0.1.0 as a player would meet it. It is grounded in the code, the automated checks, a headless autopilot, and screenshots of the running game. It ranks what to fix next and proposes the scope for the next round of work.
 
-## Outcome of this round (2026-10-06)
+## Round 1 results (2026-10-06)
 
 The orchestrator approved items 1, 2, 3, 5 and 6 as planned. Item 4 was narrowed: commit the autopilot and its before/after table, fix only clearly broken encounters, and leave the difficulty direction to the owner. Weapon progression (#14) is out of scope.
 
@@ -16,6 +16,40 @@ The orchestrator approved items 1, 2, 3, 5 and 6 as planned. Item 4 was narrowed
 | 6. First-run combat hints | Done | `tests/hints.test.ts`; browser check (once each, saved, held during a general's introduction, never when disabled); captures `06-*.jpg` including the touch layout |
 
 Still open: everything below rank 6 in the list, the owner decisions at the end, and human checks (a listening pass on the new audio, playtesting the difficulty curve, physical controllers and phones, Firefox and Safari).
+
+## Round 2 scope (2026-10-06)
+
+Picked from the ranked list below, plus what round 1 showed. A contact sheet of all 18 procedural themes (`docs/media/improvements/round2/themes-before.jpg`) shows them sharing one brown flagstone floor and the same four torch plinths. Prison and asylum are indistinguishable, snow has no snow, and town, castle, Babel and the canals read as the same yard. Out of scope as owner decisions: difficulty retuning (including a shockwave wind-up, which would make the deadliest general attack easier), weapon progression, hosting, licensing and releases. Meshopt compression (#9) needs a new tool install, so it waits.
+
+### R2-1. Key rebinding (ranked #7)
+
+Keyboard and mouse bindings for every action (move, jump, sprint, fire, alternate fire, next/previous weapon, weapons 1–5, use, tarot, inspect, pause, keyboard look), two slots each, editable in Options › Controls. Capturing a key that another action uses moves it and says so. Escape always pauses and cancels a capture, so a player cannot lock themselves out. Bindings persist with the other options and reset with "Restore all defaults". The HUD key line, gate prompt, notifications and keyboard hints show the bound keys.
+
+**Accept / verify:** unit tests for parsing, validation, conflicts and labels; browser checks that a rebound key moves, fires, jumps and uses the gate while the old key no longer does, that a mouse side button can be bound, that bindings survive a reload of settings, and that Escape still pauses; a capture of the Controls page. The existing input checks stay green.
+
+### R2-2. Resume at the current wave (ranked #11, reduced)
+
+Today, quitting mid-sector restores the sector's start. Instead the save records a snapshot at the start of each wave: wave number, health, armor, ammunition, souls, the tarot's use, the sector's supplies already taken, and the level's running stats. *Continue* resumes there. Death still restarts the sector with fresh supplies, as now. This is not an exact-frame save, but it caps the loss from quitting at one wave.
+
+**Accept / verify:** unit tests that `parseSave` accepts a valid snapshot and rejects malformed ones; browser checks that quitting in wave 3 and continuing resumes wave 3 with the snapshot's health and ammo and without respawning taken supplies, that death clears the snapshot back to the sector start, and that the title and pause captions say which wave is saved; a desktop smoke run to make sure the native save still round-trips.
+
+### R2-3. Per-theme arena identity (ranked #8)
+
+Give each of the 18 procedural themes its own ground and dressing without moving any collider, so encounter balance is unchanged: snow cover and frozen pools, standing water in the swamp, canals and harbor, sand and cracked tile, plank decks, prison flagstones against asylum tiles, and a signature landmark where two themes now look alike. The shared torch plinths vary by theme.
+
+**Accept / verify:** a before/after contact sheet of all 18 themes; a test that each theme's collider list is identical before and after (layout and difficulty untouched); `tests/performance-checks.js` draw calls and triangles within 10% of baseline on High; existing browser checks green.
+
+### R2-4. Per-level records (ranked #10)
+
+The result screen marks a new best time, and level select shows each level's best time, relics found and whether it was cleared without dying. Records come from the existing level stats (round 1 made them survive a sector retry) plus a death count.
+
+**Accept / verify:** unit tests for record merging and save parsing; a browser check that finishing a level stores and shows the record, and that a slower clear keeps the old best; captures of the result screen and level select.
+
+### R2-5. Generals' identity (stretch; cosmetic)
+
+The five generals share one rig. Give each a distinct silhouette and palette (scale, colour, emissive markings, wardrobe pieces from the existing `enemy-wardrobe.glb`) without changing health, speed, attacks or hitboxes.
+
+**Accept / verify:** a capture of all five; a check that general health, speed and radius are unchanged. Dropped and reported if it needs new art.
 
 ## Baseline (2026-10-06, `main` at 4672978)
 
