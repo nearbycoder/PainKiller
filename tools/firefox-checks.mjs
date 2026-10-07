@@ -7,7 +7,9 @@
 //
 // Firefox is driven headless over WebDriver BiDi, which it has built in, so nothing needs
 // installing. It runs in a throwaway profile under artifacts/ that is deleted afterwards,
-// never your own. Exits non-zero if any check fails, a script throws, or the page logs
+// never your own. A check's "__RUNNER__ size WxH" log resizes the viewport; Firefox has
+// no touch emulation here, so "__RUNNER__ touch on|off" is answered with
+// window.__RUNNER_TOUCH__ = false. Exits non-zero if any check fails, a script throws, or the page logs
 // an error.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -161,7 +163,21 @@ async function firefox() {
     if (msg.id && pending.has(msg.id)) {
       pending.get(msg.id)(msg);
       pending.delete(msg.id);
-    } else if (msg.method === "log.entryAdded") logs.push(msg.params);
+    } else if (msg.method === "log.entryAdded") {
+      logs.push(msg.params);
+      const size = /^__RUNNER__ size (\d+)x(\d+)$/.exec(msg.params.text);
+      if (size)
+        void send("browsingContext.setViewport", {
+          context,
+          viewport: { width: Number(size[1]), height: Number(size[2]) },
+        });
+      if (/^__RUNNER__ touch (on|off)$/.test(msg.params.text))
+        void send("script.evaluate", {
+          expression: "window.__RUNNER_TOUCH__ = false",
+          target: { context },
+          awaitPromise: false,
+        });
+    }
   };
   const send = (method, params = {}) =>
     new Promise((resolve, reject) => {

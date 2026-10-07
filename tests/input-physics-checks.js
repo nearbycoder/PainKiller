@@ -247,6 +247,13 @@
             originals[i];
         });
         g.controls.clear();
+        // A touch switches to the touch layout; moving the mouse switches back.
+        window.dispatchEvent(
+          new PointerEvent("pointermove", {
+            pointerType: "mouse",
+            movementX: 1,
+          }),
+        );
       }
     },
   );

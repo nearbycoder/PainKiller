@@ -515,7 +515,7 @@ export class Game {
       showFps: s.showFps,
     });
     const root = document.documentElement;
-    root.style.setProperty("--hud-scale", String(s.hudScale));
+    this.fitHud();
     root.style.setProperty("--crosshair-size", String(s.crosshairSize));
     root.style.setProperty(
       "--crosshair-color",
@@ -551,9 +551,21 @@ export class Game {
       );
     } catch {}
   }
+  /**
+   * The interface scale, capped so the HUD still fits a small window (a 1280 × 800
+   * window holds it at 150%); the chosen scale is kept for a larger window.
+   */
+  fitHud() {
+    const fit = Math.min(innerWidth / 853, innerHeight / 533);
+    document.documentElement.style.setProperty(
+      "--hud-scale",
+      String(Math.min(this.hudScale, fit)),
+    );
+  }
   resize() {
     const w = innerWidth,
       h = innerHeight;
+    this.fitHud();
     this.renderer.setSize(w, h);
 
     this.camera.aspect = w / h;

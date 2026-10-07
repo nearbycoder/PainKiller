@@ -77,12 +77,32 @@ export class Controls {
     this.element.id = "touch-controls";
     this.element.innerHTML = `<div id="touch-move" role="group" aria-label="Movement joystick"><i></i><span>MOVE</span></div><div id="touch-look" aria-label="Drag to look"></div><div class="touch-actions"><button data-touch="secondary" aria-label="Alternate fire">ALT</button><button data-touch="primary" class="touch-fire" aria-label="Fire">FIRE</button><button data-touch="jump" aria-label="Jump">JUMP</button><button data-touch="sprint" aria-label="Sprint">RUN</button></div><div class="touch-tools"><button data-touch="previous" aria-label="Previous weapon">◀</button><button data-touch="next" aria-label="Next weapon">▶</button><button data-touch="use" aria-label="Use gate">USE</button><button data-touch="tarot" aria-label="Activate tarot">TAROT</button><button data-touch="inspect" aria-label="Inspect weapon">INSPECT</button><button data-touch="pause" aria-label="Pause">Ⅱ</button></div><span id="touch-rotate">Landscape gives you a wider view</span>`;
     document.body.append(this.element);
-    const layout = () => {
-      this.mobile = matchMedia("(pointer: coarse)").matches || innerWidth < 900;
-      document.body.classList.toggle("touch-layout", this.mobile);
+    // The touch layout follows the input, not the window's width: a mouse in a narrow
+    // window still aims with the mouse. A touch on a touchscreen laptop switches to it,
+    // and the mouse moving or clicking switches back.
+    const coarse = matchMedia("(pointer: coarse)");
+    const layout = (touch: boolean) => {
+      this.mobile = touch;
+      document.body.classList.toggle("touch-layout", touch);
     };
-    layout();
-    window.addEventListener("resize", layout);
+    layout(coarse.matches);
+    coarse.addEventListener?.("change", () => layout(coarse.matches));
+    window.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.pointerType === "touch") layout(true);
+        else if (e.pointerType === "mouse") layout(false);
+      },
+      true,
+    );
+    window.addEventListener("pointermove", (e) => {
+      if (
+        this.mobile &&
+        e.pointerType === "mouse" &&
+        (e.movementX || e.movementY)
+      )
+        layout(false);
+    });
     const move = this.element.querySelector<HTMLElement>("#touch-move")!;
     let moving: number | undefined,
       startX = 0,
