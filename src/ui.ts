@@ -1,6 +1,7 @@
 import { Game } from "./game";
 import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
 import { formatTime, freshSave } from "./core";
+import { cardConditionMet, levelCard, TAROT_SOULS } from "./tarot";
 import { AMMUNITION, lowAmmo } from "./ammunition";
 import {
   CROSSHAIR_COLORS,
@@ -549,7 +550,7 @@ export class UI {
         .map(([a, b]) => `<div><b>${a}</b><span>${b}</span></div>`)
         .join(
           "",
-        )}</div>${g.lastClear ? `<p class="record-line">${g.lastClear.fastest ? "<b>NEW BEST TIME</b>" : `BEST ${formatTime(g.lastClear.best)}`}${g.lastClear.deathless ? " · <b>DEATHLESS</b>" : ""}</p>` : ""}<nav>${this.button(g.mode === "ending" ? "Main menu" : "Continue", "" + (g.mode === "ending" ? "menu" : "next"), undefined, "data-default")}${g.mode === "ending" ? "" : this.button("Main menu", "menu")}</nav></main>`;
+        )}</div>${g.lastClear ? `<p class="record-line">${g.lastClear.fastest ? "<b>NEW BEST TIME</b>" : `BEST ${formatTime(g.lastClear.best)}`}${g.lastClear.deathless ? " · <b>DEATHLESS</b>" : ""}</p>` : ""}${this.cardEarned()}<nav>${this.button(g.mode === "ending" ? "Main menu" : "Continue", "" + (g.mode === "ending" ? "menu" : "next"), undefined, "data-default")}${g.mode === "ending" ? "" : this.button("Main menu", "menu")}</nav></main>`;
     else if (this.page === "home")
       content = paused ? this.pause() : this.home();
     else
@@ -583,7 +584,27 @@ export class UI {
   }
   pause() {
     const g = this.game;
-    return `<main class="pause-screen"><p class="menu-kicker">${LEVELS[g.level].name} · SECTOR ${g.room + 1}</p><h1>Paused</h1><div class="small-ornament">— ◆ —</div><nav aria-label="Pause menu">${this.button("Resume game", "resume", undefined, "data-default")}${this.button("Options", "page", "settings")}${this.button("Restart sector", "retry")}${this.button("Main menu", "menu")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${g.save.resume?.level === g.level && g.save.resume.room === g.room ? `Progress saved at the start of wave ${g.save.resume.wave}` : "Progress saved at the start of this sector"}</p></main>`;
+    return `<main class="pause-screen"><p class="menu-kicker">${LEVELS[g.level].name} · SECTOR ${g.room + 1}</p><h1>Paused</h1><div class="small-ornament">— ◆ —</div><nav aria-label="Pause menu">${this.button("Resume game", "resume", undefined, "data-default")}${this.button("Options", "page", "settings")}${this.button("Restart sector", "retry")}${this.button("Main menu", "menu")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${g.save.resume?.level === g.level && g.save.resume.room === g.room ? `Progress saved at the start of wave ${g.save.resume.wave}` : "Progress saved at the start of this sector"}</p>${this.tarotProgress()}</main>`;
+  }
+  /** On the result screen: a tarot card this clear won for the first time. */
+  cardEarned() {
+    const g = this.game,
+      card = g.lastClear?.card;
+    if (!card) return "";
+    const key = g.controls.connected ? g.padFor("tarot") : g.keyFor("tarot");
+    return `<p class="card-earned">TAROT CARD EARNED · <b>${CARDS[card.id].name.toUpperCase()}</b><span>${CARDS[card.id].detail} ${card.equipped ? `Equipped: press ${key} in combat, once per sector.` : "Equip it under Grave tarot."}</span></p>`;
+  }
+  /** On the pause screen: this level's tarot card and how close it is. */
+  tarotProgress() {
+    const g = this.game,
+      id = levelCard(LEVELS[g.level].chapter),
+      name = CARDS[id].name.toUpperCase();
+    const text = g.save.cards.includes(id)
+      ? `This level's card, ${name}, is already yours`
+      : cardConditionMet(g.levelSouls, g.secrets)
+        ? `${name} is yours when this level ends`
+        : `${name}: ${g.levelSouls} / ${TAROT_SOULS} souls this level, or find the relic`;
+    return `<p class="checkpoint-caption tarot-progress">Tarot · ${text}</p>`;
   }
   confirmation() {
     const copy: Record<string, [string, string, string]> = {
@@ -1031,7 +1052,7 @@ export class UI {
             " · " +
             Math.ceil(g.cardTime) +
             "s"
-        : g.save.cards.length
+        : g.save.cards.includes(g.save.selectedCard)
           ? (g.controls.connected ? g.padFor("tarot") : g.keyFor("tarot")) +
             " · " +
             (g.cardUsed

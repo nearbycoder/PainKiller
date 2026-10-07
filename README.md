@@ -81,7 +81,7 @@ Every kill drops a soul that drifts toward you and heals 1 HP. Collect **66** an
 
 ### Grave Tarot
 
-Find a level's hidden relic or collect 25 souls there to earn that chapter's card. Equip one of **Wrath** (double damage), **Quickening** (faster movement and firing) or **Bulwark** (ignore damage), then press **Q** once per sector for 30 seconds of power.
+Find a level's hidden relic or collect 25 souls there to earn that chapter's card; the pause screen shows how close you are, and the result screen names a card when you win it. Equip one of **Wrath** (double damage), **Quickening** (faster movement and firing) or **Bulwark** (ignore damage) under Grave tarot (your first card is equipped for you), then press **Q** once per sector for 30 seconds of power.
 
 ### Supplies, secrets and physics
 

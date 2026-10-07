@@ -540,6 +540,26 @@ body[data-mode="dead"] #world {
 .record-line b {
   color: #f0d49a;
 }
+.card-earned {
+  margin: 4px 0 14px;
+  font:
+    600 14px/1.4 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.14em;
+  color: #b59c75;
+}
+.card-earned b {
+  color: #f0d49a;
+}
+.card-earned span {
+  display: block;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  color: #c9b896;
+}
+.checkpoint-caption.tarot-progress {
+  margin-top: 8px;
+}
 .rebind-list {
   display: grid;
   grid-template-columns: 1fr 1fr;

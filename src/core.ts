@@ -1,3 +1,4 @@
+import { ownedSelection } from "./tarot";
 export function rng(seed: number) {
   return () => {
     seed |= 0;
@@ -227,6 +228,16 @@ export function parseSave(raw: string | null): Save {
   try {
     const s = JSON.parse(raw || "null");
     if (!s || s.version !== 1) return freshSave();
+    const cards: number[] = Array.isArray(s.cards)
+      ? [
+          ...new Set<number>(
+            s.cards.filter(
+              (x: unknown) =>
+                Number.isInteger(x) && Number(x) >= 0 && Number(x) < 3,
+            ),
+          ),
+        ]
+      : [];
     return {
       version: 1,
       unlocked: clamp(Math.floor(Number(s.unlocked) || 0), 0, 23),
@@ -234,17 +245,12 @@ export function parseSave(raw: string | null): Save {
       room: clamp(Math.floor(Number(s.room) || 0), 0, 4),
       kills: Math.max(0, Number(s.kills) || 0),
       souls: Math.max(0, Number(s.souls) || 0),
-      cards: Array.isArray(s.cards)
-        ? [
-            ...new Set<number>(
-              s.cards.filter(
-                (x: unknown) =>
-                  Number.isInteger(x) && Number(x) >= 0 && Number(x) < 3,
-              ),
-            ),
-          ]
-        : [],
-      selectedCard: clamp(Math.floor(Number(s.selectedCard) || 0), 0, 2),
+      cards,
+      // Never leave an unowned card equipped while another is owned.
+      selectedCard: ownedSelection(
+        cards,
+        clamp(Math.floor(Number(s.selectedCard) || 0), 0, 2),
+      ),
       best:
         s.best && typeof s.best === "object"
           ? (Object.fromEntries(

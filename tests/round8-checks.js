@@ -275,6 +275,152 @@
   delete canvas.requestPointerLock;
   delete document.exitPointerLock;
   g.hadMouse = false;
+
+  // R8-2: the tarot says what you earned, and never offers a card you do not own.
+  const chapterLevel = (chapter) =>
+    api.campaign.findIndex((l) => l.chapter === chapter);
+  const text = (selector) =>
+    document.querySelector(selector)?.textContent.replace(/\s+/g, " ") ?? "";
+  const hudCard = () => {
+    g.onHUD();
+    return text("#hud-card");
+  };
+  const finishLevel = () => {
+    // What walking through the last sector's open gate does.
+    g.room = api.campaign[g.level].rooms - 1;
+    g.arenaCleared = true;
+    g.nextArena();
+  };
+  const fresh = () => {
+    const save = structuredClone(saved);
+    Object.assign(save, { cards: [], selectedCard: 0, records: {}, best: {} });
+    delete save.resume;
+    g.save = save;
+  };
+
+  await check(
+    "a chapter II clear on a fresh save earns and equips Quickening",
+    async () => {
+      fresh();
+      api.start(chapterLevel(2), 0);
+      g.invulnerable = 1e9;
+      assert(
+        !/WRATH|QUICKENING/.test(hudCard()),
+        "offers a card: " + hudCard(),
+      );
+      // The 25th soul of the level, picked up for real.
+      g.levelSouls = 24;
+      g.addPickup("soul", g.position.clone().setY(1));
+      api.step(10);
+      assert(g.levelSouls === 25, "souls " + g.levelSouls);
+      assert(
+        /25 SOULS \/ TAROT CONDITION MET/.test(g.toast.replace(/\s+/g, " ")),
+        g.toast,
+      );
+      finishLevel();
+      assert(g.mode === "result", "mode " + g.mode);
+      const line = text(".card-earned");
+      assert(/TAROT CARD EARNED · QUICKENING/.test(line), line);
+      assert(/Equipped: press Q in combat/.test(line), line);
+      assert(
+        JSON.stringify(g.save.cards) === "[1]" && g.save.selectedCard === 1,
+        JSON.stringify([g.save.cards, g.save.selectedCard]),
+      );
+      // The next fight offers it, and Q awakens it.
+      click("next");
+      g.invulnerable = 1e9;
+      assert(hudCard() === "Q · QUICKENING", hudCard());
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "KeyQ", bubbles: true }),
+      );
+      window.dispatchEvent(
+        new KeyboardEvent("keyup", { code: "KeyQ", bubbles: true }),
+      );
+      assert(g.cardTime === 30 && g.cardUsed, "not awakened: " + g.toast);
+      return line;
+    },
+  );
+
+  await check("a second clear does not announce the card again", async () => {
+    api.start(chapterLevel(2), 0);
+    g.levelSouls = 30;
+    finishLevel();
+    assert(g.mode === "result", "mode " + g.mode);
+    assert(!document.querySelector(".card-earned"), text(".card-earned"));
+    assert(
+      JSON.stringify(g.save.cards) === "[1]",
+      JSON.stringify(g.save.cards),
+    );
+    return text(".record-line");
+  });
+
+  await check("a card chosen among owned ones is kept", async () => {
+    g.save.cards = [0, 1];
+    g.save.selectedCard = 0;
+    api.start(chapterLevel(3), 0);
+    g.secrets = 1;
+    finishLevel();
+    const line = text(".card-earned");
+    assert(/TAROT CARD EARNED · BULWARK/.test(line), line);
+    assert(/Equip it under Grave tarot/.test(line), line);
+    assert(g.save.selectedCard === 0, "selected " + g.save.selectedCard);
+    assert(
+      JSON.stringify(g.save.cards) === "[0,1,2]",
+      JSON.stringify(g.save.cards),
+    );
+    return line;
+  });
+
+  await check("the HUD never offers an unowned card", async () => {
+    // As an old save could hold it: Quickening owned, Wrath selected.
+    fresh();
+    g.save.cards = [1];
+    api.start(chapterLevel(2), 0);
+    const shown = hudCard();
+    assert(!/WRATH/.test(shown), shown);
+    // A save in that state loads with the owned card equipped.
+    const { parseSave } = await import("/src/core.ts");
+    const loaded = parseSave(JSON.stringify({ ...g.save, selectedCard: 0 }));
+    assert(loaded.selectedCard === 1, "loaded " + loaded.selectedCard);
+    return shown;
+  });
+
+  await check(
+    "the pause screen shows this level's card and progress",
+    async () => {
+      fresh();
+      const out = {};
+      const pauseLine = () => {
+        g.setMode("paused");
+        const line = text(".tarot-progress");
+        g.setMode("playing");
+        return line;
+      };
+      api.start(chapterLevel(3), 0);
+      out.start = pauseLine();
+      assert(
+        /BULWARK: 0 \/ 25 souls this level, or find the relic/i.test(out.start),
+        out.start,
+      );
+      g.levelSouls = 12;
+      out.twelve = pauseLine();
+      assert(/12 \/ 25/.test(out.twelve), out.twelve);
+      g.levelSouls = 25;
+      out.souls = pauseLine();
+      assert(
+        /BULWARK is yours when this level ends/i.test(out.souls),
+        out.souls,
+      );
+      g.levelSouls = 0;
+      g.secrets = 1;
+      out.relic = pauseLine();
+      assert(/yours when this level ends/i.test(out.relic), out.relic);
+      g.save.cards = [2];
+      out.owned = pauseLine();
+      assert(/BULWARK, is already yours/i.test(out.owned), out.owned);
+      return out;
+    },
+  );
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

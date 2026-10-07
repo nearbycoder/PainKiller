@@ -49,6 +49,7 @@ import { isolated, random } from "./random";
 import { between, Interpolator } from "./interpolate";
 import { heartbeatInterval, lowHealth } from "./vitals";
 import { FrameStats } from "./frame-stats";
+import { cardConditionMet, earnCard, levelCard, TAROT_SOULS } from "./tarot";
 import { CROSSHAIR_COLORS, parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
@@ -190,8 +191,13 @@ export class Game {
   damageLog: DamageLog = {};
   lastDeath: ReturnType<typeof deathRecap> | null = null;
   /** What the last completed level achieved, for the result screen. */
-  lastClear: { fastest: boolean; deathless: boolean; best: number } | null =
-    null;
+  lastClear: {
+    fastest: boolean;
+    deathless: boolean;
+    best: number;
+    /** A tarot card won by this clear for the first time, and whether it was equipped. */
+    card?: { id: number; equipped: boolean };
+  } | null = null;
   /** Fixed sector supplies collected in this sector (see Resume.taken). */
   taken = new Set<number>();
   /** The level waiting on a deferred environment download, while mode is "loading". */
@@ -924,14 +930,15 @@ export class Game {
       deathless: this.levelDeaths === 0,
       best: record.time,
     };
+    if (cardConditionMet(this.levelSouls, this.secrets)) {
+      const id = levelCard(LEVELS[this.level].chapter);
+      const { earned, equipped } = earnCard(this.save, id);
+      if (earned) this.lastClear.card = { id, equipped };
+    }
     this.save.best[this.level] = Math.max(
       this.save.best[this.level] || 0,
       this.levelKills,
     );
-    if (this.secrets > 0 || this.levelSouls >= 25) {
-      const card = (LEVELS[this.level].chapter - 1) % 3;
-      if (!this.save.cards.includes(card)) this.save.cards.push(card);
-    }
     if (this.level === 23) {
       this.save.completed = true;
       this.save.room = 0;
@@ -948,7 +955,7 @@ export class Game {
     if (this.mode !== "playing") return;
     if (!this.save.cards.includes(this.save.selectedCard)) {
       this.notify(
-        "Earn a tarot card by finding a relic or collecting 25 souls in a level.",
+        `Earn a tarot card by finding a relic or collecting ${TAROT_SOULS} souls in a level.`,
       );
       return;
     }
@@ -2536,6 +2543,12 @@ export class Game {
           this.souls++;
           this.save.souls++;
           this.levelSouls++;
+          if (
+            this.levelSouls === TAROT_SOULS &&
+            !this.secrets &&
+            !this.save.cards.includes(levelCard(LEVELS[this.level].chapter))
+          )
+            this.notify(`${TAROT_SOULS} SOULS  /  TAROT CONDITION MET`, 4);
           this.health = Math.min(100, this.health + 1);
           if (this.souls >= 66) {
             this.souls = 0;
