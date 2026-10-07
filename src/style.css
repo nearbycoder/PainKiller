@@ -1743,6 +1743,40 @@ body[data-mode="dead"] #world {
   accent-color: #ab8655;
   border: 0;
   margin-top: 20px;
+  appearance: none;
+  background: #2b2e2b;
+}
+.art-loading progress::-webkit-progress-bar {
+  background: #2b2e2b;
+}
+.art-loading progress::-webkit-progress-value {
+  background: #ab8655;
+}
+.art-loading progress::-moz-progress-bar {
+  background: #ab8655;
+}
+.art-loading button {
+  margin-top: 18px;
+  padding: 10px 28px;
+  border: 1px solid #ab8655;
+  background: #1c201d;
+  color: #e3d6b8;
+  font:
+    18px "Cinzel",
+    serif;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.art-loading button:is(:hover, :focus-visible) {
+  background: #3a2c1c;
+  outline: none;
+}
+.art-loading pre {
+  max-width: min(600px, 90vw);
+  margin-top: 22px;
+  white-space: pre-wrap;
+  font-size: 12px;
+  color: #6f6559;
 }
 
 .game-menu nav:has(.menu-command:hover) .menu-command.nav-current:not(:hover) {

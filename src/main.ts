@@ -10,22 +10,46 @@ import { LEVELS } from "./data";
 import { loadArt, prefetchArt } from "./assets";
 import { initPhysics } from "./physics";
 import { randomState, seedRandom } from "./random";
+const LOADING = `<main class="art-loading"><span>PURGATORY</span><h1>Opening Purgatory</h1><p>Loading models and materials…</p><progress max="1" value="0"></progress></main>`,
+  megabytes = (bytes: number) => (bytes / 1048576).toFixed(1);
+/**
+ * The start-up screen. Progress counts bytes across every file; if a download fails,
+ * _Try again_ fetches only what is still missing, without reloading the page.
+ */
+async function download(app: Element) {
+  for (;;) {
+    app.innerHTML = LOADING;
+    try {
+      // Production builds open the menu before the cathedral, crypt and factory scenes arrive.
+      await loadArt(
+        (loaded, total) => {
+          const progress = app.querySelector("progress");
+          if (progress) progress.value = total ? loaded / total : 0;
+          const label = app.querySelector("p");
+          if (label)
+            label.textContent = `Loading models and materials · ${megabytes(loaded)} of ${megabytes(total)} MB`;
+        },
+        import.meta.env.DEV,
+      );
+      return;
+    } catch (error) {
+      console.warn("A start-up download failed", error);
+      app.innerHTML = `<main class="art-loading art-retry"><span>PURGATORY</span><h1>The download stopped</h1><p>Check your connection and try again. Files already downloaded are kept.</p><button type="button">Try again</button><pre></pre></main>`;
+      app.querySelector("pre")!.textContent = String(error);
+      const button = app.querySelector("button")!;
+      button.focus();
+      await new Promise((resolve) =>
+        button.addEventListener("click", resolve, { once: true }),
+      );
+    }
+  }
+}
 async function boot() {
   try {
     const app = document.querySelector("#app")!;
-    app.innerHTML = `<main class="art-loading"><span>PURGATORY</span><h1>Opening Purgatory</h1><p>Loading models and materials…</p><progress max="1" value="0"></progress></main>`;
+    app.innerHTML = LOADING;
     await initPhysics();
-    // Production builds open the menu before the cathedral, crypt and factory scenes arrive.
-    await loadArt(
-      (name, value) => {
-        const progress = app.querySelector("progress");
-        if (progress) progress.value = value;
-        const label = app.querySelector("p");
-        if (label)
-          label.textContent = `Preparing ${name.replaceAll("-", " ")} · ${Math.round(value * 100)}%`;
-      },
-      import.meta.env.DEV,
-    );
+    await download(app);
     app.innerHTML = "";
     const game = new Game(document.querySelector<HTMLCanvasElement>("#world")!);
     new UI(game);

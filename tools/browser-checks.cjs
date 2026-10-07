@@ -7,6 +7,7 @@
 //   npm run test:browser -- --url http://localhost:5187/   # reuse a running dev server
 //   npm run test:browser -- --checks tools/media/round3/gate.js --capture docs/media/x.jpg
 //   npm run test:browser -- --checks round4 --size 1920x1080   # another window size
+//   npm run test:browser -- --url http://localhost:5190/ --no-boot --checks tools/media/round5/web-start.js
 //
 // --capture saves a JPEG of the window after the last script has run (a script may
 // return a promise; the runner waits for it and then for two rendered frames).
@@ -100,7 +101,11 @@ app.whenReady().then(async () => {
       await new Promise((r) => setTimeout(r, 300));
     }
     await win.loadURL(server.url);
-    while (!(await js("!!window.__PURGATORY__?.game"))) {
+    // --no-boot: run the scripts at once, to watch the start-up screen itself.
+    while (
+      !args.includes("--no-boot") &&
+      !(await js("!!window.__PURGATORY__?.game"))
+    ) {
       if (Date.now() - started > 180000)
         throw new Error("The game did not boot");
       await new Promise((r) => setTimeout(r, 300));

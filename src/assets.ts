@@ -3,6 +3,7 @@ import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
+import sizes from "virtual:asset-sizes";
 
 const library = new Map<string, GLTF>();
 export const art = {
@@ -19,9 +20,13 @@ const pending = new Map<string, Promise<void>>();
  * Load actors, weapons, supplies, the cemetery (the title backdrop) and the sky. With
  * `everything`, the deferred environments load up front too, so development builds and
  * scripted checks never wait on them; otherwise call prefetchArt() once the menu is up.
+ *
+ * `progress` gets the bytes received so far and the total. Files that fail do not stop
+ * the others; the promise then rejects, and calling loadArt again fetches only what is
+ * still missing.
  */
 export async function loadArt(
-  progress: (label: string, fraction: number) => void,
+  progress: (loaded: number, total: number) => void,
   everything = true,
 ) {
   const names = [
@@ -33,20 +38,52 @@ export async function loadArt(
     "supplies",
     ...Array.from({ length: 5 }, (_, i) => `weapon-${i}`),
   ];
-  let completed = 0;
+  const size = (name: string) => sizes[name] ?? 0,
+    total = [...names, "sky"].reduce((n, name) => n + size(name), 0),
+    received = new Map<string, number>();
+  for (const name of names)
+    if (library.has(name)) received.set(name, size(name));
+  if (art.sky) received.set("sky", size("sky"));
+  const report = () => {
+    let loaded = 0;
+    for (const n of received.values()) loaded += n;
+    progress(Math.min(loaded, total), total);
+  };
+  const track = (name: string) => (event: ProgressEvent) => {
+    received.set(name, Math.min(event.loaded, size(name) || event.loaded));
+    report();
+  };
+  const failures: unknown[] = [];
+  const settle = async (name: string, load: () => Promise<void>) => {
+    try {
+      await load();
+      received.set(name, size(name));
+    } catch (error) {
+      received.delete(name);
+      failures.push(error);
+    }
+    report();
+  };
+  report();
+  const missing = names.filter((name) => !library.has(name));
   // Bounded parallel loading avoids decoding every 2K map in one browser frame.
-  for (let i = 0; i < names.length; i += 2) {
+  for (let i = 0; i < missing.length; i += 2)
     await Promise.all(
-      names.slice(i, i + 2).map(async (name) => {
-        await loadModel(name);
-        progress(name, ++completed / (names.length + 1));
-      }),
+      missing
+        .slice(i, i + 2)
+        .map((name) => settle(name, () => loadModel(name, track(name)))),
     );
-  }
-  art.sky = await new HDRLoader().loadAsync(`${base}textures/moonrise.hdr`);
-  art.sky.mapping = T.EquirectangularReflectionMapping;
+  if (!art.sky)
+    await settle("sky", async () => {
+      const sky = await new HDRLoader().loadAsync(
+        `${base}textures/moonrise.hdr`,
+        track("sky"),
+      );
+      sky.mapping = T.EquirectangularReflectionMapping;
+      art.sky = sky;
+    });
+  if (failures.length) throw failures[0];
   art.ready = true;
-  progress("Ready", 1);
 }
 /** Whether a theme's scene is loaded; procedural themes never need one. */
 export function hasArt(theme: string) {
@@ -74,8 +111,11 @@ export async function prefetchArt() {
       console.warn(`Could not prefetch ${theme}; retrying when needed`, error);
     }
 }
-async function loadModel(name: string) {
-  const gltf = await loader.loadAsync(`${base}models/${name}.glb`);
+async function loadModel(
+  name: string,
+  onProgress?: (event: ProgressEvent) => void,
+) {
+  const gltf = await loader.loadAsync(`${base}models/${name}.glb`, onProgress);
   gltf.scene.traverse((o) => {
     if (!(o instanceof T.Mesh)) return;
     o.castShadow = true;
