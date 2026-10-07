@@ -1813,3 +1813,55 @@ body[data-mode="dead"] #world {
   color: #fff1cd;
   background: #70512c66;
 }
+
+/* Interface scale (Options › Video): each HUD panel grows from the corner or edge it
+   is anchored to. The touch layout keeps its own sizes. */
+:root {
+  --hud-scale: 1;
+}
+body:not(.touch-layout) .hud-top > div:first-child {
+  transform: scale(var(--hud-scale));
+  transform-origin: top left;
+}
+body:not(.touch-layout) .objective {
+  transform: translateX(-50%) scale(var(--hud-scale));
+  transform-origin: top center;
+}
+body:not(.touch-layout) .combat-stats {
+  transform: scale(var(--hud-scale));
+  transform-origin: top right;
+}
+body:not(.touch-layout) #boss-hud {
+  top: calc(96px * var(--hud-scale));
+  transform: scale(var(--hud-scale));
+  transform-origin: top center;
+}
+body:not(.touch-layout) .vitals {
+  transform: scale(var(--hud-scale));
+  transform-origin: bottom left;
+}
+body:not(.touch-layout) .weapon-hud {
+  transform: translateX(-50%) scale(var(--hud-scale));
+  transform-origin: bottom center;
+}
+body:not(.touch-layout) .ammo {
+  transform: scale(var(--hud-scale));
+  transform-origin: bottom right;
+}
+body:not(.touch-layout) #hud-help {
+  bottom: calc(150px * var(--hud-scale));
+  transform: translateX(-50%) scale(var(--hud-scale));
+  transform-origin: bottom center;
+}
+body:not(.touch-layout) #hint {
+  bottom: calc(190px * var(--hud-scale));
+  max-width: min(940px, calc(90vw / var(--hud-scale)));
+  transform: translateX(-50%) scale(var(--hud-scale));
+  transform-origin: bottom center;
+}
+body:not(.touch-layout) #toast {
+  font-size: calc(14px * var(--hud-scale));
+}
+body:not(.touch-layout) #gate-prompt {
+  font-size: calc(17px * var(--hud-scale));
+}

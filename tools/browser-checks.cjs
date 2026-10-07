@@ -6,6 +6,7 @@
 //   npm run test:browser -- --before 'window.__AUTOPILOT__ = { seeds: 1 }' --checks tests/balance-autopilot.js
 //   npm run test:browser -- --url http://localhost:5187/   # reuse a running dev server
 //   npm run test:browser -- --checks tools/media/round3/gate.js --capture docs/media/x.jpg
+//   npm run test:browser -- --checks round4 --size 1920x1080   # another window size
 //
 // --capture saves a JPEG of the window after the last script has run (a script may
 // return a promise; the runner waits for it and then for two rendered frames).
@@ -59,10 +60,11 @@ app.whenReady().then(async () => {
   const server = option("url")
     ? { url: option("url"), stop() {} }
     : await devServer();
+  const [width, height] = (option("size") || "1280x800").split("x").map(Number);
   const win = new BrowserWindow({
     show: false,
-    width: 1280,
-    height: 800,
+    width,
+    height,
     useContentSize: true,
     // An in-memory session: saves and options left by earlier runs cannot leak in.
     webPreferences: {

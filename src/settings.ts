@@ -21,6 +21,8 @@ export const defaults = {
   adaptiveResolution: true,
   renderScale: 1,
   brightness: 1,
+  /** Size of the in-game HUD (not menus or the touch layout). */
+  hudScale: 1,
   invertY: false,
   headBob: true,
   crosshair: true,
@@ -50,6 +52,7 @@ export function parseSettings(raw: string | null): Settings {
     quality: [0, 2],
     renderScale: [0.5, 1],
     brightness: [0.65, 1.5],
+    hudScale: [0.75, 1.5],
   };
   for (const key of Object.keys(limits) as (keyof typeof limits)[]) {
     const v = saved[key],

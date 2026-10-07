@@ -255,6 +255,117 @@
   });
   g.sound.dry = sound;
 
+  // R4-4: interface scale.
+  await check(
+    "R4-4 the HUD stays on screen without overlaps at 75%, 100% and 150%",
+    async () => {
+      setup();
+      g.equip(4);
+      g.notify("OUT OF ROCKETS", 5);
+      const panels = {
+        title: ".hud-top > div:first-child",
+        objective: ".objective",
+        stats: ".combat-stats",
+        boss: "#boss-hud",
+        vitals: ".vitals",
+        weapons: ".weapon-hud",
+        ammo: ".ammo",
+        help: "#hud-help",
+        hint: "#hint",
+      };
+      // Pairs that sit side by side or stacked and must never touch.
+      const apart = [
+        ["title", "objective"],
+        ["objective", "stats"],
+        ["title", "boss"],
+        ["stats", "boss"],
+        ["objective", "boss"],
+        ["vitals", "weapons"],
+        ["weapons", "ammo"],
+        ["help", "weapons"],
+        ["hint", "help"],
+        ["hint", "weapons"],
+      ];
+      const sizes = {};
+      for (const hudScale of [0.75, 1, 1.5]) {
+        g.applySettings({ ...g.settings(), hudScale });
+        g.onHUD();
+        const hint = document.getElementById("hint"),
+          boss = document.getElementById("boss-hud");
+        hint.textContent =
+          "Shoot a frozen enemy with the shotgun to shatter it · RMB fires the freezer";
+        hint.style.opacity = "1";
+        boss.style.display = "block";
+        document.getElementById("boss-name").textContent = "The Gravewarden";
+        await frames(2);
+        const rects = {};
+        for (const [name, selector] of Object.entries(panels)) {
+          const r = document.querySelector(selector).getBoundingClientRect();
+          rects[name] = r;
+          assert(
+            r.left >= 0 &&
+              r.top >= 0 &&
+              r.right <= innerWidth &&
+              r.bottom <= innerHeight,
+            `${name} leaves the ${innerWidth}×${innerHeight} screen at ${hudScale}: ${[r.left, r.top, r.right, r.bottom].map(Math.round)}`,
+          );
+        }
+        for (const [a, b] of apart) {
+          const p = rects[a],
+            q = rects[b];
+          assert(
+            p.right <= q.left ||
+              q.right <= p.left ||
+              p.bottom <= q.top ||
+              q.bottom <= p.top,
+            `${a} and ${b} overlap at ${hudScale}`,
+          );
+        }
+        sizes[hudScale] = Math.round(rects.weapons.width);
+        boss.style.display = "";
+        hint.style.opacity = "0";
+      }
+      const ratio = sizes[1.5] / sizes[1];
+      assert(Math.abs(ratio - 1.5) < 0.02, "the weapon bar grew by " + ratio);
+      assert(
+        getComputedStyle(document.getElementById("toast")).fontSize === "21px",
+        "toast at 150%: " +
+          getComputedStyle(document.getElementById("toast")).fontSize,
+      );
+      g.applySettings({ ...g.settings(), hudScale: 1 });
+      return {
+        viewport: `${innerWidth}×${innerHeight}`,
+        weaponBarWidth: sizes,
+      };
+    },
+  );
+  await check("R4-4 the slider is on the Video page and saves", () => {
+    g.setMode("menu");
+    document
+      .querySelector('[data-action="page"][data-value="settings"]')
+      .click();
+    document
+      .querySelector('[data-action="settings-tab"][data-value="video"]')
+      .click();
+    const slider = document.querySelector('input[data-setting="hudScale"]');
+    assert(slider, "no Interface scale slider");
+    slider.value = "130";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    assert(Math.abs(g.hudScale - 1.3) < 1e-9, "scale " + g.hudScale);
+    assert(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--hud-scale")
+        .trim() === "1.3",
+      "CSS variable not set",
+    );
+    assert(
+      JSON.parse(localStorage.getItem("purgatory.options")).hudScale === 1.3,
+      "not saved",
+    );
+    g.applySettings({ ...g.settings(), hudScale: 1 });
+    return "ok";
+  });
+
   g.applySettings(options);
   if (storedOptions === null) localStorage.removeItem("purgatory.options");
   else localStorage.setItem("purgatory.options", storedOptions);

@@ -668,6 +668,15 @@ export class UI {
           1,
           "°",
         ) +
+        this.range(
+          "hudScale",
+          "Interface scale",
+          "Size of the in-game HUD. Menus and the touch layout keep their size.",
+          75,
+          150,
+          100,
+          "%",
+        ) +
         `<div class="option-row"><span><b>Display mode</b><small>Switch between windowed and fullscreen play.</small></span><button class="option-button" data-action="fullscreen">Toggle fullscreen <kbd>F11</kbd></button></div>`;
     if (this.settingsTab === "audio")
       content =

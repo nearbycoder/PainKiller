@@ -248,6 +248,7 @@ export class Game {
   stickSpeed = 1;
   vibration = true;
   autoSwitch = true;
+  hudScale = 1;
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
   enemies: Enemy[] = [];
@@ -428,6 +429,7 @@ export class Game {
       stickSpeed: this.stickSpeed,
       vibration: this.vibration,
       autoSwitch: this.autoSwitch,
+      hudScale: this.hudScale,
     };
   }
   applySettings(s: Settings) {
@@ -447,7 +449,12 @@ export class Game {
       stickSpeed: s.stickSpeed,
       vibration: s.vibration,
       autoSwitch: s.autoSwitch,
+      hudScale: s.hudScale,
     });
+    document.documentElement.style.setProperty(
+      "--hud-scale",
+      String(s.hudScale),
+    );
     this.hints.setEnabled(s.hints);
     this.bindings = cloneBindings(s.bindings);
     this.codeActions = actionsByCode(this.bindings);
