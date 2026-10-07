@@ -141,6 +141,45 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves; weapon progression; whether the chapter themes, the dry click and now the heartbeat sound right once someone has listened (`round6/r6-1-music.mp3`, `round5/r5-3-dry-click.mp3`, `round7/r7-2-heartbeat.mp3`); whether toggle sprint should be the default on controllers (it is off, as before, for everyone); meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: a 120/144 Hz display (R7-1 and round 5's storm orb are verified with synthetic timing only), a physical controller (vibration, dead zone, precise look, swapped sticks, toggle sprint), phones, a person playing in Firefox, Safari, and the three listening clips.
 
+## Round 8 scope (2026-10-07)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (title, a fight in Hall of Vigils, pause, every Options page, death, level select, the desktop shell) and from reading the paths a player takes between fights. Four things stood out:
+
+- **Resuming can leave the fight running without the mouse.** Pausing releases the mouse. _Resume game_ asks for it back, and if the browser refuses (Chromium refuses for about a second after Esc releases it, so Esc then Enter does it), the game only shows a toast and carries on: enemies attack while the mouse cannot turn the view, and the click that recaptures it also fires the weapon.
+- **The tarot is opaque, and the HUD can offer a card you do not own.** Finishing a level that earns a card says nothing about it; nothing in play shows progress toward the 25 souls; and the selected card starts as Wrath whether or not you own it. A player who starts in chapter II from level select earns Quickening, but the HUD reads "Q · WRATH" and Q answers "Earn a tarot card…" until they find the Grave tarot page.
+- **The desktop window forgets itself.** Every launch opens a 1440 × 900 window in the middle of the screen, so a player who plays fullscreen or maximized has to set it again every time.
+- **Two menu traps.** _Restore all defaults_ resets every option, including all key and controller bindings, the moment it is clicked (or chosen with Enter or A, as the last item of a long page), with no confirmation. And two confirmations describe the save wrongly since round 2: _Leave the fight?_ says "You will return to the beginning of this sector", and _Quit Purgatory?_ says the campaign "is saved at the start of the current sector"; both resume at the current wave.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R8-1. Getting the mouse back after a pause
+
+When the game asks for the mouse after a pause, a restart or a level start and is refused, and this player has had the mouse captured before in this session, the fight holds (no simulation steps, so nothing can hurt you) behind a "Click to return to the fight" overlay. That click captures the mouse and does not fire; Esc still pauses. Controller and touch players, and a browser that never grants the mouse (where the arrow keys turn, as today), are unaffected.
+
+**Accept / verify:** browser checks with pointer lock simulated (granted, refused, revoked): a refused resume holds the fight (health, enemy positions and the random sequence unchanged over two seconds of frames), shows the overlay, a click captures the mouse without firing or spending ammunition, and the fight continues; a granted resume does not show it; a session that never had the mouse plays on as today; with a controller connected nothing holds. Existing checks stay green, including the menu-driven checks in Electron and Firefox where pointer lock is never granted. A capture. The real Chromium refusal after Esc is **not reproducible here** (the test windows are offscreen and the shared desktop's mouse must not be grabbed), so that trigger will be reported as untested.
+
+### R8-2. Tarot: say what you earned, and never offer a card you do not own
+
+The result screen names a newly earned card ("CARD EARNED · QUICKENING") and its effect. If the selected card is not owned when a card is earned, the new card is equipped (a choice the player made among owned cards is kept). The HUD offers the tarot key only for an owned, equipped card. The pause screen shows the level's card progress: which card this level awards, souls this level out of 25, and whether the relic is found (or that the card is already owned).
+
+**Accept / verify:** unit tests for the card logic (which card a level awards, earning, equipping when the selection is not owned, keeping a valid choice). Browser checks: finishing a chapter II level with 25 souls on a fresh save shows the card on the result screen, equips Quickening, and the HUD then reads "Q · QUICKENING" and Q activates it; a second clear does not announce it again; a player who owns Wrath and Quickening and has chosen Wrath keeps Wrath; the pause screen line at 0 and 25 souls and after a relic. A capture of the result screen.
+
+### R8-3. The desktop window remembers its size, position and display mode
+
+The desktop build saves the window's size and position, and whether it was maximized or fullscreen, next to the campaign (`window.json`), and opens that way next time. Saved bounds that no longer fit on any connected display (a monitor unplugged, a resolution change) fall back to the default centred window; malformed files are ignored. The browser build is unchanged.
+
+**Accept / verify:** unit tests for parsing and placement (valid bounds kept, off-screen or too-small bounds replaced, malformed or missing files ignored, maximized and fullscreen flags kept). The desktop smoke test, in its isolated profile, moves and resizes the window, quits, relaunches and finds the same bounds. Maximized and fullscreen restoring are **checked by the unit tests only**: the test windows must not cover the shared desktop. `~/.config/Purgatory` is checked before and after.
+
+### R8-4. Menu safety and honest save wording
+
+_Restore all defaults_ asks first, saying that it resets every option including key and controller bindings, with Cancel focused. _Leave the fight?_ and _Quit Purgatory?_ say where Continue will resume (the start of the current wave).
+
+**Accept / verify:** browser checks: _Restore all defaults_ changes nothing until confirmed, Cancel and Esc keep a changed option and a rebound key, confirming resets them; the dialogs' text matches the save (wave number); the existing menu checks stay green. A capture of the dialog.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run compared run by run with `main` (nothing here changes combat; R8-1's hold never triggers for the bot, which never has the mouse, so all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 7 scope (2026-10-07)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game: title, a fight in Hall of Vigils, low health, pause, options, death, results and level select, plus a probe of what the camera does on each displayed frame. Two things stood out:
