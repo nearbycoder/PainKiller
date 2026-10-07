@@ -74,14 +74,10 @@
   const table = {};
   for (const [name, fn] of Object.entries(sounds)) table[name] = await one(fn);
   // One bar of the combat music on its own, for the bed the click usually sits on.
-  const NOTES = [55, 55, 65.4, 55, 49, 55, 73.4, 65.4];
+  // (Since round 6 the music is scheduled ahead on the audio clock; poll it every 50 ms.)
   const music = (at, from, to) => {
-    for (let i = 0, t = from; t < to; i++, t = from + i * 0.185)
-      at(t, (s) => {
-        s.beat = i;
-        s.nextBeat = 0;
-        s.update(true);
-      });
+    for (let t = from; t < to - 0.12; t += 0.05)
+      at(t, (s) => s.update("fight", 1));
   };
   table["combat music (one bar)"] = levels(
     await render(2, (at) => music(at, 0.05, 1.53)),

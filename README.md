@@ -162,7 +162,7 @@ npm run art:build            # Blender 4.5 headless: build masters, bake materia
 
 See [art/README.md](art/README.md) for what each script builds and the art that still needs work.
 
-**Audio** has no source files to rebuild. Every sound effect and the music are synthesized at runtime with the Web Audio API in [`src/audio.ts`](src/audio.ts).
+**Audio** has no source files to rebuild. Every sound effect and the music are synthesized at runtime with the Web Audio API in [`src/audio.ts`](src/audio.ts); the chapter themes are note data in [`src/music.ts`](src/music.ts).
 
 **Level-select previews.** `npx electron tools/make-previews.cjs` renders `public/assets/previews/level-N.jpg` from the game: each level's first-sector start view, without HUD or weapon.
 
@@ -178,7 +178,7 @@ src/
   models.ts          enemy and weapon models; enemy-motion.ts / weapon-motion.ts animation layers
   physics.ts         Rapier ragdolls, grenades and stake pinning
   combat-effects.ts  muzzle flashes, smoke, impacts, explosions, shell casings
-  audio.ts           synthesized sound effects and combat music
+  audio.ts           synthesized sound effects; music.ts: chapter themes and their scheduling
   ui.ts, style.css   menus, options, level select, tarot, HUD; controls.ts: gamepad + touch
   hints.ts           one-time combat hints
   data.ts            campaign, chapters, weapons and tarot definitions; core.ts: pure combat/save logic
@@ -197,7 +197,7 @@ docs/                development notes and README media
 - **Rendering.** Three.js r180 PBR materials with an HDR sky, PCF soft shadows refreshed at 30 Hz, half-resolution SSAO on High, and FXAA over the composed world and first-person weapon passes. Static meshes are merged by material, and an adaptive resolution controller kicks in under load.
 - **Blender pipeline.** Every environment, weapon and enemy costume is built by headless Blender Python scripts. They handle procedural masonry, baked weapon materials, animation retargeting onto new rigs, LOD reduction, and texture-optimized GLB export.
 - **Layered animation.** Six retargeted base clips are combined with procedural layers for breathing, turning, alternating attacks, casting, directional hit reactions and bone-mounted armor.
-- **Zero audio files.** Gunfire, footsteps, pickups, enemy telegraphs and the combat ostinato are oscillators and filtered noise generated in real time. Enemy spawns, melee wind-ups, hellfire casts, deaths and the generals' roars and shockwaves are stereo-panned by bearing and attenuated by distance, under a shared voice budget.
+- **Zero audio files.** Gunfire, footsteps, pickups, enemy telegraphs and the music are oscillators and filtered noise generated in real time. Each chapter has its own combat theme, a four-bar phrase that thins to a drone while the next wave gathers and grows a layer while a general lives, scheduled ahead on the audio clock so its tempo never follows the frame rate. Enemy spawns, melee wind-ups, hellfire casts, deaths and the generals' roars and shockwaves are stereo-panned by bearing and attenuated by distance, under a shared voice budget.
 - **Locked-down desktop shell.** The renderer is sandboxed with context isolation and no Node access. The preload exposes only save read/write, fullscreen and quit, and saves are written atomically.
 
 ## Credits and tooling

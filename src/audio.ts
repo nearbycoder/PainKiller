@@ -1,4 +1,11 @@
 import { generator } from "./random";
+import {
+  Sequencer,
+  notesFor,
+  themeFor,
+  type MusicLayer,
+  type Theme,
+} from "./music";
 export type EnemyCue =
   | "spawn"
   | "windup"
@@ -45,8 +52,9 @@ export class Sound {
   effectsGain?: GainNode;
   musicGain?: GainNode;
   music = true;
-  nextBeat = 0;
-  beat = 0;
+  /** Schedules the combat music on the audio clock (see src/music.ts). */
+  sequencer = new Sequencer();
+  theme?: Theme;
   cues = new CueBudget();
   /**
    * Sound's own noise source. Sounds play on the audio clock and a wall-clock budget, so
@@ -75,15 +83,20 @@ export class Sound {
     end = 40,
     music = false,
     pan = 0,
+    at = 0,
+    attack = 0,
   ) {
     if (!this.ctx || !this.gain) return;
-    const t = this.ctx.currentTime,
+    const t = Math.max(at, this.ctx.currentTime),
       o = this.ctx.createOscillator(),
       g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
     o.frequency.exponentialRampToValueAtTime(Math.max(10, end), t + duration);
-    g.gain.setValueAtTime(volume, t);
+    if (attack > 0) {
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(volume, t + attack);
+    } else g.gain.setValueAtTime(volume, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + duration);
     o.connect(g);
     const panner = this.route(g, music, pan);
@@ -95,10 +108,17 @@ export class Sound {
       panner?.disconnect();
     };
   }
-  noise(duration = 0.15, volume = 0.2, cutoff = 6500, music = false, pan = 0) {
+  noise(
+    duration = 0.15,
+    volume = 0.2,
+    cutoff = 6500,
+    music = false,
+    pan = 0,
+    at = 0,
+  ) {
     if (!this.ctx || !this.gain) return;
     const c = this.ctx,
-      t = c.currentTime,
+      t = Math.max(at, c.currentTime),
       b = c.createBuffer(1, c.sampleRate * duration, c.sampleRate),
       d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++)
@@ -242,23 +262,40 @@ export class Sound {
   pickup() {
     this.tone(540, 0.18, "sine", 0.13, 1100);
   }
-  update(active: boolean) {
-    if (!this.ctx || !this.music || !active) return;
-    const t = this.ctx.currentTime;
-    if (t < this.nextBeat) return;
-    this.nextBeat = t + 0.185;
-    const notes = [55, 55, 65.4, 55, 49, 55, 73.4, 65.4];
-    this.tone(
-      notes[this.beat % 8],
-      0.16,
-      "sawtooth",
-      0.045,
-      notes[this.beat % 8] * 0.98,
-      true,
-    );
-    if (this.beat % 4 === 0) this.tone(135, 0.12, "sine", 0.17, 35, true);
-    if (this.beat % 4 === 2) this.noise(0.08, 0.065, 6500, true);
-    this.beat++;
+  /**
+   * Keep the combat music going: call every simulation step with the layer the fight calls
+   * for (null for silence) and the chapter. Notes are placed a little ahead on the audio
+   * clock, so the tempo does not depend on the frame rate.
+   */
+  update(layer: MusicLayer | null, chapter = 1) {
+    if (!this.ctx || !this.music || !layer) {
+      this.sequencer.reset();
+      return;
+    }
+    const theme = themeFor(chapter);
+    if (theme !== this.theme) {
+      this.theme = theme;
+      this.sequencer.reset();
+    }
+    for (const { time, step } of this.sequencer.due(
+      this.ctx.currentTime,
+      theme.step,
+    ))
+      for (const n of notesFor(theme, step, layer, time))
+        if (n.kind === "hat")
+          this.noise(n.duration, n.volume, n.cutoff, true, 0, n.time);
+        else
+          this.tone(
+            n.freq,
+            n.duration,
+            n.type,
+            n.volume,
+            n.end,
+            true,
+            0,
+            n.time,
+            n.kind === "drone" ? 0.3 : 0,
+          );
   }
   menu(confirm = false) {
     this.start();

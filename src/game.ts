@@ -44,6 +44,7 @@ import {
   type Save,
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
+import { layerFor } from "./music";
 import { isolated, random } from "./random";
 import { parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
@@ -1860,7 +1861,15 @@ export class Game {
       }
     }
     this.arena.portal.rotation.z += dt * 0.17;
-    this.sound.update(!this.arenaCleared);
+    this.sound.update(
+      layerFor({
+        cleared: this.arenaCleared,
+        general: this.enemies.some((e) => e.type === "boss"),
+        enemies: this.enemies.length,
+        remaining: this.remaining,
+      }),
+      LEVELS[this.level].chapter,
+    );
     if (this.demon > 0 && this.tick % 12 === 0)
       this.burst(
         this.position.clone().add(new T.Vector3(0, -1.65, 0)),

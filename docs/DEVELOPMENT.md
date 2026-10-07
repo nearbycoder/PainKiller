@@ -87,6 +87,37 @@ Nobody has listened to the dry click added in round 4, so `tools/media/round5/dr
 
 The click peaks exactly as high as a footstep and its loudest 50 ms is 3 dB under one, so it sits with the other small handling sounds; it is not lost by design, and its level was left alone. Two things only a listener can judge: it is about 11 dB under the music bar's loudest 50 ms, and it is a short burst of filtered noise (5.2 kHz) like the music's off-beat hat (6.5 kHz), so over the music it may read as part of the rhythm. With _Switch weapon when empty_ on, the weapon-draw sound follows it at once. The 12-second clip `docs/media/improvements/round5/r5-3-dry-click.mp3` has walking to the music, three rockets, the rockets running dry (click and switch to the shotgun), two shotgun blasts, six clicks over the music with the option off, and three clicks alone.
 
+## Combat music (round 6)
+
+Until round 6 every sector of the campaign played the same bar: eight bass notes, a kick and a hat, 1.5 s long, started by `Sound.update()` on the first frame after each step was due. So the tempo followed the frame rate (0.2 s a step at 60 Hz instead of the intended 0.185 s, 0.1875 s at 144 Hz), and a late frame delayed the note.
+
+`src/music.ts` now holds one theme per chapter: a key and mode, a tempo, a bass timbre, a four-bar phrase of eight steps, and a kick and hat pattern. Chapter I keeps the old bar as its first bar. `layerFor()` picks a layer from the fight: _calm_ (a drone an octave above the bar's root and the bass on two steps of eight, no drums) while the next wave gathers, _fight_ while enemies are alive or still to spawn, _general_ while a general lives (a quiet octave on the off-beats, softer kicks between the theme's own, and a two-tom fill at the end of the phrase), and silence once the sector is clear, as before. `Sequencer` places each step at an exact multiple of the step length from where the music started, 0.15 s ahead on the audio clock, whenever it is polled; steps a stall or a pause missed by more than 30 ms are skipped, so the music stays on its beat. Sound still draws from its own generator, so seeded runs are unchanged.
+
+`tests/music.test.ts` covers the themes, layers and scheduler. `tests/round6-checks.js` polls the music in the running game at ragged intervals with a 100 ms hitch every 40 frames, and checks that kicks stay on the beat (worst error under 1 µs), that the calm, fight, general and cleared states play the right layers, that each chapter's bass stays in its theme, and that nothing plays with music off. Measured on 2026-10-07 at load 30 (`artifacts/`-only probe, kick spacing over 6 s): in the live 60 Hz frame loop `main` spaced kicks 0.78–1.02 s apart (mean 0.83, standard deviation 81 ms) and this branch exactly 0.74 s; with ragged polling, 0.78–0.98 s (51 ms) and exactly 0.74 s.
+
+`tools/media/round6/music.js` renders the music offline with the game's synthesizer at the default volumes (`npm run test:browser -- --checks tools/media/round6/music.js --out artifacts/r6/music.json`), one full phrase of each. Levels in dBFS; "loudest 50 ms" is the RMS of the loudest 50 ms window, "overall" the RMS over the phrase:
+
+| Music                           | Peak  | Loudest 50 ms | Overall |
+| ------------------------------- | ----- | ------------- | ------- |
+| Before round 6: the one loop    | −25.3 | −35.5         | −46.3   |
+| I. Ashes of the Faithful, calm  | −40.5 | −44.5         | −51.7   |
+| I, fight                        | −25.3 | −34.4         | −44.9   |
+| I, general                      | −25.3 | −34.4         | −44.0   |
+| II. The Hollow City, calm       | −36.3 | −44.5         | −51.3   |
+| II, fight                       | −23.1 | −33.9         | −44.4   |
+| II, general                     | −23.1 | −33.6         | −43.4   |
+| III. Engines of Damnation, calm | −40.3 | −44.6         | −51.8   |
+| III, fight                      | −27.0 | −36.0         | −44.3   |
+| III, general                    | −27.0 | −36.0         | −43.9   |
+| IV. Kingdom of Dust, calm       | −41.2 | −44.5         | −51.5   |
+| IV, fight                       | −24.8 | −34.6         | −43.9   |
+| IV, general                     | −24.4 | −34.4         | −43.2   |
+| V. The Last Descent, calm       | −40.1 | −44.6         | −51.6   |
+| V, fight                        | −25.3 | −34.6         | −43.8   |
+| V, general                      | −25.3 | −34.6         | −43.2   |
+
+Combat stays within about 2 dB of the old loop at its peaks; the phrases are denser, so the overall level is 1.4–3.1 dB higher. A first draft of the general layer peaked 5 dB higher, which could have covered the generals' roar and shockwave cues, so its extra drums were turned down until it matched the fight. The calm layer is 9–15 dB quieter. The 72-second clip `docs/media/improvements/round6/r6-1-music.mp3` plays the old loop (0:00), then each chapter waiting for a wave and fighting it: I at 0:07 (and a general at 0:16), II at 0:24, III at 0:35, IV at 0:45, V at 0:56 (and a general at 1:05). **Nobody has listened to it**; whether the themes suit the chapters is for a person to judge.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.
