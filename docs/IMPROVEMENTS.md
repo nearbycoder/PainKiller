@@ -103,6 +103,44 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves (still the bot's main killer); weapon progression; whether the dry click should be louder or more distinct from the music's hat once someone has listened; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: a physical controller, phones, a person playing in Firefox, Safari, a 120/144 Hz display (the storm orb fix is verified with synthetic frame timing only), and a listen to the dry click.
 
+## Round 6 scope (2026-10-07)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (title, a fight in Hallowed Ground and Frostbound Crossing, pause, options, death and result screens, and frame times at five sector transitions, which were fine: worst frame 28–43 ms). Three things stood out:
+
+- **The music is one 1.5-second loop.** `Sound.update()` plays the same eight bass notes, kick and hat (`[55, 55, 65.4, 55, 49, 55, 73.4, 65.4]` every 0.185 s) in every sector of all five chapters, from the first wave to the last general, for a campaign of roughly 2–4.5 hours. It also starts each note on the first frame after the beat is due, so the tempo follows the frame rate: 0.2 s per step at 60 Hz, 0.1875 s at 144 Hz, and a late frame delays a note.
+- **The difficulty is never offered.** _Enter Purgatory_ on a fresh save starts Hallowed Ground on Purgatory; Reverie and Torment are only in Options › Gameplay.
+- **The crosshair is fixed:** four 1-pixel white ticks with a 1-pixel drop shadow, with no size, colour or shape option, and it thins out against snow and pale sky.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R6-1. Music that follows the fight
+
+Each chapter gets its own theme from the same synthesizer (key, mode, tempo, bass figure and timbre), built as a four-bar phrase with a turnaround instead of one bar; chapter I keeps today's ostinato as its first bar. The music follows the fight: a quiet drone and sparse bass while a wave is coming, the full figure in combat, an added layer while a general is alive, and it ends with the sector as now. Notes are scheduled a little ahead on the audio clock, so the tempo no longer depends on the frame rate or on late frames. The music stays at about today's level and keeps its own volume slider.
+
+**Accept / verify:** unit tests for the themes (every chapter has one, chapter I's first bar is today's, each phrase is at least four bars, notes stay in range) and the scheduler (onsets are exact multiples of the step whatever the polling times, no burst after a pause, the right layer for each game state). A browser check in the running game that onsets stay evenly spaced under uneven frames and a 100 ms hitch, that nothing plays with music off, and that the calm, combat, general and cleared states pick the right layer. An offline render of each chapter and layer, with peak and loudest-50 ms levels within about 2 dB of today's bar (table in DEVELOPMENT.md), and a listening clip. It will be reported as **not heard by a person**.
+
+### R6-2. Choose the difficulty when a campaign begins
+
+_Enter Purgatory_ on a fresh save, and _New game_ after its confirmation, open a short difficulty page with the three existing difficulties and their existing descriptions, with Purgatory (or the current setting) selected. Choosing one saves it as the option and starts Hallowed Ground. _Continue_ with a save, level select and Options are unchanged. No difficulty values change.
+
+**Accept / verify:** a browser check that a fresh save shows the page with the current difficulty focused, that picking Reverie by keyboard starts Hallowed Ground on Reverie and saves the option, that Back returns to the title without starting, that _Continue_ with a save skips the page, and that _New game_ asks; the existing menu checks stay green; a capture.
+
+### R6-3. Crosshair options and contrast
+
+A dark outline round every crosshair mark, so it reads on snow and sky as well as on stone, plus _Crosshair style_ (cross, cross and dot, dot, circle), _Crosshair colour_ (bone white, green, yellow, cyan, magenta) and _Crosshair size_ (75–200%) under Gameplay. The default keeps today's shape, in the same colour.
+
+**Accept / verify:** unit tests for parsing the new options (limits, unknown values); a browser check that each style, colour and size reaches the HUD and saves, and that _Crosshair off_ still hides it; captures of the default before and after over Frostbound Crossing's snow and a dark arena, with the measured contrast against the background around it.
+
+### R6-4. Controller dead zone and response curve (if time allows)
+
+_Stick dead zone_ (5–30%, default 18% as today) and _Look response_ (linear as today, or precise: slower near the centre, the same at full tilt) under Controls.
+
+**Accept / verify:** unit tests for the stick mapping (dead zone, curve, full tilt unchanged); browser checks with a synthetic gamepad that a small deflection moves nothing inside a larger dead zone and does outside a smaller one, that precise turns slower at half tilt and the same at full tilt, and that both options save. **Not felt on a physical controller.**
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run, compared run by run with round 5's baseline (nothing here changes combat, so all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 5 scope (2026-10-06)
 
 Round 4 left one measurement problem open: the balance autopilot gave different results run to run on the same code, so balance numbers could not be compared. A first look this round found both causes:
