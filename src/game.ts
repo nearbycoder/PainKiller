@@ -5,7 +5,7 @@ import { Physics, type Ragdoll } from "./physics";
 import type { RigidBody } from "@dimforge/rapier3d-compat";
 import { projectileModel } from "./projectile-models";
 import { Controls } from "./controls";
-import { refillAmmo } from "./ammunition";
+import { AMMUNITION, fallbackWeapon, refillAmmo } from "./ammunition";
 import { authoredPickup } from "./authored-models";
 import { art, DEFERRED_ART, ensureArt, hasArt } from "./assets";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -247,6 +247,7 @@ export class Game {
   padBindings = clonePadBindings(DEFAULT_PAD_BINDINGS);
   stickSpeed = 1;
   vibration = true;
+  autoSwitch = true;
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
   enemies: Enemy[] = [];
@@ -426,6 +427,7 @@ export class Game {
       padBindings: clonePadBindings(this.padBindings),
       stickSpeed: this.stickSpeed,
       vibration: this.vibration,
+      autoSwitch: this.autoSwitch,
     };
   }
   applySettings(s: Settings) {
@@ -444,6 +446,7 @@ export class Game {
       crosshair: s.crosshair,
       stickSpeed: s.stickSpeed,
       vibration: s.vibration,
+      autoSwitch: s.autoSwitch,
     });
     this.hints.setEnabled(s.hints);
     this.bindings = cloneBindings(s.bindings);
@@ -1441,7 +1444,14 @@ export class Game {
       ammo = alt ? this.altAmmo : this.ammo;
     if (ammo[id] <= 0) {
       this.cooldown = 0.2;
-      this.notify("OUT OF AMMO  /  SWITCH WEAPON", 1);
+      this.sound.dry();
+      const label = alt ? AMMUNITION[id].secondary : AMMUNITION[id].primary;
+      if (this.autoSwitch) {
+        // Keep the fight going with the best weapon that can fire from this button.
+        this.equip(fallbackWeapon(id, this.ammo, this.altAmmo, alt));
+        this.cooldown = 0.25;
+        this.notify(`OUT OF ${label}`, 1);
+      } else this.notify(`OUT OF ${label}  /  SWITCH WEAPON`, 1);
       return;
     }
     const storm = id === 4 && alt && this.firing(false);

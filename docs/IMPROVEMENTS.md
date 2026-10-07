@@ -73,7 +73,7 @@ Compile the materials the game will need before they are first drawn: enemies, g
 
 Today, firing an empty mode only shows "OUT OF AMMO / SWITCH WEAPON" and you have to switch by hand in the middle of a fight. Instead, firing an empty mode plays a dry click and, if the new _Switch weapon when empty_ option is on (the default), switches to the highest slot with ammunition for the button you pressed. The Thresher's blades never run out, so there is always something to switch to. The ammunition counter turns red when the mode in hand is low. No ammunition amounts change.
 
-**Accept / verify:** unit tests for the weapon choice (the button pressed, skipping empty weapons, never the current weapon, falling back to the Thresher, and the storm combo's cost). Browser checks that holding fire with empty rockets switches to the next weapon with ammunition and keeps firing, that the alternate button looks at alternate ammunition, that nothing switches with the option off, that the dry click plays, and that the low-ammunition state appears and clears with a pickup. A capture.
+**Accept / verify:** unit tests for the weapon choice (the button pressed, skipping empty weapons, never the current weapon, falling back to the Thresher). Browser checks that holding fire with empty rockets switches to the next weapon with ammunition and keeps firing, that the alternate button looks at alternate ammunition, that nothing switches with the option off, that the dry click plays, and that the low-ammunition state appears and clears with a pickup. A capture.
 
 ### R4-3. Firefox
 

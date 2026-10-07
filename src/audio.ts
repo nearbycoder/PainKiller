@@ -228,6 +228,11 @@ export class Sound {
     );
     this.tone(draw ? 290 : 440, 0.045, "triangle", 0.035, 115);
   }
+  /** The hammer falling on an empty chamber. */
+  dry() {
+    this.noise(0.03, 0.06, 5200);
+    this.tone(1250, 0.025, "square", 0.025, 900);
+  }
   pickup() {
     this.tone(540, 0.18, "sine", 0.13, 1100);
   }

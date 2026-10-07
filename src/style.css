@@ -1435,6 +1435,11 @@ body[data-mode="dead"] #world {
   padding-left: 15px;
   border-left: 1px solid #abb59a50;
 }
+.ammo b.low,
+.ammo div span.low {
+  color: #e2553f;
+  text-shadow: 0 0 14px #c8321f80;
+}
 .ammo small {
   font-size: 9px;
   letter-spacing: 1px;

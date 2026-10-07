@@ -25,6 +25,8 @@ export const defaults = {
   headBob: true,
   crosshair: true,
   hints: true,
+  /** Switch to another weapon when the mode in hand runs dry. */
+  autoSwitch: true,
   bindings: cloneBindings(DEFAULT_BINDINGS),
   padBindings: clonePadBindings(DEFAULT_PAD_BINDINGS),
 };
@@ -71,6 +73,7 @@ export function parseSettings(raw: string | null): Settings {
     "adaptiveResolution",
     "hints",
     "vibration",
+    "autoSwitch",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);

@@ -1,7 +1,7 @@
 import { Game } from "./game";
 import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
 import { formatTime, freshSave } from "./core";
-import { AMMUNITION } from "./ammunition";
+import { AMMUNITION, lowAmmo } from "./ammunition";
 import { defaults, type Settings } from "./settings";
 import {
   ACTIONS,
@@ -783,6 +783,15 @@ export class UI {
           ],
         ) +
         this.choice(
+          "autoSwitch",
+          "Switch weapon when empty",
+          "Firing a mode with no ammunition switches to the highest weapon that can still fire from that button.",
+          [
+            ["Off", false],
+            ["On", true],
+          ],
+        ) +
+        this.choice(
           "hints",
           "Combat hints",
           "Explain combos and souls once, the first time they come up.",
@@ -872,6 +881,19 @@ export class UI {
         ? "∞"
         : String(Math.floor(g.altAmmo[g.weapon])),
     );
+    // Low reserves turn red: a fifth of what a level starts with, or less.
+    document
+      .getElementById("hud-ammo")
+      ?.classList.toggle(
+        "low",
+        lowAmmo(g.ammo[g.weapon], WEAPONS[g.weapon].ammo),
+      );
+    document
+      .getElementById("hud-alt")
+      ?.classList.toggle(
+        "low",
+        lowAmmo(g.altAmmo[g.weapon], WEAPONS[g.weapon].alt),
+      );
     set("hud-primary-label", AMMUNITION[g.weapon].primary);
     set("hud-secondary-label", "ALT / " + AMMUNITION[g.weapon].secondary);
     set("toast", g.toastTimer > 0 ? g.toast : "");
