@@ -139,6 +139,26 @@ Against the background 4 px away nothing changes (2.3:1 → 2.5:1 on snow): the 
 
 `stickAxis(value, deadzone, exponent)` in `src/controls.ts` ignores each axis inside the dead zone and rescales the rest so full tilt is still 1; the exponent shapes the response. _Stick dead zone_ (Options › Controls, 5–30%, default 18% as before) applies to both sticks; _Look response_ (linear as before, or precise: exponent 2, so half way between the dead zone and full tilt turns at a quarter of full speed instead of half) applies to the right stick only. Menu navigation keeps its fixed 18%. `tests/stick.test.ts` checks that the defaults reproduce the old mapping exactly, the limits, full tilt and monotonicity; `tests/round6-checks.js` drives a synthetic controller to check that a 0.25 deflection moves nothing at 30% and does at 5%, that precise turns at half the linear rate at half tilt and the same at full tilt, that the left stick is not curved, and that both options save from the Controls page. **Not tried on a physical controller.**
 
+## Smooth motion between simulation steps (round 7)
+
+The simulation advances in fixed 1/60 s steps, and until round 7 every frame drew the camera, enemies, projectiles and pickups exactly where the last step left them. On a display that is not exactly 60 Hz that judders: a frame that falls between two steps shows nothing moving. Walking straight ahead through the real frame loop, the camera stood still on 50% of frames at 120 Hz, 58% at 144 Hz (unevenly: 0, 1, 0, 1, 0, 0, 1 …), one frame in five at 75 Hz, and 5 of 30 frames at 60 Hz with ±3 ms of frame-time jitter. Every enemy did the same. Mouse and stick look were already applied every frame.
+
+`Interpolator` in `src/interpolate.ts` records where each enemy root, projectile and pickup is as each step begins (`Game.update()` calls it, so steps driven by the development API count too), and `Game.loop()` draws them, and the camera, `accumulator × 60` of the way from there to where the step left them. Enemies also turn part of the way. Straight after drawing, the simulated positions are put back and their world matrices refreshed, so nothing the game decides ever sees a drawn position. Anything that moved more than 4 m in one step (a new sector, a rescued enemy) is drawn where it landed. Ragdolls, particles and skeletal animation still change at the step rate. Moving things are drawn up to one step (17 ms) behind the simulation; turning is not delayed. `Game.interpolate = false` turns it off, for comparisons.
+
+`tests/round7-checks.js` drives the real frame loop with synthetic display timestamps. Per-frame camera speed while walking, before → after:
+
+| Display         | Frozen frames, before | Variation (CV), before | Frozen frames, after | Variation (CV), after |
+| --------------- | --------------------- | ---------------------- | -------------------- | --------------------- |
+| 60 Hz           | 0 / 30                | 0                      | 0 / 30               | 0                     |
+| 60 Hz, ±3 ms    | 5 / 30                | 0.56                   | 0 / 30               | 0                     |
+| 75 Hz           | 8 / 38                | 0.52                   | 0 / 38               | 0                     |
+| 120 Hz          | 30 / 60               | 1.00                   | 0 / 60               | 0                     |
+| 144 Hz          | 42 / 72               | 1.18                   | 0 / 72               | 0                     |
+| 144 Hz, ±1.5 ms | 42 / 72               | 1.20                   | 0 / 72               | 0                     |
+| Enemy, 144 Hz   | 84 / 143              | 1.19                   | 0 / 143              | 0                     |
+
+The same file checks that a 14-second seeded rocket fight driven through the frame loop at 144 Hz with uneven frames ends in exactly the same state with interpolation on and off (positions, health, kills, the random sequence and every ragdoll body), that frames without a step leave every simulated position untouched, and that a new sector is drawn at its start rather than slid to it. `tests/interpolate.test.ts` covers the interpolator. Synthetic timing only: **no 120 or 144 Hz display has been looked at.**
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.

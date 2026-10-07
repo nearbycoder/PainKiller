@@ -46,6 +46,7 @@ import {
 import { Sound, type EnemyCue } from "./audio";
 import { layerFor } from "./music";
 import { isolated, random } from "./random";
+import { between, Interpolator } from "./interpolate";
 import { CROSSHAIR_COLORS, parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
@@ -280,6 +281,14 @@ export class Game {
   fps = 60;
   lastTime = 0;
   accumulator = 0;
+  /**
+   * Draw the camera, enemies, projectiles and pickups between the last two simulation
+   * steps, so motion is even at any refresh rate. The simulation never sees it.
+   */
+  interpolate = true;
+  private motion = new Interpolator();
+  /** The player's position as the latest simulation step began. */
+  private previousPosition = new T.Vector3(0, 1.75, 24);
   onChange: () => void = () => {};
   onHUD: () => void = () => {};
   hudTimer = 0;
@@ -832,6 +841,8 @@ export class Game {
     this.damageMarks = [];
     this.unseenTime = 0;
     this.accumulator = 0;
+    this.motion.reset();
+    this.previousPosition.copy(this.position);
     this.weaponMotion.equip(this.weapon);
     this.invulnerable = 1;
     this.taken = new Set();
@@ -1709,6 +1720,8 @@ export class Game {
     this.recoil = 0.18;
   }
   update(dt: number) {
+    this.previousPosition.copy(this.position);
+    this.motion.record(this.movers());
     this.tick++;
     this.elapsed += dt;
     this.totalTime += dt;
@@ -1896,6 +1909,12 @@ export class Game {
         1,
         2,
       );
+  }
+  /** Everything drawn between simulation steps (see {@link interpolate}). */
+  *movers() {
+    for (const e of this.enemies) yield e.model.root;
+    for (const p of this.projectiles) yield p.mesh;
+    for (const p of this.pickups) yield p.mesh;
   }
   /** Move a stuck enemy to open ground 12–25 m away, in view when possible. */
   relocate(e: Enemy) {
@@ -2515,7 +2534,12 @@ export class Game {
         this.accumulator -= 1 / 60;
         steps++;
       }
-      this.camera.position.copy(this.position);
+      between(
+        this.previousPosition,
+        this.position,
+        this.interpolate ? this.accumulator * 60 : 1,
+        this.camera.position,
+      );
       const motion = Math.hypot(this.velocity.x, this.velocity.z);
       this.camera.position.y +=
         Math.sin(this.elapsed * motion * 1.4) *
@@ -2639,6 +2663,16 @@ export class Game {
     this.ao.ssaoMaterial.uniforms.cameraInverseProjectionMatrix.value.copy(
       this.camera.projectionMatrixInverse,
     );
+    if (this.mode === "playing" && this.interpolate) {
+      // Enemies also turn part of the way; the rest only move.
+      const alpha = this.accumulator * 60;
+      this.motion.apply(
+        this.enemies.map((e) => e.model.root),
+        alpha,
+        true,
+      );
+      this.motion.apply(this.movers(), alpha);
+    }
     this.renderWorld(delta);
     if (
       this.quality === 0 &&
@@ -2648,6 +2682,7 @@ export class Game {
       this.renderer.clearDepth();
       this.renderer.render(this.weaponScene, this.weaponCamera);
     }
+    this.motion.restore();
     this.hudTimer += delta;
     if (this.hudTimer > 0.07) {
       this.hudTimer = 0;
