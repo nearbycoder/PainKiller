@@ -810,6 +810,18 @@ body[data-mode="dead"] #world {
   letter-spacing: 0.5px;
   color: #d2bb91;
 }
+.weapon-inscription > p.weapon-trick {
+  margin: 10px 0 0;
+  padding-left: 14px;
+  border-left: 2px solid #a9926270;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #cdbb94;
+}
+.weapon-trick .menu-kicker {
+  display: block;
+  margin-bottom: 4px;
+}
 .tarot-grid {
   display: flex;
   gap: 30px;

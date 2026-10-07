@@ -121,6 +121,8 @@ export const WEAPONS = [
     primary: "Rotating blades",
     secondary: "Returning blade",
     hint: "An inexhaustible engine of steel. Close the distance, or launch its spinning head.",
+    trick:
+      "Never runs out of ammunition. The thrown blade head cuts through enemies and returns to you.",
     color: 0xc6d5c5,
     ammo: Infinity,
     alt: Infinity,
@@ -131,6 +133,8 @@ export const WEAPONS = [
     primary: "Scattershot",
     secondary: "Freezing bolt",
     hint: "Freeze a target, then shatter it with a point-blank blast.",
+    trick:
+      "Freeze an enemy with {alternate}, then hit it with the scattershot ({primary}) to shatter it.",
     color: 0xffc16f,
     ammo: 65,
     alt: 24,
@@ -141,6 +145,8 @@ export const WEAPONS = [
     primary: "Wooden stake",
     secondary: "Bouncing grenade",
     hint: "Impale enemies. Stakes ignite in flight; shoot a grenade to propel it.",
+    trick:
+      "Stakes ignite over distance and pin bodies to walls. Shoot a stake ({primary}) into your own grenade to launch it.",
     color: 0xe2a05e,
     ammo: 45,
     alt: 24,
@@ -151,6 +157,8 @@ export const WEAPONS = [
     primary: "Rocket launcher",
     secondary: "Rotary chaingun",
     hint: "Explosive crowd control, backed by a torrent of lead. Keep your distance.",
+    trick:
+      "Blasts fling bodies across the arena, and your own blast hurts you up close.",
     color: 0xff6c39,
     ammo: 24,
     alt: 220,
@@ -161,6 +169,8 @@ export const WEAPONS = [
     primary: "Shuriken launcher",
     secondary: "Chain lightning",
     hint: "Throw razor stars or arc lightning between targets. Both buttons launch a storm orb.",
+    trick:
+      "Lightning leaps between nearby targets. Hold {primary} and {alternate} together for a storm orb (1 shuriken and 16 charge).",
     color: 0x6bdfec,
     ammo: 100,
     alt: 160,

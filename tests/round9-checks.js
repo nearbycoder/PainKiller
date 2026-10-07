@@ -381,6 +381,141 @@
     },
   );
 
+  // R9-4: the arsenal names the controls in use and each weapon's trick.
+  // Back to the title menu's first page, whatever page was open.
+  const home = () => {
+    g.setMode("playing");
+    g.setMode("menu");
+  };
+  const arsenal = (weapon) => {
+    home();
+    document
+      .querySelector('[data-action="page"][data-value="arsenal"]')
+      .click();
+    document
+      .querySelector(`[data-action="weapon"][data-value="${weapon}"]`)
+      .click();
+    const section = document.querySelector(".weapon-inscription");
+    return {
+      keys: [...section.querySelectorAll(".fire-modes kbd")].map(
+        (k) => k.textContent,
+      ),
+      trick: section.querySelector(".weapon-trick").textContent,
+      note: document.querySelector(".arsenal-layout + .screen-note")
+        .textContent,
+    };
+  };
+  const gamepad = () => ({
+    connected: true,
+    mapping: "standard",
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
+  });
+  await check("R9-4 the arsenal names the default keys", async () => {
+    await resize(1280, 800);
+    // Default bindings, through Options › Restore all defaults (restored at the end).
+    g.setMode("menu");
+    document
+      .querySelector('[data-action="page"][data-value="settings"]')
+      .click();
+    document.querySelector('[data-action="defaults"]').click();
+    document.querySelector('[data-action="confirm"]').click();
+    const a = arsenal(1);
+    assert(a.keys.join() === "LMB / Z,RMB / X", "keys: " + a.keys);
+    assert(
+      a.note ===
+        "No reloading. Cycle weapons with R / V or the mouse wheel. Select this one with 2. Inspect with F.",
+      a.note,
+    );
+    assert(
+      a.trick ===
+        "TRICKFreeze an enemy with RMB / X, then hit it with the scattershot (LMB / Z) to shatter it.",
+      a.trick,
+    );
+    return a;
+  });
+  await check("R9-4 rebinding changes what the arsenal says", async () => {
+    const s = g.settings();
+    g.applySettings({
+      ...s,
+      bindings: {
+        ...s.bindings,
+        primary: ["KeyJ"],
+        alternate: ["Mouse4"],
+        next: ["KeyN"],
+        previous: ["KeyB"],
+        inspect: ["KeyG"],
+        weapon5: [],
+      },
+    });
+    const a = arsenal(4);
+    assert(a.keys[0] === "J" && a.keys[1] !== "RMB / X", "keys: " + a.keys);
+    assert(
+      a.trick.includes(`Hold J and ${a.keys[1]} together`),
+      "storm orb: " + a.trick,
+    );
+    assert(
+      /with N \/ B or the mouse wheel\. Inspect with G\./.test(a.note) &&
+        !/Select this one/.test(a.note),
+      "note: " + a.note,
+    );
+    g.applySettings(s);
+    return a;
+  });
+  await check("R9-4 a controller sees its buttons", async () => {
+    g.controls.poll(1 / 60, [gamepad()]);
+    try {
+      assert(g.controls.connected, "the controller did not connect");
+      const a = arsenal(4);
+      assert(
+        a.keys[0] === g.padFor("primary") &&
+          a.keys[1] === g.padFor("alternate") &&
+          !/LMB|RMB/.test(a.keys.join()),
+        "keys: " + a.keys,
+      );
+      assert(
+        a.note.includes(`${g.padFor("next")} / ${g.padFor("previous")}`) &&
+          !/mouse wheel/.test(a.note),
+        "note: " + a.note,
+      );
+      return a;
+    } finally {
+      g.controls.poll(1 / 60, []);
+      g.setMode("menu");
+    }
+  });
+  await check("R9-4 a touch player sees the touch buttons", async () => {
+    pointer("pointerdown", "touch");
+    try {
+      const a = arsenal(1);
+      assert(a.keys.join() === "FIRE,ALT", "keys: " + a.keys);
+      assert(/◀ and ▶/.test(a.note), "note: " + a.note);
+      return a;
+    } finally {
+      pointer("pointermove", "mouse", { movementX: 3 });
+    }
+  });
+  await check("R9-4 every weapon has a trick with its keys filled in", () => {
+    const tricks = [0, 1, 2, 3, 4].map((i) => {
+      const t = arsenal(i).trick,
+        section = document.querySelector(".weapon-inscription");
+      // At 1280 × 800 the page needs no scrolling for any weapon.
+      assert(
+        section.scrollHeight <= section.clientHeight + 1,
+        `weapon ${i + 1} scrolls: ${section.scrollHeight} > ${section.clientHeight}`,
+      );
+      return t;
+    });
+    for (const t of tricks)
+      assert(t.length > 40 && !/[{}]/.test(t) && !/undefined/.test(t), t);
+    assert(/Never runs out/.test(tricks[0]), tricks[0]);
+    assert(/shatter/.test(tricks[1]), tricks[1]);
+    assert(/grenade/.test(tricks[2]), tricks[2]);
+    assert(/storm orb/.test(tricks[4]), tricks[4]);
+    g.setMode("menu");
+    return tricks;
+  });
+
   await resize(...startSize);
   g.canvas.requestPointerLock = requestLock;
   g.applySettings(options);

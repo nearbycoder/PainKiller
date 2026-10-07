@@ -654,7 +654,7 @@ export class UI {
     }
     if (this.page === "arsenal") {
       const w = WEAPONS[this.armory];
-      return `<div class="arsenal-layout"><nav class="level-list" aria-label="Weapons">${WEAPONS.map((x, i) => `<button data-action="weapon" data-value="${i}" class="${this.armory === i ? "selected" : ""}"><small>0${i + 1}</small><span>${x.short}</span></button>`).join("")}</nav><section class="weapon-inscription"><div class="weapon-etching">${gunIcon(this.armory)}</div><p class="menu-kicker">WEAPON 0${this.armory + 1}</p><h2>${w.name}</h2><p>${w.hint}</p><div class="fire-modes"><p><kbd>LMB</kbd><span>PRIMARY<b>${w.primary}</b></span></p><p><kbd>RMB</kbd><span>SECONDARY<b>${w.secondary}</b></span></p></div></section></div><p class="screen-note">No reloading. Select with 1–5, R / V, or the mouse wheel. Inspect with F.</p>`;
+      return `<div class="arsenal-layout"><nav class="level-list" aria-label="Weapons">${WEAPONS.map((x, i) => `<button data-action="weapon" data-value="${i}" class="${this.armory === i ? "selected" : ""}"><small>0${i + 1}</small><span>${x.short}</span></button>`).join("")}</nav><section class="weapon-inscription"><div class="weapon-etching">${gunIcon(this.armory)}</div><p class="menu-kicker">WEAPON 0${this.armory + 1}</p><h2>${w.name}</h2><p>${w.hint}</p><div class="fire-modes"><p><kbd>${this.control("primary")}</kbd><span>PRIMARY<b>${w.primary}</b></span></p><p><kbd>${this.control("alternate")}</kbd><span>SECONDARY<b>${w.secondary}</b></span></p></div><p class="weapon-trick"><span class="menu-kicker">TRICK</span>${w.trick.replace(/\{(primary|alternate)\}/g, (_, a) => this.control(a))}</p></section></div><p class="screen-note">${this.arsenalNote()}</p>`;
     }
     return `<p class="screen-note">Find a relic or collect 25 souls, then finish the level to earn a card.</p><div class="tarot-grid">${CARDS.map((c, i) => `<button class="tarot-card ${g.save.selectedCard === i ? "selected" : ""} ${g.save.cards.includes(i) ? "" : "locked"}" data-action="card" data-value="${i}" ${g.save.cards.includes(i) ? "" : "disabled"}><span class="menu-kicker">${roman[i]}</span><div class="tarot-symbol">${["⚔", "☄", "♜"][i]}</div><h2>${c.name}</h2><p>${c.detail}</p><span class="card-state">${g.save.cards.includes(i) ? (g.save.selectedCard === i ? "EQUIPPED" : "EQUIP CARD") : "SEALED"}</span></button>`).join("")}</div><p class="screen-note">Press ${g.keyFor("tarot")} in combat. One activation per sector. Collect 66 souls to become the Wraith.</p>`;
   }
@@ -958,6 +958,29 @@ export class UI {
           ],
         );
     return `<div class="settings-layout"><nav class="settings-categories" aria-label="Settings categories">${tabs.map(([id, label]) => `<button class="${id === this.settingsTab ? "selected" : ""}" data-action="settings-tab" data-value="${id}" aria-pressed="${id === this.settingsTab}"><span>◆</span>${label}</button>`).join("")}</nav><section class="settings-options" aria-label="${this.settingsTab} settings"><h2>${tabs.find((t) => t[0] === this.settingsTab)![1]}</h2>${content}<div class="settings-bottom"><span>Changes are saved automatically.</span><button data-action="defaults">Restore all defaults</button></div></section></div>`;
+  }
+  /** The button for an action on the input in use: a key, a controller button or touch. */
+  control(action: "primary" | "alternate" | "next" | "previous" | "inspect") {
+    const g = this.game;
+    if (g.controls.connected) return g.padFor(action);
+    if (g.controls.mobile)
+      return {
+        primary: "FIRE",
+        alternate: "ALT",
+        next: "▶",
+        previous: "◀",
+        inspect: "INSPECT",
+      }[action];
+    return g.keyFor(action);
+  }
+  arsenalNote() {
+    const g = this.game,
+      direct = `weapon${this.armory + 1}` as Action,
+      key = g.controls.connected ? g.padFor(direct) : g.keyFor(direct),
+      select = key === "—" ? "" : ` Select this one with ${key}.`;
+    if (g.controls.mobile && !g.controls.connected)
+      return "No reloading. Switch weapons with ◀ and ▶. Inspect with INSPECT.";
+    return `No reloading. Cycle weapons with ${this.control("next")} / ${this.control("previous")}${g.controls.connected ? "" : " or the mouse wheel"}.${select} Inspect with ${this.control("inspect")}.`;
   }
   renderHUD() {
     this.root.innerHTML = `<div id="hud-scrim" aria-hidden="true"></div><div id="damage-overlay"></div><div id="hud-fps" aria-hidden="true"></div><div id="low-health-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b><s></s></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div id="mouse-prompt" role="status" hidden><b>Click to return to the fight</b><span>The fight waits for the mouse. Esc pauses.</span></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}<span class="slot-ammo" aria-hidden="true"><b><i></i></b><b><i></i></b></span></button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ <span id="hud-prev-key"></span></button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon"><span id="hud-next-key"></span> ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
