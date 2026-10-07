@@ -219,9 +219,9 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Campaign length and balance have not been measured end to end with human playtesters. A scripted autopilot ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#balance-autopilot)) samples ten sectors on every difficulty. For it, ordinary sectors are easy even on Torment and the generals, especially their shockwaves, cause most deaths. A bot is not a player, though.
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried, so controller vibration has never been felt.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
-- The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run.
+- The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run. It passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in Firefox, and Safari has not been tried.
 - Keyboard, mouse and controller buttons can be rebound; the sticks and the touch layout cannot. Saves resume the start of the current wave, not the exact moment you quit.
-- The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark.
+- The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark. Shaders are compiled ahead of the fight, so the first title screen after launch holds one frame for about half a second, and starting a level holds about half a second.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.
 
