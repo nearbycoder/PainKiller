@@ -54,6 +54,43 @@ Still open: everything below rank 6 in the list, the owner decisions at the end,
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves (the death recap explains a shockwave death afterwards and the existing "SHOCKWAVE / JUMP" toast is unchanged, but no new warning was added); weapon progression; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: a physical controller (rebinding, stick speed and especially how the vibration feels), phones, Firefox and Safari.
 
+## Round 4 scope (2026-10-06)
+
+The ranked list is done apart from owner decisions (meshopt, weapon progression, difficulty, hosting) and work that cannot be tested here (Windows and macOS) or needs new art (bespoke generals). So this round's items come from a fresh look at the running game. Two things turned up:
+
+- **First-use stutter.** In a fresh session (offscreen Electron, load average 8), the first frame of the first level took 883 ms, the first skeleton and revenant spawns froze the game for 117 and 183 ms, and the first rocket for 67 ms. Running the same script a second time, no frame went over 17 ms except the level start (133 ms) and one 67 ms frame. The game never pre-compiles its shaders, so each new material compiles the first time it is drawn, in the middle of a fight.
+- **Firefox is installed here.** Headless Firefox 157 can be driven over WebDriver BiDi, which is built in, with a throwaway profile and nothing to install. The README says Firefox has never been tried.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R4-1. Pre-compile shaders (no first-use stutter)
+
+Compile the materials the game will need before they are first drawn: enemies, generals' wardrobe, weapons, projectiles, effects, pickups and the Wraith tint while the title is up, and each arena's materials as it loads. Nothing should look different.
+
+**Accept / verify:** the stutter script, run in a fresh session, shows no frame over 50 ms on the first spawn of each breed or the first use of each fire mode, and a shorter freeze at level start. Measured before and after with the load noted, and committed as a repeatable check. Existing checks stay green, and a capture shows no visual change.
+
+### R4-2. Running dry: switch weapons, click, warn
+
+Today, firing an empty mode only shows "OUT OF AMMO / SWITCH WEAPON" and you have to switch by hand in the middle of a fight. Instead, firing an empty mode plays a dry click and, if the new _Switch weapon when empty_ option is on (the default), switches to the highest slot with ammunition for the button you pressed. The Thresher's blades never run out, so there is always something to switch to. The ammunition counter turns red when the mode in hand is low. No ammunition amounts change.
+
+**Accept / verify:** unit tests for the weapon choice (the button pressed, skipping empty weapons, never the current weapon, falling back to the Thresher, and the storm combo's cost). Browser checks that holding fire with empty rockets switches to the next weapon with ammunition and keeps firing, that the alternate button looks at alternate ammunition, that nothing switches with the option off, that the dry click plays, and that the low-ammunition state appears and clears with a pickup. A capture.
+
+### R4-3. Firefox
+
+A `tools/firefox-checks.mjs` runner drives the system Firefox headless (profile in `artifacts/`, deleted afterwards) through WebDriver BiDi. It runs the same `tests/*-checks.js` scenarios as `npm run test:browser` against a dev server, and plays the packaged web build through the real menus. Fix what fails in Firefox only.
+
+**Accept / verify:** the scenario suites pass in Firefox, or every failure is fixed or explained. The packaged build reaches the menu and plays a level with no console errors. A capture from Firefox. Safari is still untested (WebKit cannot be driven here without installing Playwright).
+
+### R4-4. HUD scale (if time allows)
+
+An _Interface scale_ option (75–150%) for the in-game HUD: health, armor, ammunition, weapon bar, key line, hints, toasts and the boss bar. Menus and the touch layout stay as they are.
+
+**Accept / verify:** a browser check that every HUD element stays inside the viewport and that the main panels don't overlap, at 75%, 100% and 150% on 1280×800 and 1920×1080, and that the option saves. Captures at 75% and 150%.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:desktop`, `npm run build`, `npm run format:check`, and one full balance autopilot run (no combat values change, but R4-2 changes what the bot holds when it runs dry, so compare with round 3). `~/.config/Purgatory` is checked before and after.
+
 ## Round 3 scope (2026-10-06)
 
 Picked from what is still open after round 2, for a player and without touching difficulty. Out of scope as owner decisions: difficulty retuning, a warning before generals' shockwaves, weapon progression, meshopt compression (needs a tool install), hosting, licensing, releases. Windows and macOS builds and bespoke general models stay deferred: the first cannot be tested here and the second needs new art.
