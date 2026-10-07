@@ -985,7 +985,8 @@ export class Game {
       // Escape always pauses, whatever else is bound.
       if (e.code === "Escape") {
         this.setMode("paused");
-        // The menus would read the same Esc as "back" and resume at once.
+        // An Esc dispatched at the window reaches the menus after this, which would
+        // read it as "back" and resume at once (key presses reach them first).
         e.stopImmediatePropagation();
       } else if (!this.awaitingMouse)
         for (const action of bound || []) this.press(action);

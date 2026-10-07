@@ -65,6 +65,14 @@
     locked = null;
     lockChanged();
   };
+  const esc = (target) => {
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { code: "Escape", bubbles: true }),
+    );
+    target.dispatchEvent(
+      new KeyboardEvent("keyup", { code: "Escape", bubbles: true }),
+    );
+  };
   const prompt = () => {
     const el = document.getElementById("mouse-prompt");
     return !!el && !el.hidden && getComputedStyle(el).display !== "none";
@@ -194,12 +202,8 @@
     click("resume");
     await frames(3);
     assert(g.awaitingMouse, "not held");
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { code: "Escape", bubbles: true }),
-    );
-    window.dispatchEvent(
-      new KeyboardEvent("keyup", { code: "Escape", bubbles: true }),
-    );
+    // A key press reaches the page (the focused element), not the window.
+    esc(document.body);
     assert(g.mode === "paused" && !g.awaitingMouse, "mode " + g.mode);
     await frames(3);
     assert(g.mode === "paused", "resumed by the same Esc: " + g.mode);
@@ -209,27 +213,28 @@
   await check(
     "Esc pauses a fight without the mouse, and stays paused",
     async () => {
-      // Before round 8 the menus read the same Esc as "back" and resumed at once.
       g.hadMouse = false;
-      click("resume");
-      await frames(3);
-      assert(g.mode === "playing" && !g.awaitingMouse, "mode " + g.mode);
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "Escape", bubbles: true }),
-      );
-      window.dispatchEvent(
-        new KeyboardEvent("keyup", { code: "Escape", bubbles: true }),
-      );
-      await frames(3);
-      assert(g.mode === "paused", "mode " + g.mode);
+      const out = {};
+      // A real key press reaches the page; a script may dispatch at the window, which
+      // the menus used to read as "back" as well, resuming at once.
+      for (const [name, target] of [
+        ["page", document.body],
+        ["window", window],
+      ]) {
+        click("resume");
+        await frames(3);
+        assert(g.mode === "playing" && !g.awaitingMouse, "mode " + g.mode);
+        esc(target);
+        await frames(3);
+        assert(g.mode === "paused", `Esc at the ${name}: ${g.mode}`);
+        out[name] = g.mode;
+      }
       // Esc in the pause menu still resumes.
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", { code: "Escape", bubbles: true }),
-      );
+      esc(document.body);
       assert(g.mode === "playing", "Esc did not resume: " + g.mode);
       g.setMode("paused");
       g.hadMouse = true;
-      return g.mode;
+      return out;
     },
   );
 
