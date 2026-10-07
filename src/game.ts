@@ -553,10 +553,11 @@ export class Game {
   }
   /**
    * The interface scale, capped so the HUD still fits a small window (a 1280 × 800
-   * window holds it at 150%); the chosen scale is kept for a larger window.
+   * window holds it at 150%, and so does one 630 pixels tall); the chosen scale is kept
+   * for a larger window.
    */
   fitHud() {
-    const fit = Math.min(innerWidth / 853, innerHeight / 533);
+    const fit = Math.min(innerWidth / 853, innerHeight / 420);
     document.documentElement.style.setProperty(
       "--hud-scale",
       String(Math.min(this.hudScale, fit)),

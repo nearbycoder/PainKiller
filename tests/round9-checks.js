@@ -155,6 +155,8 @@
   for (const [w, h] of [
     [860, 640],
     [700, 500],
+    [1280, 600],
+    [1100, 480],
   ])
     await check(
       `R9-1 a mouse in a ${w}×${h} window keeps the desktop layout and the mouse`,
