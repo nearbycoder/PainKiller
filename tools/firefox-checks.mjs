@@ -228,7 +228,11 @@ try {
   });
   const started = Date.now();
   // Development builds expose the game; production builds only the read-only state.
-  while (!(await ff.js("window.__PURGATORY__?.state?.().mode === 'menu'"))) {
+  // --no-boot: run the scripts at once, to watch the start-up screen itself.
+  while (
+    !process.argv.includes("--no-boot") &&
+    !(await ff.js("window.__PURGATORY__?.state?.().mode === 'menu'"))
+  ) {
     if (Date.now() - started > 180000)
       throw new Error("The game did not reach the menu");
     await sleep(500);

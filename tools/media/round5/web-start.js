@@ -3,8 +3,10 @@
 //   npm run test:browser -- --url http://localhost:5190/ --no-boot --checks tools/media/round5/web-start.js
 // With --before 'window.__STAGE__ = "retry"' and the server started with --block supplies,
 // it checks the retry screen instead: window.__STAGE__ = "retry-shot" stops there for a capture.
+// The stage can also come from the URL (http://localhost:5190/#retry), for
+// `node tools/firefox-checks.mjs --url ... --no-boot`.
 (async () => {
-  const stage = window.__STAGE__ || "progress",
+  const stage = window.__STAGE__ || location.hash.slice(1) || "progress",
     results = [];
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const check = (name, ok, detail) =>

@@ -14,6 +14,8 @@ The development preview uses browser local storage, separate from the desktop sa
 
 Production builds load the actors, weapons, supplies, the cemetery (title backdrop) and the HDR sky before the menu: 50 MB instead of 86 MB. `prefetchArt()` then fetches the cathedral, crypt and factory scenes one at a time. `Game.start()` waits on a loading screen if the chosen level's scene is still downloading, and offers _Try again_ if the download fails. Development builds load everything up front so scripted checks and trailer capture never wait. `state().environmentsPending` lists scenes not yet loaded.
 
+**Start-up progress and retry (round 5).** The start-up screen counts bytes across every start-up file, the sky included: `virtual:asset-sizes` (a plugin in `vite.config.ts`) lists each model's and the sky's size at build time, so the bar is right before any response headers arrive, behind a compressing server that sends no length, and on `file://` in the desktop build. A failed download does not stop the others; the screen then says _The download stopped_ and offers _Try again_, which fetches only what is still missing, without reloading the page. Errors after the downloads (WebGL, physics) still show the fatal screen. `tools/serve-slow.cjs` serves a build at a set rate per file and without lengths, or answers 503 for a named file until a page script unblocks it; `tools/media/round5/web-start.js` uses it (`npm run test:browser -- --url http://localhost:5190/ --no-boot --checks tools/media/round5/web-start.js`). Verified on 2026-10-06 against `dist/`: at 3 MB/s per file the bar rose in 15 steps from 0 to 13.5 of 49.9 MB within 4 s, while only the cemetery and the revenant had been requested, and never went backwards; with `supplies.glb` blocked the retry screen appeared after the other files finished, and _Try again_ reached the menu in the same page, downloading only `supplies.glb` again. Both checks also pass in Firefox 157 (`node tools/firefox-checks.mjs --url http://localhost:5190/#retry --no-boot --checks tools/media/round5/web-start.js`; the stage comes from the URL there).
+
 Verified on 2026-10-06 by serving the extracted zip with `python3 -m http.server`: in an offscreen Electron (Chromium) window driven through the real menus, jumping straight to Soul Foundry with its download delayed showed the loading screen and then the authored foundry, a blocked crypt download showed the retry screen and recovered, and the background-prefetched cathedral started without waiting; in Playwright's cached `chrome-headless-shell` 151 (SwiftShader WebGL 2) it reached the menu and Hallowed Ground with no console errors. Firefox was first tried in round 4 (below); Safari has not been tested.
 
 ## Controls, records and checks added in round 2
@@ -36,9 +38,20 @@ Controller buttons are saved alongside (`purgatory.options` › `padBindings`): 
 
 `tests/round3-checks.js` covers controller rebinding, stick speed, rumble, the death recap and the gate guide. `tools/media/round3/*.js` set up the round's captures for `npm run test:browser -- --checks <script> --capture <file.jpg>`.
 
+## Reproducible randomness (round 5)
+
+Gameplay and combat effects draw from `random()` in `src/random.ts` (mulberry32), not from `Math.random`. At start-up it is seeded from `Math.random`, so ordinary play is as random as before; `seedRandom(n)` (the development API's `seed(n)`) makes what follows repeatable. Two things used to move the sequence from outside the game's logic:
+
+- **Sound.** `Sound.noise()` filled each buffer from `Math.random`, hundreds to thousands of numbers per sound, and how many sounds play depends on the audio clock (the music beat) and on `performance.now()` (the enemy-cue budget). Sound now has its own generator (`generator()`), so it can never move the game's sequence.
+- **Three.js.** `generateUUID` draws four `Math.random` numbers for every object, material and geometry, so building a model for the first time, or not, shifted every later draw. Three.js keeps `Math.random`; the game no longer shares it.
+
+The simulation also had timing that followed displayed frames: the storm orb's damage ticks (`frame % 8`), rocket trails and the Wraith's sparks counted `Game.frame`, which the render loop advances, inside the fixed-step `update()`. On a 120 or 144 Hz display updates run on only some frames, so the orb hit 3.5 to 11.5 times a second depending on phase instead of 7.5. They now count `Game.tick`, the simulation steps since the arena loaded. At 60 Hz nothing changes.
+
+`tests/round5-checks.js` checks that a seeded fight in The Barrow repeats exactly with sound playing, real time passing between batches of frames, and other sectors and freshly built models in between (and fails if sound draws from the game's sequence again); that a different seed gives a different fight; that the storm orb hits 7–7.5 times a second at 30, 60, 120 and 144 Hz from two frame phases; and that the shader warm-up leaves the sequence where it was. `tests/random.test.ts` covers the generator.
+
 ## Shader warm-up (round 4)
 
-Three.js compiles a shader the first time a material is drawn under a given lighting and render target, and the game never did that ahead of time, so a fresh session froze for 100–2,500 ms the first time each breed appeared or a weapon fired. Now, after each arena loads, `Game.compileWarmUp()` builds one of everything a fight can draw (every breed, the five generals, projectiles, pickups, effect sprites and the weapons) and hands it to `renderer.compileAsync`, which lets the driver compile in parallel (`KHR_parallel_shader_compile`). It does this for both lighting setups the campaign uses (authored scenes have six lamps, procedural arenas four), and for the composer's offscreen target, because programs drawn into a render target differ from ones drawn to the screen. When that finishes, `Game.warmUp()` draws the set once, unseen, before the real frame, which catches what `compileAsync` cannot: the ambient-occlusion normal pass and the shadow pass. The shadow pass shares one depth material and picks its shader from the caster's side, texture and skinning in draw order, so every variant is compiled explicitly (fog-free, as the shadow pass draws). Building the set draws no numbers from `Math.random`, so seeded runs are unchanged.
+Three.js compiles a shader the first time a material is drawn under a given lighting and render target, and the game never did that ahead of time, so a fresh session froze for 100–2,500 ms the first time each breed appeared or a weapon fired. Now, after each arena loads, `Game.compileWarmUp()` builds one of everything a fight can draw (every breed, the five generals, projectiles, pickups, effect sprites and the weapons) and hands it to `renderer.compileAsync`, which lets the driver compile in parallel (`KHR_parallel_shader_compile`). It does this for both lighting setups the campaign uses (authored scenes have six lamps, procedural arenas four), and for the composer's offscreen target, because programs drawn into a render target differ from ones drawn to the screen. When that finishes, `Game.warmUp()` draws the set once, unseen, before the real frame, which catches what `compileAsync` cannot: the ambient-occlusion normal pass and the shadow pass. The shadow pass shares one depth material and picks its shader from the caster's side, texture and skinning in draw order, so every variant is compiled explicitly (fog-free, as the shadow pass draws). The set is built in isolation from the game's random sequence (`isolated()` in `src/random.ts`), so seeded runs are unchanged.
 
 `tests/round4-checks.js` fights in a procedural and an authored arena on Low, Medium and High and fails if any shader program is compiled during the fight; with the warm-up disabled it fails. `tools/stutter.js` measures frame times in a fresh session (`npm run test:browser -- --checks tools/stutter.js --out artifacts/stutter.json`). On 2026-10-06, at a load average of 18–23 on this shared machine, `main` showed a 1.0 s freeze at the first level start, 183–2,450 ms on first spawns and 83–317 ms on first shots. This branch showed no fight frame over 33 ms and about 0.5 s at level start, at the cost of one 450 ms frame on the title screen after boot, when both lighting setups are compiled.
 
@@ -52,6 +65,28 @@ Verified on 2026-10-06 with Firefox 157 on this machine (WebGL 2 on the Radeon i
 
 `hudScale` (0.75–1.5, Options › Video) sets the `--hud-scale` CSS variable. Each HUD panel scales from the corner or edge it is anchored to (the level title from the top left, the ammunition from the bottom right, the weapon bar from the bottom centre), and the key line and hint move up with the weapon bar. Toasts and the gate prompt scale their font instead, so a long line cannot run off the screen. Menus and the touch layout are unchanged. `tests/round4-checks.js` checks that every panel stays on screen and that neighbouring panels do not overlap at 75%, 100% and 150%; `tools/browser-checks.cjs --size 1920x1080` runs it at another window size.
 
+## The empty-weapon click, measured (round 5)
+
+Nobody has listened to the dry click added in round 4, so `tools/media/round5/dry-click.js` renders it offline with the game's own synthesizer (`src/audio.ts`, default volumes: master 45%, effects 100%, music 65%) next to the sounds it plays among, and writes a listening clip (`npm run test:browser -- --checks tools/media/round5/dry-click.js --out artifacts/r5/dry-click.json`; the JSON holds the clip as base64 WAV). Levels in dBFS, for each sound on its own; "loudest 50 ms" is the RMS of the loudest 50 ms window:
+
+| Sound                                   | Peak  | Loudest 50 ms |
+| --------------------------------------- | ----- | ------------- |
+| Dry click                               | −31.4 | −46.4         |
+| Dry click and weapon draw (auto-switch) | −29.6 | −43.5         |
+| Footstep, stone                         | −31.0 | −43.3         |
+| Footstep, grass                         | −31.4 | −43.0         |
+| Weapon draw                             | −33.6 | −46.1         |
+| Menu tick                               | −36.5 | −48.6         |
+| Hit marker                              | −29.3 | −42.4         |
+| Kill confirm                            | −33.2 | −43.4         |
+| Pickup                                  | −24.8 | −32.3         |
+| Shotgun blast                           | −11.2 | −21.7         |
+| Rocket                                  | −12.7 | −22.5         |
+| Tempest star                            | −20.8 | −32.7         |
+| Combat music, one bar                   | −25.3 | −35.5         |
+
+The click peaks exactly as high as a footstep and its loudest 50 ms is 3 dB under one, so it sits with the other small handling sounds; it is not lost by design, and its level was left alone. Two things only a listener can judge: it is about 11 dB under the music bar's loudest 50 ms, and it is a short burst of filtered noise (5.2 kHz) like the music's off-beat hat (6.5 kHz), so over the music it may read as part of the rhythm. With _Switch weapon when empty_ on, the weapon-draw sound follows it at once. The 12-second clip `docs/media/improvements/round5/r5-3-dry-click.mp3` has walking to the music, three rockets, the rockets running dry (click and switch to the shotgun), two shotgun blasts, six clicks over the music with the option off, and three clicks alone.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.
@@ -60,7 +95,7 @@ The scripts in `tests/*-checks.js` can be pasted into, or evaluated by, a browse
 
 ## Balance autopilot
 
-`tests/balance-autopilot.js` is a repeatable yardstick, not a playtest. A scripted player aims perfectly at the nearest visible enemy, chooses the shotgun under 6 m, rockets under 18 m and stakes beyond, backs off when closer than 7 m, strafes, hops, and jumps a general's shockwave when it is about to arrive. It does not path-find or route to pickups. Each run seeds `Math.random`, but results also depend on run order (model caches consume randomness on first use), so compare complete default runs only:
+`tests/balance-autopilot.js` is a repeatable yardstick, not a playtest. A scripted player aims perfectly at the nearest visible enemy, chooses the shotgun under 6 m, rockets under 18 m and stakes beyond, backs off when closer than 7 m, strafes, hops, and jumps a general's shockwave when it is about to arrive. It does not path-find or route to pickups. Each run seeds the game's random sequence, so a build gives the same results in every session and in any order (since round 5; see below):
 
 ```bash
 npm run test:browser -- --checks tests/balance-autopilot.js --out artifacts/balance.json
@@ -79,7 +114,7 @@ Results on 2026-10-06, before (v0.1.0, `4672978`) and after the October improvem
 | General (8 runs)   | Purgatory  | 2 / 6 / 0                          | 4 / 4 / 0                         | 168 → 162                     | 82 s → 90 s                       |
 | General (8 runs)   | Torment    | 2 / 6 / 0                          | 4 / 4 / 0                         | 158 → 149                     | 84 s → 84 s                       |
 
-Round 4 found that the autopilot is not reproducible run to run: two back-to-back runs of identical code on 2026-10-06 matched in 0 of 60 individual runs, although it seeds `Math.random` and steps synchronously. Compare several complete runs, not one (see [IMPROVEMENTS.md](IMPROVEMENTS.md#round-4-results-2026-10-06)).
+Round 4 found that the autopilot was not reproducible run to run (two back-to-back runs of identical code matched in 0 of 60 runs). Round 5 found and removed the causes; two full runs in separate sessions now match in 60 of 60 runs. Results recorded before round 5 compare only as several complete runs, not run by run.
 
 The round changed no balance values on purpose; how hard ordinary sectors should be is the owner's decision. Apart from the timeouts, the before/after differences are run-to-run variance: the code changes shift the seeded random sequence. In this sample that variance is about ±2 deaths per cell, so do not read the changed death counts as an effect.
 
@@ -90,6 +125,27 @@ What the bot's damage says (after; by share of all damage taken):
 - Ordinary sectors: hellfire 48%, the bot's own rocket splash 43%, melee 9%. Melee almost never lands, because the player outruns every breed.
 - General sectors: shockwaves 46%, hellfire 29%, own splash 16%, contact with the general 7%. 6 of the 8 deaths in general sectors came from The Barrow and The Abyss, the two sampled generals that cast shockwaves, and the shockwave was the largest damage source in all 6.
 - Ordinary sectors stay easy for this bot even on Torment, while generals are where it dies. That matches the phase-1 finding. Whether that curve is intended is an open question for the owner.
+
+## Reproducible baseline and campaign sweep (round 5)
+
+With the randomness fixed (above), one run of the default set is a baseline that any later build can be compared with run by run. On 2026-10-06/07, on this branch after R5-2 (identical in two sessions for R5-1's code; R5-2 changed 3 of the 60 runs, all with the same outcome):
+
+| Sectors            | Difficulty | Cleared / died / timed out | Stuck-enemy rescues | Median damage | Median clear time |
+| ------------------ | ---------- | -------------------------- | ------------------- | ------------- | ----------------- |
+| Ordinary (12 runs) | Reverie    | 12 / 0 / 0                 | 2                   | 6             | 80 s              |
+| Ordinary (12 runs) | Purgatory  | 12 / 0 / 0                 | 2                   | 18            | 84 s              |
+| Ordinary (12 runs) | Torment    | 11 / 1 / 0                 | 0                   | 18            | 82 s              |
+| General (8 runs)   | Reverie    | 7 / 1 / 0                  | 0                   | 74            | 86 s              |
+| General (8 runs)   | Purgatory  | 6 / 2 / 0                  | 0                   | 89            | 87 s              |
+| General (8 runs)   | Torment    | 1 / 7 / 0                  | 1                   | 172           | 80 s              |
+
+The shape is the one every earlier round found: ordinary sectors are easy for the bot on every difficulty, and the generals kill it, most often with shockwaves and hellfire. Only the variation between runs is gone; the earlier differences between rounds were noise.
+
+**Every sector.** `window.__AUTOPILOT__ = { sectors: "all", difficulties: [1], seeds: 1 }` plays all 104 sectors on Purgatory (about 15 minutes of machine time, 146 minutes of game time). The autopilot now also reports each stuck-enemy rescue with the spot where the enemy was stuck, and anything that leaves the arena. The first sweep (after R5-1) cleared 99, died in 2 general sectors (Dune Sepulchre's and The Abyss's) and **timed out in three of Last Platform's four sectors**, each time with one enemy left and no rescue. Last Platform's arena has six 6 × 13 m train cars at x = ±15 with 4 m gaps. An enemy behind a car chases the player in a straight line, slides 2–5 m back and forth along the car as the player moves, and never finds a gap; because the sliding moves it more than 1.5 m, the round 1 rescue never counted it as stuck. Enemies are now also timed from the moment a wall blocks them out of the player's sight until they next see the player, and after 20 s they are moved to open ground in view, like walled-in enemies (`Enemy.walled` in `Game.updateEnemies`). `tests/round5-checks.js` reproduces it with a shambler and a witch behind a car while the player stands still, and a monk while the player paces a circle, and checks that an enemy in the open is never moved; all three fail on the old code.
+
+The second sweep had **no timeouts**: 102 cleared and the same 2 deaths. 96 sectors played identically; the 8 that changed all cleared sooner: Last Platform 1–4 (the three timeouts, and 175 → 136 s), Penitent Cells 1–3 (86 → 81, 124 → 84 and 112 → 90 s, enemies stuck at the cell-block corner near (−19, −26)) and Ward of Whispers 3 (109 → 90 s). No enemy or player left an arena in either sweep. The bot does not path-find, so a person would usually walk round to such an enemy (the last-enemy locator points to it); the rescue is the safety net for a player who waits. No collider, spawn point, health, speed, damage or wave value changed, so `tests/fixtures/arena-colliders.json` is unchanged.
+
+Median damage per sector (generals included) on Purgatory in the second sweep, by chapter: 0, 15, 37, 45 and 50. Damage rises through the campaign for the bot, though no ordinary sector killed it.
 
 ## Procedural arena dressing (round 2)
 
