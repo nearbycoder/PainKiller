@@ -335,6 +335,9 @@
       g.hints.seen.clear();
       g.applySettings({ ...options, hints: true });
       setup();
+      // Wave 1 can kill a player standing still for 14 s (3 seeds in 60), and hints stop
+      // on the death screen; this check is about hints, not damage.
+      g.invulnerable = 1e9;
       g.beginWave();
       step(2);
       g.onHUD();
