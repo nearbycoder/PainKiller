@@ -594,6 +594,71 @@
     return { line: line.slice(0, 40) };
   });
 
+  // R7-4: the frame-rate readout.
+  const readout = () => document.getElementById("hud-fps").textContent;
+  await check("R7-4 the frame-rate readout is hidden by default", () => {
+    calm();
+    g.applySettings({ ...g.settings(), showFps: false });
+    drive(timestamps(144, 200));
+    g.onHUD();
+    assert(readout() === "", "shown: " + readout());
+    return "hidden";
+  });
+
+  await check("R7-4 it reports the frame rate and catches a slow frame", () => {
+    calm();
+    setOption("video", "showFps", true);
+    assert(storedOptions().showFps === true, "not saved");
+    let t = 1000;
+    g.lastTime = t;
+    drive(Array.from({ length: 300 }, () => (t += 1000 / 144)));
+    g.onHUD();
+    const smooth = readout();
+    // One 50 ms frame, then two more seconds at 144 Hz to close its window.
+    drive([(t += 50)]);
+    drive(Array.from({ length: 140 }, () => (t += 1000 / 144)));
+    g.onHUD();
+    const hitch = readout();
+    assert(smooth === "144 FPS · WORST 6.9 MS", "at 144 Hz: " + smooth);
+    assert(/ · WORST 50\.0 MS$/.test(hitch), "missed the slow frame: " + hitch);
+    return { smooth, hitch };
+  });
+
+  await check(
+    "R7-4 the readout stays on screen and clear of the HUD at 75–150%",
+    async () => {
+      calm();
+      g.applySettings({ ...g.settings(), showFps: true });
+      const near = {
+        title: ".hud-top > div:first-child",
+        objective: ".objective",
+        stats: ".combat-stats",
+      };
+      const out = {};
+      for (const hudScale of [0.75, 1, 1.5]) {
+        g.applySettings({ ...g.settings(), hudScale });
+        g.onHUD();
+        await new Promise((r) => requestAnimationFrame(r));
+        const r = document.getElementById("hud-fps").getBoundingClientRect();
+        assert(r.width > 0 && r.left >= 0 && r.top >= 0, "off screen");
+        for (const [name, selector] of Object.entries(near)) {
+          const q = document.querySelector(selector).getBoundingClientRect();
+          assert(
+            r.right <= q.left ||
+              q.right <= r.left ||
+              r.bottom <= q.top ||
+              q.bottom <= r.top,
+            `overlaps the ${name} at ${hudScale}`,
+          );
+        }
+        out[hudScale] = [r.left, r.top, r.right, r.bottom].map(Math.round);
+      }
+      setOption("video", "showFps", false);
+      assert(storedOptions().showFps === false, "not saved off");
+      return out;
+    },
+  );
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

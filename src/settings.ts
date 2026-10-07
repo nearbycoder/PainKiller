@@ -31,6 +31,8 @@ export const defaults = {
   brightness: 1,
   /** Size of the in-game HUD (not menus or the touch layout). */
   hudScale: 1,
+  /** A frame-rate readout in the HUD's top-left corner. */
+  showFps: false,
   invertY: false,
   headBob: true,
   crosshair: true,
@@ -111,6 +113,7 @@ export function parseSettings(raw: string | null): Settings {
     "lowHealthWarning",
     "swapSticks",
     "toggleSprint",
+    "showFps",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);

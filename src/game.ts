@@ -48,6 +48,7 @@ import { layerFor } from "./music";
 import { isolated, random } from "./random";
 import { between, Interpolator } from "./interpolate";
 import { heartbeatInterval, lowHealth } from "./vitals";
+import { FrameStats } from "./frame-stats";
 import { CROSSHAIR_COLORS, parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
@@ -259,6 +260,9 @@ export class Game {
   lowHealthWarning = true;
   swapSticks = false;
   toggleSprint = false;
+  showFps = false;
+  /** Displayed frames per second and the slowest frame, for the readout. */
+  frameStats = new FrameStats();
   /** Running at sprint speed this step. */
   sprinting = false;
   /** Whether sprint was held at the last step, to see a fresh press in toggle mode. */
@@ -469,6 +473,7 @@ export class Game {
       autoSwitch: this.autoSwitch,
       lowHealthWarning: this.lowHealthWarning,
       hudScale: this.hudScale,
+      showFps: this.showFps,
     };
   }
   applySettings(s: Settings) {
@@ -497,6 +502,7 @@ export class Game {
       autoSwitch: s.autoSwitch,
       lowHealthWarning: s.lowHealthWarning,
       hudScale: s.hudScale,
+      showFps: s.showFps,
     });
     const root = document.documentElement;
     root.style.setProperty("--hud-scale", String(s.hudScale));
@@ -2553,6 +2559,7 @@ export class Game {
   }
   loop = (time: number) => {
     requestAnimationFrame(this.loop);
+    if (this.lastTime) this.frameStats.add(time - this.lastTime);
     const delta = Math.min((time - this.lastTime) / 1000 || 0, 0.1);
     this.lastTime = time;
     this.controls.poll(delta);
