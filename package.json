@@ -14,6 +14,7 @@
     "package:linux": "npm run build && electron-builder --linux AppImage && node tools/package-archive.cjs",
     "package:web": "npm run build && node tools/package-web.cjs",
     "test:desktop": "electron . --smoke-test",
+    "test:desktop-window": "node tools/desktop-window-check.cjs",
     "test:firefox": "node tools/firefox-checks.mjs",
     "format": "prettier --write src desktop tests index.html vite.config.ts tsconfig.json package.json",
     "format:check": "prettier --check src desktop tests index.html vite.config.ts tsconfig.json package.json",

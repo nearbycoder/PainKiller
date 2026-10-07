@@ -1,13 +1,27 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const {
+  MIN_SIZE,
+  windowPlacement,
+  captureWindowState,
+  readWindowState,
+  writeWindowState,
+} = require("./window-state.cjs");
 app.setName("Purgatory");
 let window;
 const smoke = process.argv.includes("--smoke-test");
+// tools/desktop-window-check.cjs: "move" resizes the window and closes it; "verify"
+// reports where the next launch opened it.
+const windowCheck = (() => {
+  const i = process.argv.indexOf("--window-check");
+  return i < 0 ? "" : process.argv[i + 1];
+})();
 const smokeDir = path.resolve(
   process.env.PURGATORY_SMOKE_DIR || "artifacts/desktop-smoke",
 );
-if (smoke) {
+const testing = smoke || !!windowCheck;
+if (testing) {
   fs.mkdirSync(smokeDir, { recursive: true });
   app.setPath("userData", path.join(smokeDir, "profile"));
 }
@@ -37,12 +51,18 @@ ipcMain.handle("window:fullscreen", () => {
 });
 ipcMain.handle("window:quit", () => app.quit());
 app.whenReady().then(() => {
+  const place = windowPlacement(
+    readWindowState(app.getPath("userData")),
+    screen.getAllDisplays().map((d) => d.workArea),
+  );
+  // Test windows must never cover the shared desktop.
+  if (testing) place.maximized = place.fullscreen = false;
   window = new BrowserWindow({
-    show: !smoke,
-    width: 1440,
-    height: 900,
-    minWidth: 960,
-    minHeight: 600,
+    show: !testing,
+    ...place.bounds,
+    fullscreen: place.fullscreen,
+    minWidth: MIN_SIZE.width,
+    minHeight: MIN_SIZE.height,
     backgroundColor: "#101310",
     title: "Purgatory",
     autoHideMenuBar: true,
@@ -54,8 +74,29 @@ app.whenReady().then(() => {
       backgroundThrottling: !smoke,
     },
   });
+  if (place.maximized && !place.fullscreen) window.maximize();
+  window.on("close", () =>
+    writeWindowState(app.getPath("userData"), captureWindowState(window)),
+  );
   // Show the isolated test window so native capture requests can complete.
-  if (smoke) window.showInactive();
+  if (testing) window.showInactive();
+  if (windowCheck) {
+    const report = (label) =>
+      console.log(
+        "WINDOW_CHECK " +
+          JSON.stringify({ label, bounds: window.getNormalBounds() }),
+      );
+    setTimeout(() => {
+      report("opened");
+      if (windowCheck === "move") {
+        window.setBounds({ width: 1104, height: 702 });
+        setTimeout(() => {
+          report("moved");
+          window.close();
+        }, 800);
+      } else app.exit(0);
+    }, 1500);
+  }
   const rendererErrors = [];
   window.webContents.on("console-message", (event) => {
     if (event.level === "error") rendererErrors.push(event.message);

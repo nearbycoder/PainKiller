@@ -121,7 +121,7 @@ Grab the latest build from [**Releases**](https://github.com/nearbycoder/PainKil
 | `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed.                                                                                                                                                                                                                                                                                                                                                                                |
 | `purgatory-<version>-web.zip`          | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models, with a progress bar counted in megabytes and a _Try again_ button if a download fails; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
 
-The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`) and in Firefox 157 on Linux (headless, on the GPU); Safari has not been tried. Desktop saves go to `~/.config/Purgatory/`.
+The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`) and in Firefox 157 on Linux (headless, on the GPU); Safari has not been tried. Desktop saves go to `~/.config/Purgatory/`, and the desktop window reopens at the size (and, where the desktop allows it, the position) it closed at, maximized or fullscreen if you left it so.
 
 ## Build from source
 
@@ -147,6 +147,7 @@ If npm's install-script policy skipped the Electron download, run `node node_mod
 npm test                # Vitest unit, regression and exported-asset contract checks
 npm run test:browser    # every tests/*-checks.js scenario in an offscreen Electron window
 npm run test:desktop    # launches Electron: render, native save round trip, options, start a level
+npm run test:desktop-window  # launches Electron twice: the window reopens at the size it closed at
 npm run test:firefox    # the same scenario checks in the system Firefox (headless, throwaway profile)
 npm run format:check    # Prettier
 ```
