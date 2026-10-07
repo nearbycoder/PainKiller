@@ -197,6 +197,8 @@ The shape is the one every earlier round found: ordinary sectors are easy for th
 
 The second sweep had **no timeouts**: 102 cleared and the same 2 deaths. 96 sectors played identically; the 8 that changed all cleared sooner: Last Platform 1–4 (the three timeouts, and 175 → 136 s), Penitent Cells 1–3 (86 → 81, 124 → 84 and 112 → 90 s, enemies stuck at the cell-block corner near (−19, −26)) and Ward of Whispers 3 (109 → 90 s). No enemy or player left an arena in either sweep. The bot does not path-find, so a person would usually walk round to such an enemy (the last-enemy locator points to it); the rescue is the safety net for a player who waits. No collider, spawn point, health, speed, damage or wave value changed, so `tests/fixtures/arena-colliders.json` is unchanged.
 
+On 2026-10-07 the default 60 runs on `main` matched round 5's final run in 60 of 60, and round 6's branch (music, difficulty page, crosshair, stick options) matched `main` in 60 of 60.
+
 Median damage per sector (generals included) on Purgatory in the second sweep, by chapter: 0, 15, 37, 45 and 50. Damage rises through the campaign for the bot, though no ordinary sector killed it.
 
 ## Procedural arena dressing (round 2)
