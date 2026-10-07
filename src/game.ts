@@ -307,6 +307,10 @@ export class Game {
   onHUD: () => void = () => {};
   hudTimer = 0;
   inputEnabled = true;
+  /** The mouse has been captured at least once this session. */
+  hadMouse = false;
+  /** Asking for the mouse back was refused: the fight holds until a click captures it. */
+  awaitingMouse = false;
   controls: Controls;
   private ray = new T.Ray();
   private box3 = new T.Box3();
@@ -564,6 +568,7 @@ export class Game {
   }
   setMode(mode: Mode) {
     this.mode = mode;
+    this.awaitingMouse = false;
     this.mouse = [false, false];
     this.keys.clear();
     if (mode !== "playing") this.controls?.clear();
@@ -693,14 +698,27 @@ export class Game {
     try {
       const result = this.canvas.requestPointerLock();
       if (result && typeof result.catch === "function")
-        void result.catch(() =>
-          this.notify(
-            "Click the world to capture the mouse. Arrow keys also turn.",
-          ),
-        );
+        void result.catch(() => this.lockRefused());
     } catch {
-      this.notify("Mouse capture unavailable. Use arrow keys to turn.");
+      if (this.hadMouse) this.lockRefused();
+      else this.notify("Mouse capture unavailable. Use arrow keys to turn.");
     }
+  }
+  /**
+   * The browser would not capture the mouse (Chromium refuses for about a second after
+   * Esc releases it). A player who has been aiming with the mouse would otherwise fight
+   * on without it, so the fight holds until a click captures it again.
+   */
+  lockRefused() {
+    if (this.mode !== "playing" || document.pointerLockElement === this.canvas)
+      return;
+    if (this.hadMouse) {
+      this.awaitingMouse = true;
+      this.onHUD();
+    } else
+      this.notify(
+        "Click the world to capture the mouse. Arrow keys also turn.",
+      );
   }
   resume() {
     this.setMode("playing");
@@ -958,8 +976,12 @@ export class Game {
         return;
       }
       // Escape always pauses, whatever else is bound.
-      if (e.code === "Escape") this.setMode("paused");
-      else for (const action of bound || []) this.press(action);
+      if (e.code === "Escape") {
+        this.setMode("paused");
+        // The menus would read the same Esc as "back" and resume at once.
+        e.stopImmediatePropagation();
+      } else if (!this.awaitingMouse)
+        for (const action of bound || []) this.press(action);
       this.keys.add(e.code);
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
@@ -970,8 +992,18 @@ export class Game {
       if (document.hidden && this.mode === "playing") this.setMode("paused");
     });
     document.addEventListener("pointerlockchange", () => {
-      if (!document.pointerLockElement && this.mode === "playing")
+      if (document.pointerLockElement === this.canvas) {
+        this.hadMouse = true;
+        if (this.awaitingMouse) {
+          this.awaitingMouse = false;
+          this.onHUD();
+        }
+      } else if (!document.pointerLockElement && this.mode === "playing")
         this.setMode("paused");
+    });
+    // Browsers without a promise from requestPointerLock report refusals here.
+    document.addEventListener("pointerlockerror", () => {
+      if (this.hadMouse) this.lockRefused();
     });
     document.addEventListener("mousemove", (e) => {
       if (
@@ -989,6 +1021,12 @@ export class Game {
     });
     this.canvas.addEventListener("mousedown", (e) => {
       if (this.mode !== "playing") return;
+      if (this.awaitingMouse) {
+        // This click only brings the mouse back; it does not fire.
+        e.preventDefault();
+        this.lock();
+        return;
+      }
       if (!document.pointerLockElement) this.lock();
       const code = "Mouse" + e.button;
       if (this.codeActions.has(code)) e.preventDefault();
@@ -2566,9 +2604,18 @@ export class Game {
     this.fps = T.MathUtils.lerp(this.fps, 1 / Math.max(0.001, delta), 0.04);
     this.frame++;
     if (this.mode === "playing") {
-      this.accumulator += delta;
+      // A controller or touch player needs no mouse, so nothing holds for them.
+      if (
+        this.awaitingMouse &&
+        (this.controls.connected || this.controls.mobile)
+      ) {
+        this.awaitingMouse = false;
+        this.onHUD();
+      }
+      if (!this.awaitingMouse) this.accumulator += delta;
       let steps = 0;
       while (
+        !this.awaitingMouse &&
         this.accumulator >= 1 / 60 &&
         steps < 6 &&
         this.mode === "playing"
@@ -2630,7 +2677,7 @@ export class Game {
     }
     this.recoil = Math.max(0, this.recoil - delta * 0.65);
     const w = this.weaponModels[this.weapon];
-    const animDt = this.mode === "playing" ? delta : 0;
+    const animDt = this.mode === "playing" && !this.awaitingMouse ? delta : 0;
     const pose = this.weaponMotion.step(
       animDt,
       Math.hypot(this.velocity.x, this.velocity.z),

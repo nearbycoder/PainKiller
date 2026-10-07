@@ -1680,6 +1680,35 @@ body[data-mode="dead"] #world {
   letter-spacing: 2px;
   text-shadow: 0 2px 4px #000;
 }
+#mouse-prompt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 22px 34px;
+  text-align: center;
+  background: #0d0b09d9;
+  border: 1px solid #8a6f4a;
+  box-shadow: 0 8px 40px #000;
+}
+#mouse-prompt[hidden] {
+  display: none;
+}
+#mouse-prompt b {
+  display: block;
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #ead6b0;
+}
+#mouse-prompt span {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: #b8a88f;
+  text-transform: uppercase;
+}
 #hud-fps {
   position: absolute;
   top: 10px;
