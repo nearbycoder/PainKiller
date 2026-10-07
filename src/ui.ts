@@ -765,6 +765,24 @@ export class UI {
           100,
           "%",
         ) +
+        this.range(
+          "stickDeadzone",
+          "Stick dead zone",
+          "Stick movement ignored around the centre. Raise it if the view drifts on its own.",
+          5,
+          30,
+          100,
+          "%",
+        ) +
+        this.choice(
+          "lookCurve",
+          "Look response",
+          "Precise turns slower near the centre for fine aim; full tilt is unchanged.",
+          [
+            ["Linear", 0],
+            ["Precise", 1],
+          ],
+        ) +
         this.choice(
           "vibration",
           "Controller vibration",

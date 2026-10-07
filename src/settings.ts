@@ -10,6 +10,10 @@ export const defaults = {
   sensitivity: 0.002,
   /** Right-stick look speed; 1 is the speed mouse sensitivity 0.002 used to give. */
   stickSpeed: 1,
+  /** Share of each stick axis ignored around the centre. */
+  stickDeadzone: 0.18,
+  /** Right-stick response: 0 linear, 1 precise (slower near the centre). */
+  lookCurve: 0,
   vibration: true,
   fov: 80,
   volume: 0.45,
@@ -57,6 +61,8 @@ export function parseSettings(raw: string | null): Settings {
   const limits = {
     sensitivity: [0.0005, 0.006],
     stickSpeed: [0.25, 3],
+    stickDeadzone: [0.05, 0.3],
+    lookCurve: [0, 1],
     fov: [65, 110],
     volume: [0, 1],
     musicVolume: [0, 1],
@@ -84,6 +90,7 @@ export function parseSettings(raw: string | null): Settings {
     );
   result.quality = Math.round(result.quality);
   result.difficulty = Math.round(result.difficulty);
+  result.lookCurve = Math.round(result.lookCurve);
   result.crosshairStyle = Math.round(result.crosshairStyle);
   result.crosshairColor = Math.round(result.crosshairColor);
   for (const key of [

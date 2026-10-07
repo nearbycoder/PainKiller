@@ -250,6 +250,8 @@ export class Game {
   bindings = cloneBindings(DEFAULT_BINDINGS);
   padBindings = clonePadBindings(DEFAULT_PAD_BINDINGS);
   stickSpeed = 1;
+  stickDeadzone = 0.18;
+  lookCurve = 0;
   vibration = true;
   autoSwitch = true;
   hudScale = 1;
@@ -440,6 +442,8 @@ export class Game {
       bindings: cloneBindings(this.bindings),
       padBindings: clonePadBindings(this.padBindings),
       stickSpeed: this.stickSpeed,
+      stickDeadzone: this.stickDeadzone,
+      lookCurve: this.lookCurve,
       vibration: this.vibration,
       autoSwitch: this.autoSwitch,
       hudScale: this.hudScale,
@@ -463,6 +467,8 @@ export class Game {
       crosshairColor: s.crosshairColor,
       crosshairSize: s.crosshairSize,
       stickSpeed: s.stickSpeed,
+      stickDeadzone: s.stickDeadzone,
+      lookCurve: s.lookCurve,
       vibration: s.vibration,
       autoSwitch: s.autoSwitch,
       hudScale: s.hudScale,

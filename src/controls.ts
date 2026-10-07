@@ -7,11 +7,17 @@ const PAD_PRESSES = PAD_ACTIONS.map(([a]) => a).filter(
   (a) => !["primary", "alternate", "jump", "sprint"].includes(a),
 );
 
-export function stickAxis(value: number, deadzone = 0.18) {
-  return Math.abs(value) <= deadzone
-    ? 0
-    : (Math.sign(value) * (Math.abs(value) - deadzone)) / (1 - deadzone);
+/**
+ * A stick axis after the dead zone, rescaled so full tilt is still 1. `exponent` shapes
+ * the response: 1 is linear, 2 ("precise") turns slower near the centre.
+ */
+export function stickAxis(value: number, deadzone = 0.18, exponent = 1) {
+  if (Math.abs(value) <= deadzone) return 0;
+  const t = Math.min(1, (Math.abs(value) - deadzone) / (1 - deadzone));
+  return Math.sign(value) * t ** exponent;
 }
+/** The look exponent for each _Look response_ choice. */
+export const LOOK_CURVES = [1, 2];
 export type RumbleKind = "hurt" | "shockwave" | "explosion" | "wraith";
 /**
  * Controller rumble for an event: strong (low-frequency) and weak (high-frequency) motor
@@ -238,13 +244,15 @@ export class Controls {
         const button = bound[a];
         return button !== null && !!down[button];
       };
+      const zone = this.game.stickDeadzone,
+        curve = LOOK_CURVES[this.game.lookCurve] ?? 1;
       this.moveX = clamp(
-        this.touchX + (pad ? stickAxis(pad.axes[0] || 0) : 0),
+        this.touchX + (pad ? stickAxis(pad.axes[0] || 0, zone) : 0),
         -1,
         1,
       );
       this.moveY = clamp(
-        this.touchY + (pad ? stickAxis(pad.axes[1] || 0) : 0),
+        this.touchY + (pad ? stickAxis(pad.axes[1] || 0, zone) : 0),
         -1,
         1,
       );
@@ -254,8 +262,14 @@ export class Controls {
       this.sprint = this.held.has("sprint") || padHeld("sprint");
       if (pad)
         this.look(
-          stickAxis(pad.axes[2] || 0) * dt * 2.5 * this.game.stickSpeed,
-          stickAxis(pad.axes[3] || 0) * dt * 2 * this.game.stickSpeed,
+          stickAxis(pad.axes[2] || 0, zone, curve) *
+            dt *
+            2.5 *
+            this.game.stickSpeed,
+          stickAxis(pad.axes[3] || 0, zone, curve) *
+            dt *
+            2 *
+            this.game.stickSpeed,
         );
       for (const action of PAD_PRESSES) {
         const button = bound[action];

@@ -417,6 +417,95 @@
     return { dot, width: [before, after] };
   });
 
+  // R6-4: stick dead zone and look response, with a synthetic standard-mapping controller.
+  const pad = (axes) => ({
+    connected: true,
+    mapping: "standard",
+    axes,
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
+  });
+  const turn = (x, frames = 30) => {
+    const yaw = g.yaw;
+    for (let i = 0; i < frames; i++)
+      g.controls.poll(1 / 60, [pad([0, 0, x, 0])]);
+    g.controls.poll(1 / 60, [pad([0, 0, 0, 0])]);
+    return yaw - g.yaw;
+  };
+  const strafe = (x) => {
+    g.controls.poll(1 / 60, [pad([x, 0, 0, 0])]);
+    const m = g.controls.moveX;
+    g.controls.poll(1 / 60, [pad([0, 0, 0, 0])]);
+    return m;
+  };
+  const setStick = (stickDeadzone, lookCurve) =>
+    g.applySettings({
+      ...g.settings(),
+      stickDeadzone,
+      lookCurve,
+      stickSpeed: 1,
+    });
+  await check(
+    "a larger dead zone ignores a small deflection that a smaller one does not",
+    () => {
+      api.start(0, 0);
+      quiet();
+      setStick(0.3, 0);
+      const wide = { look: turn(0.25), move: strafe(0.25) };
+      setStick(0.05, 0);
+      const narrow = { look: turn(0.25), move: strafe(0.25) };
+      assert(
+        wide.look === 0 && wide.move === 0,
+        "moved inside 30%: " + JSON.stringify(wide),
+      );
+      assert(
+        narrow.look > 0.05 && narrow.move > 0.1,
+        "no response at 5%: " + JSON.stringify(narrow),
+      );
+      setStick(0.18, 0);
+      const old = { look: turn(0.15), move: strafe(0.15) };
+      assert(old.look === 0 && old.move === 0, "the default dead zone changed");
+      return { wide, narrow };
+    },
+  );
+  await check(
+    "precise turns slower at half tilt and the same at full tilt",
+    () => {
+      setStick(0.18, 0);
+      const linearHalf = turn(0.59),
+        linearFull = turn(1);
+      setStick(0.18, 1);
+      const preciseHalf = turn(0.59),
+        preciseFull = turn(1);
+      assert(
+        Math.abs(preciseHalf / linearHalf - 0.5) < 0.01,
+        `half tilt ${preciseHalf} vs ${linearHalf}`,
+      );
+      assert(
+        Math.abs(preciseFull - linearFull) < 1e-9,
+        `full tilt ${preciseFull} vs ${linearFull}`,
+      );
+      // Moving is not curved: the left stick strafes as before.
+      assert(Math.abs(strafe(0.59) - 0.5) < 0.001, "the move stick was curved");
+      return { linearHalf, preciseHalf, linearFull, preciseFull };
+    },
+  );
+  await check("dead zone and look response save from the Controls page", () => {
+    g.setMode("paused");
+    click('[data-action="page"][data-value="settings"]');
+    click('[data-action="settings-tab"][data-value="controls"]');
+    const slider = document.getElementById("stickDeadzone");
+    assert(slider && slider.value === "18", "slider at " + slider?.value);
+    slider.value = "25";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    click('[data-action="option"][data-value="lookCurve:0"]');
+    click('[data-action="option"][data-value="lookCurve:1"]');
+    const stored = storedOptions();
+    assert(stored.stickDeadzone === 0.25, "dead zone " + stored.stickDeadzone);
+    assert(stored.lookCurve === 1, "look response " + stored.lookCurve);
+    assert(g.stickDeadzone === 0.25 && g.lookCurve === 1, "not applied");
+    return { stickDeadzone: stored.stickDeadzone, lookCurve: stored.lookCurve };
+  });
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);
