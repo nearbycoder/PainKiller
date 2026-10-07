@@ -160,6 +160,45 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves; weapon progression; whether the chapter themes, the dry click and the heartbeat sound right once someone has listened (`round6/r6-1-music.mp3`, `round5/r5-3-dry-click.mp3`, `round7/r7-2-heartbeat.mp3`); whether toggle sprint should be the default on controllers; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: pausing and resuming with a real mouse in Chromium and in the desktop build (R8-1's trigger), restoring a maximized or fullscreen desktop window and a window position on an X11 desktop (R8-3), a 120/144 Hz display, a physical controller, phones, a person playing in Firefox, Safari, and the three listening clips.
 
+## Round 9 scope (2026-10-07)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (fights in Frostbound Crossing and Dune Sepulchre, the arsenal, pause, death and result screens, and an 860 px window) and from reading the input and HUD code. Four things stood out:
+
+- **A mouse in a narrow window is treated as a touchscreen.** Any window under 900 CSS pixels wide gets the touch layout: on-screen buttons over the view, the weapon bar hidden, touch-worded hints, and the game never asks for the mouse, so it cannot turn the view. In an 860 × 640 window with a mouse (no coarse pointer) the probe saw the touch layout and 0 pointer-lock requests. A browser window snapped to half of a 1366- or 1600-pixel screen, or a 1080-pixel window zoomed to 125%, is under 900 pixels. A first run in such a window also drops the graphics to Low at 80% resolution, as it does for phones.
+- **The HUD disappears over snow and sand.** The HUD's labels, weapon slots, souls line and key line are pale text with no backing, so in Frostbound Crossing they are almost invisible against the ground (round 6 outlined the crosshair for the same reason; nothing else was).
+- **The weapon bar does not say which weapons can fire.** The five slots look the same whatever their ammunition; only the weapon in hand shows its reserves. Choosing a weapon with 1–5 or the wheel means guessing which one still has ammunition.
+- **The arsenal page names fixed keys.** It reads "LMB" and "RMB" and "Select with 1–5, R / V, or the mouse wheel. Inspect with F." whatever the bindings, and the same for a controller player. It never mentions the storm orb combo or the shatter and stake tricks the README's weapon table lists.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R9-1. A mouse in a narrow window keeps the mouse
+
+The touch layout follows the input, not the window width: it is used when the device's main pointer is coarse (phones, tablets) or after a touch on the screen, and a mouse moving or clicking (or a key press) on a touchscreen laptop returns to the desktop layout. A narrow window with a mouse keeps the desktop HUD and captures the mouse; where the desktop HUD would be too wide, it is laid out compactly. The low-graphics first-run default stays for coarse pointers only.
+
+**Accept / verify:** browser checks at 860 × 640 and 700 × 500 with a fine pointer: no touch layout, the game asks for the mouse, keyboard-worded hints, the desktop HUD panels on screen and not overlapping each other at 75–150% interface scale; a synthetic touch switches to the touch layout and a mouse move switches back; a coarse-pointer start still opens in the touch layout with the low-graphics default. The existing touch checks stay green. Captures before and after.
+
+### R9-2. A HUD that reads over snow and sand
+
+HUD text and icons get a dark halo (a soft shadow close around each glyph) so they read over bright ground without hiding the view: labels, numbers, weapon slots and their keys, the souls line, the objective and key line. The crosshair and threat arcs are unchanged.
+
+**Accept / verify:** a capture-based measurement in the brightest arenas (Frostbound Crossing, Dune Sepulchre and the brightest others found by a sweep of all 22 themes): the contrast between HUD glyphs and the pixels right around them, taken from the same frame with and without the HUD, before and after, with a target of at least 3:1 for the labels where today it is near 1:1. The same frames in a dark arena (Hall of Vigils) do not look heavier. Captures before and after.
+
+### R9-3. The weapon bar shows each weapon's ammunition
+
+Each slot shows two thin bars, its primary and alternate reserves as a share of their maximum, and a slot whose two modes are both empty is marked dry (dimmer, with a struck-through number). The Thresher shows full. Nothing about ammunition itself changes.
+
+**Accept / verify:** a unit test for the bar fractions and the dry rule; browser checks that the bars follow firing, an ammunition pickup and an empty weapon, that a dry slot is marked and stops being marked when refilled, and that the weapon bar keeps clear of the other panels at 75–150% interface scale. A capture.
+
+### R9-4. The arsenal names your controls and each weapon's trick
+
+The arsenal page shows the bound key or mouse button for primary and alternate fire, previous and next weapon, the weapon's direct-select key and inspect, or the controller buttons when a controller is in use, and a line for each weapon's trick (shatter a frozen enemy, launch a grenade with a stake, the storm orb with both buttons, the Thresher's endless ammunition, rockets flinging bodies).
+
+**Accept / verify:** browser checks: default bindings read as today's keys, rebinding fire to other keys and next weapon to the wheel changes the page, a synthetic controller shows its buttons, and every weapon shows its trick. A capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run compared run by run with `main` (nothing here changes combat; all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 8 scope (2026-10-07)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (title, a fight in Hall of Vigils, pause, every Options page, death, level select, the desktop shell) and from reading the paths a player takes between fights. Four things stood out:
