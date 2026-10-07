@@ -122,6 +122,43 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves; weapon progression; whether the chapter themes suit the game once someone has listened to `round6/r6-1-music.mp3` (and the round 5 dry click); meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: a listen to the music and the dry click, a physical controller (vibration, dead zone, precise look), phones, a person playing in Firefox, Safari, and a 120/144 Hz display.
 
+## Round 7 scope (2026-10-07)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game: title, a fight in Hall of Vigils, low health, pause, options, death, results and level select, plus a probe of what the camera does on each displayed frame. Two things stood out:
+
+- **Motion judders on any display that is not exactly 60 Hz.** The simulation runs in fixed 1/60 s steps, and the camera, enemies and projectiles are drawn where the last step left them, with nothing in between. Walking straight ahead at constant speed through the real frame loop (`artifacts/`-only probe, load 9), the camera moved exactly 0.167 m on every frame at 60 Hz. At 120 Hz it moved 0.167 m and then not at all, alternately (50% of frames frozen). At 144 Hz 58% of frames were frozen, in an uneven pattern, and at 75 Hz one frame in five was. Mouse and stick look are applied every frame, so turning is smooth, but moving, strafing and every enemy stutter. Most gaming monitors and many laptops run at 120–165 Hz.
+- **Low health looks the same as full health.** At 18 HP with no armor the HUD is identical to 100 HP, apart from the number. A red flash on each hit is the only feedback, and there is no sound.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R7-1. Smooth motion between simulation steps
+
+Keep the fixed 60 Hz simulation exactly as it is, and draw each frame between the last two steps. The camera, living enemies, projectiles and pickups (souls drift toward you) are drawn at the fraction of a step that has elapsed. Their simulated positions are put back before the next step, so nothing the game decides changes. Something that jumps further than it could move in one step (a sector start, a rescued enemy) is drawn where it landed, not slid there. Mouse and stick look stay applied every frame. Ragdolls, particles and the enemies' skeletal animation still update at the step rate. The cost is up to one step (17 ms) of positional delay, not of look.
+
+**Accept / verify:** a browser check that drives the real frame loop at 60, 75, 120 and 144 Hz, and at 60 Hz with uneven frame times, while walking: no frozen frames, and the camera moves the same distance every frame (coefficient of variation under 0.05; today it is 0.5–1.2). The same check for an enemy walking toward you. A seeded fight driven through the frame loop at 144 Hz ends in exactly the same state with interpolation on and off, and the default 60-run autopilot matches `main` in 60 of 60 runs. Existing checks stay green, and a chart compares per-frame camera movement before and after.
+
+### R7-2. Low-health warning
+
+Below 25 health the health readout turns red and pulses, and a red vignette at the screen edges deepens as health falls. A quiet synthesized heartbeat plays on the effects channel and speeds up below 10. All of it stops when you heal, become the Wraith, pause or die. A _Low-health warning_ option (Gameplay, on by default) turns it off. It describes your own state; it does not warn of any attack, and no number changes.
+
+**Accept / verify:** unit tests for the threshold, the vignette strength and the heartbeat interval. Browser checks: nothing at 100 or 26 HP, the warning at 20 HP and stronger at 5, cleared by a health pickup and in Wraith form, heartbeats only while low and playing (none paused, dead or with the option off), and the option saves. The HUD-scale overlap checks stay green. An offline render of the heartbeat's level against footsteps, gunfire and the music (table in DEVELOPMENT.md), and a capture at 18 HP. The heartbeat will be reported as **not heard by a person**.
+
+### R7-3. Controller comfort: toggle sprint and swapped sticks
+
+_Sprint_ (Controls: Hold as today, or Toggle). In toggle mode, pressing sprint starts running and it ends when you press it again or stop moving. This matters most on a controller, where sprint is a left-stick click that is awkward to hold while steering. _Stick layout_ (Controls: Standard, or Swapped for left-handed players) moves with the right stick and looks with the left; the dead zone and look response follow the look stick. Defaults are unchanged.
+
+**Accept / verify:** unit tests for the toggle (press, release, press again, stopping ends it, hold mode unchanged). Browser checks with synthetic keys and a synthetic gamepad: a toggled sprint stays at running speed after the button is released and ends when movement stops, hold mode is unchanged, swapped sticks move and look with the opposite sticks with the precise curve on the look stick only, and both options save from the Controls page. The README controls table is updated. **Not tried on a physical controller.**
+
+### R7-4. Frame-rate readout (if time allows)
+
+_Show frame rate_ (Video, off by default): a small corner readout of frames per second and the worst frame time over the last second, so players can choose a graphics preset and see what their display runs at.
+
+**Accept / verify:** a browser check that it is hidden by default, appears when enabled, reports about 144 fps and 6.9 ms for synthetic 144 Hz frames and catches a deliberate 50 ms frame, stays clear of the other HUD panels at 75–150% interface scale, and saves. A capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run compared run by run with `main` (no combat value changes, so all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 6 scope (2026-10-07)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (title, a fight in Hallowed Ground and Frostbound Crossing, pause, options, death and result screens, and frame times at five sector transitions, which were fine: worst frame 28–43 ms). Three things stood out:
