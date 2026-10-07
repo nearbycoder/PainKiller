@@ -3,7 +3,8 @@
 // The shader check is strictest in a fresh page (`--checks round4` alone): earlier
 // suites in the same page may already have compiled what it looks for.
 (async () => {
-  const g = window.__PURGATORY__.game,
+  const api = window.__PURGATORY__,
+    g = api.game,
     results = [],
     saved = structuredClone(g.save),
     options = g.settings(),
@@ -115,18 +116,16 @@
       "weapon visibility not restored: " + visible,
     );
     // Building the set draws no numbers from the game's random sequence.
-    const random = Math.random;
-    let calls = 0;
-    const counter = () => (calls++, 0.5);
-    Math.random = counter;
-    const old = g.warmSet;
+    const old = g.warmSet,
+      before = api.randomState();
     g.warmSet = undefined;
     try {
       g.warmUpSet();
-      assert(calls === 0, `${calls} draws from Math.random`);
-      assert(Math.random === counter, "Math.random was not restored");
+      assert(
+        api.randomState() === before,
+        "the warm-up moved the game's random sequence",
+      );
     } finally {
-      Math.random = random;
       g.warmSet = old;
     }
     return { visible };

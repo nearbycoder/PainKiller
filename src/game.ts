@@ -44,6 +44,7 @@ import {
   type Save,
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
+import { isolated, random } from "./random";
 import { parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
@@ -264,7 +265,10 @@ export class Game {
   bossSpawned = false;
   toast = "";
   toastTimer = 0;
+  /** Displayed frames; for rendering only. */
   frame = 0;
+  /** Simulation steps since the arena loaded; timing inside update() uses this, not `frame`. */
+  tick = 0;
   fps = 60;
   lastTime = 0;
   accumulator = 0;
@@ -802,6 +806,7 @@ export class Game {
     this.cardTime = 0;
     this.cooldown = 0;
     this.damageFlash = this.hitFlash = this.recoil = 0;
+    this.tick = 0;
     this.damageMarks = [];
     this.unseenTime = 0;
     this.accumulator = 0;
@@ -1036,15 +1041,15 @@ export class Game {
       if (this.particles.length >= 200) break;
       const m = new T.Mesh(this.geometry, this.mat(color));
       m.position.copy(pos);
-      m.scale.setScalar(0.06 + Math.random() * 0.12);
+      m.scale.setScalar(0.06 + random() * 0.12);
       this.scene.add(m);
-      const life = 0.3 + Math.random() * 0.6;
+      const life = 0.3 + random() * 0.6;
       this.particles.push({
         mesh: m,
         velocity: new T.Vector3(
-          (Math.random() - 0.5) * speed,
-          Math.random() * speed,
-          (Math.random() - 0.5) * speed,
+          (random() - 0.5) * speed,
+          random() * speed,
+          (random() - 0.5) * speed,
         ),
         life,
         max: life,
@@ -1055,9 +1060,7 @@ export class Game {
     const model = enemyModel(type, LEVELS[this.level].chapter);
     let p =
       pos?.clone() ||
-      this.arena.spawn[
-        Math.floor(Math.random() * this.arena.spawn.length)
-      ].clone();
+      this.arena.spawn[Math.floor(random() * this.arena.spawn.length)].clone();
     if (!pos) {
       let valid = false;
       for (let i = 0; i < 100; i++) {
@@ -1066,17 +1069,9 @@ export class Game {
             ? p
                 .clone()
                 .add(
-                  new T.Vector3(
-                    (Math.random() - 0.5) * 8,
-                    0,
-                    (Math.random() - 0.5) * 7,
-                  ),
+                  new T.Vector3((random() - 0.5) * 8, 0, (random() - 0.5) * 7),
                 )
-            : new T.Vector3(
-                (Math.random() - 0.5) * 47,
-                0,
-                (Math.random() - 0.5) * 54,
-              );
+            : new T.Vector3((random() - 0.5) * 47, 0, (random() - 0.5) * 54);
         if (
           !blocked(q.x, q.z, type === "boss" ? 2 : 0.6, this.arena.colliders) &&
           q.distanceTo(this.position) > 9
@@ -1119,7 +1114,7 @@ export class Game {
       maxHp: hp,
       speed,
       radius: type === "boss" ? 2 : type === "brute" ? 1 : 0.6,
-      cooldown: 1 + Math.random(),
+      cooldown: 1 + random(),
       frozen: 0,
       age: 0,
       phase: 0,
@@ -1291,9 +1286,9 @@ export class Game {
     this.levelKills++;
     this.save.kills++;
     this.addPickup("soul", pos.clone().add(new T.Vector3(0, 0.8, 0)));
-    if (Math.random() < 0.26)
+    if (random() < 0.26)
       this.addPickup("ammo", pos.clone().add(new T.Vector3(0.5, 0.6, 0)));
-    if (Math.random() < 0.14)
+    if (random() < 0.14)
       this.addPickup("health", pos.clone().add(new T.Vector3(-0.5, 0.6, 0)));
     this.burst(
       pos.clone().add(new T.Vector3(0, 1, 0)),
@@ -1410,9 +1405,9 @@ export class Game {
       if (i < 6)
         point.add(
           new T.Vector3(
-            (Math.random() - 0.5) * 0.3,
-            (Math.random() - 0.5) * 0.3,
-            (Math.random() - 0.5) * 0.3,
+            (random() - 0.5) * 0.3,
+            (random() - 0.5) * 0.3,
+            (random() - 0.5) * 0.3,
           ),
         );
       this.trace(previous, point, 0x87dfff, 0.022);
@@ -1523,9 +1518,9 @@ export class Game {
             .clone()
             .add(
               new T.Vector3(
-                (Math.random() - 0.5) * 0.13,
-                (Math.random() - 0.5) * 0.13,
-                (Math.random() - 0.5) * 0.13,
+                (random() - 0.5) * 0.13,
+                (random() - 0.5) * 0.13,
+                (random() - 0.5) * 0.13,
               ),
             )
             .normalize();
@@ -1559,8 +1554,8 @@ export class Game {
           .clone()
           .add(
             new T.Vector3(
-              (Math.random() - 0.5) * 0.027,
-              (Math.random() - 0.5) * 0.027,
+              (random() - 0.5) * 0.027,
+              (random() - 0.5) * 0.027,
               0,
             ),
           )
@@ -1691,6 +1686,7 @@ export class Game {
     this.recoil = 0.18;
   }
   update(dt: number) {
+    this.tick++;
     this.elapsed += dt;
     this.totalTime += dt;
     this.cooldown = Math.max(0, this.cooldown - dt);
@@ -1777,7 +1773,7 @@ export class Game {
             7,
             2 + Math.floor(this.level / 2) + Math.floor(this.room / 2),
           );
-          let type = ENEMY_TYPES[Math.floor(Math.random() * poolSize)];
+          let type = ENEMY_TYPES[Math.floor(random() * poolSize)];
           if (this.level === 0 && this.wave === 1 && this.room === 0)
             type = "shambler";
           this.spawnEnemy(type);
@@ -1862,7 +1858,7 @@ export class Game {
     }
     this.arena.portal.rotation.z += dt * 0.17;
     this.sound.update(!this.arenaCleared);
-    if (this.demon > 0 && this.frame % 12 === 0)
+    if (this.demon > 0 && this.tick % 12 === 0)
       this.burst(
         this.position.clone().add(new T.Vector3(0, -1.65, 0)),
         0x9ae9cc,
@@ -1875,11 +1871,7 @@ export class Game {
     const pos = e.model.root.position;
     let fallback: T.Vector3 | null = null;
     for (let i = 0; i < 300; i++) {
-      const q = new T.Vector3(
-        (Math.random() - 0.5) * 46,
-        0,
-        (Math.random() - 0.5) * 54,
-      );
+      const q = new T.Vector3((random() - 0.5) * 46, 0, (random() - 0.5) * 54);
       const d = Math.hypot(q.x - this.position.x, q.z - this.position.z);
       if (d < 12 || d > 25 || blocked(q.x, q.z, e.radius, this.arena.colliders))
         continue;
@@ -2098,7 +2090,7 @@ export class Game {
               true,
               e.type,
             );
-            e.cooldown = 1.8 + Math.random();
+            e.cooldown = 1.8 + random();
           }
         } else if (distance < (e.type === "brute" ? 2.6 : 1.8)) {
           e.attackWindup = e.type === "hound" ? 0.2 : 0.36;
@@ -2323,7 +2315,7 @@ export class Game {
             if (p.kind !== "stake" && p.kind !== "blade") break;
           }
         }
-        if (p.kind === "storm" && this.frame % 8 === 0) {
+        if (p.kind === "storm" && this.tick % 8 === 0) {
           for (const e of [...this.enemies])
             if (e.model.root.position.distanceTo(p.mesh.position) < 7) {
               const target = e.model.root.position
@@ -2377,7 +2369,7 @@ export class Game {
         this.projectiles.splice(this.projectiles.indexOf(p), 1);
       } else if (
         (p.kind === "rocket" || (p.kind === "stake" && p.distance > 18)) &&
-        this.frame % 3 === 0
+        this.tick % 3 === 0
       )
         if (p.kind === "rocket") this.effects.trail(p.mesh.position);
         else this.burst(p.mesh.position, 0xe99440, 1, 1);
@@ -2624,10 +2616,7 @@ export class Game {
   private warmUpSet() {
     if (!this.warmSet) {
       // Building models draws random numbers; keep the game's sequence untouched.
-      const random = Math.random;
-      let seed = 1;
-      Math.random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-      try {
+      isolated(() => {
         const set = (this.warmSet = new T.Group());
         for (const type of ENEMY_TYPES) set.add(enemyModel(type).root);
         for (let chapter = 1; chapter <= 5; chapter++)
@@ -2679,11 +2668,9 @@ export class Game {
           o.frustumCulled = false;
           if (o instanceof T.Mesh) o.visible = true;
         });
-      } finally {
-        Math.random = random;
-      }
+      });
     }
-    return this.warmSet;
+    return this.warmSet!;
   }
   /**
    * Starts compiling the warm-up set's shaders in the background (the driver compiles

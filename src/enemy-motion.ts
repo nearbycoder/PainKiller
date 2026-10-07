@@ -1,3 +1,4 @@
+import { random } from "./random";
 import type { EnemyType } from "./data";
 
 /** Layered, time-based motion shared by authored and articulated enemy rigs. */
@@ -12,7 +13,7 @@ export class EnemyMotion {
   turn = 0;
   constructor(
     readonly type: EnemyType,
-    seed = Math.random(),
+    seed = random(),
   ) {
     this.phase = seed * Math.PI * 2;
     this.age = seed * 4;

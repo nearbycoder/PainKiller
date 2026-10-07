@@ -1,16 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+// Models pick a random gait phase; at a few phases the hound's attack frame nearly
+// matches its walk frame, which made the articulation test fail about 1 run in 30.
+vi.mock("../src/random", async (original) => ({
+  ...(await original<typeof import("../src/random")>()),
+  random: () => 0.25,
+}));
 import { EnemyMotion } from "../src/enemy-motion";
 import { enemyModel } from "../src/models";
 import { ENEMY_TYPES } from "../src/data";
 describe("layered enemy movement", () => {
   for (const type of [...ENEMY_TYPES, "boss"] as const)
     it(`${type} articulates, reacts, attacks and preserves a frozen pose`, () => {
-      // Models pick a random gait phase; at a few phases the hound's attack frame
-      // nearly matches its walk frame, which made this test fail about 1 run in 30.
-      const random = Math.random;
-      Math.random = () => 0.25;
       const m = enemyModel(type);
-      Math.random = random;
       m.animate!(0.1, 3, false);
       const walk = m.limbs.map((l) => l.rotation.x);
       m.action!("attack");

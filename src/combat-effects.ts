@@ -1,3 +1,4 @@
+import { random } from "./random";
 import * as T from "three";
 import { softParticleTexture } from "./surface-effects";
 /** Bounded transient effects; cosmetics never alter collision or damage. */
@@ -57,8 +58,8 @@ export class CombatEffects {
     this.shells.push({
       mesh,
       velocity: new T.Vector3(
-        1.6 + Math.random(),
-        1.1 + Math.random(),
+        1.6 + random(),
+        1.1 + random(),
         0.3,
       ).applyQuaternion(rotation),
       spin: new T.Vector3(8, 12, 6),
@@ -75,7 +76,7 @@ export class CombatEffects {
     const mesh = new T.Mesh(this.markGeometry, this.markMaterial.clone());
     mesh.position.copy(position).addScaledVector(normal, 0.008);
     mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), normal);
-    mesh.rotateZ(Math.random() * 6.28);
+    mesh.rotateZ(random() * 6.28);
     this.scene.add(mesh);
     this.marks.push({ mesh, life: 20 });
     for (let i = 0; i < 3; i++)
@@ -83,13 +84,9 @@ export class CombatEffects {
         position.clone().addScaledVector(normal, 0.06),
         normal
           .clone()
-          .multiplyScalar(0.4 + Math.random() * 0.6)
+          .multiplyScalar(0.4 + random() * 0.6)
           .add(
-            new T.Vector3(
-              (Math.random() - 0.5) * 0.4,
-              0.25,
-              (Math.random() - 0.5) * 0.4,
-            ),
+            new T.Vector3((random() - 0.5) * 0.4, 0.25, (random() - 0.5) * 0.4),
           ),
         0.7,
         0.16,
@@ -113,9 +110,9 @@ export class CombatEffects {
   explosion(position: T.Vector3, radius: number) {
     for (let i = 0; i < 7; i++) {
       const delta = new T.Vector3(
-        (Math.random() - 0.5) * 1.5,
-        Math.random(),
-        (Math.random() - 0.5) * 1.5,
+        (random() - 0.5) * 1.5,
+        random(),
+        (random() - 0.5) * 1.5,
       );
       this.puff(
         position.clone().addScaledVector(delta, 0.3),
@@ -130,11 +127,7 @@ export class CombatEffects {
     for (let i = 0; i < 4; i++)
       this.puff(
         position.clone(),
-        new T.Vector3(
-          (Math.random() - 0.5) * 2,
-          1 + Math.random(),
-          (Math.random() - 0.5) * 2,
-        ),
+        new T.Vector3((random() - 0.5) * 2, 1 + random(), (random() - 0.5) * 2),
         1.1,
         radius * 0.18,
         0.28,
@@ -173,7 +166,7 @@ export class CombatEffects {
         alphaTest: 0.01,
         opacity,
         depthWrite: false,
-        rotation: Math.random() * 6.28,
+        rotation: random() * 6.28,
         blending: luminous ? T.AdditiveBlending : T.NormalBlending,
         toneMapped: !luminous,
       }),

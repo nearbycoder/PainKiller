@@ -1,3 +1,4 @@
+import { random } from "./random";
 import * as T from "three";
 
 /** Shared soft particle mask. Created once, with no texture downloads. */
@@ -40,9 +41,9 @@ export class Atmosphere {
   private age = 0;
   constructor(scene: T.Scene) {
     for (let i = 0; i < 128; i++) {
-      this.seeds[i] = Math.random() * 6.28;
+      this.seeds[i] = random() * 6.28;
       this.positions.set(
-        [Math.random() * 44 - 22, Math.random() * 10, Math.random() * 44 - 22],
+        [random() * 44 - 22, random() * 10, random() * 44 - 22],
         i * 3,
       );
     }

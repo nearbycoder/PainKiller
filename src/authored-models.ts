@@ -1,3 +1,4 @@
+import { random } from "./random";
 import * as T from "three";
 import type { EnemyType } from "./data";
 import { EnemyMotion } from "./enemy-motion";
@@ -309,7 +310,7 @@ export function revenantModel(
   let physical = false,
     aim = 0,
     aimTarget = 0;
-  const phase = Math.random();
+  const phase = random();
   const motion = new EnemyMotion(type, phase);
   const reaction = new T.Vector3(),
     reactionVelocity = new T.Vector3();

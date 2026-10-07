@@ -9,6 +9,7 @@ import { UI } from "./ui";
 import { LEVELS } from "./data";
 import { loadArt, prefetchArt } from "./assets";
 import { initPhysics } from "./physics";
+import { randomState, seedRandom } from "./random";
 async function boot() {
   try {
     const app = document.querySelector("#app")!;
@@ -43,6 +44,9 @@ async function boot() {
             },
             spawn: (type: Parameters<typeof game.spawnEnemy>[0]) =>
               game.spawnEnemy(type),
+            /** Make what follows repeatable: the game's own random sequence. */
+            seed: seedRandom,
+            randomState,
           }
         : {}),
     };

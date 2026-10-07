@@ -3,49 +3,48 @@
 //
 //   npm run test:browser -- --checks tests/balance-autopilot.js --out artifacts/balance.json
 //
-// Options (set window.__AUTOPILOT__ first, e.g. with --before): { sectors, difficulties, seeds }.
+// Options (set window.__AUTOPILOT__ first, e.g. with --before): { sectors, difficulties, seeds },
+// or { sectors: "all" } for every sector of the campaign.
 //
 // The bot aims perfectly at the nearest enemy in sight, picks a weapon by range, backs off
 // at close range, strafes, hops, and jumps general shockwaves. It does not path-find or route
 // to pickups. Treat it as a repeatable yardstick for comparing builds, not as a human playtest.
+// Each run seeds the game's random sequence, so the same build gives the same results in any
+// session and in any order; a single sector can be replayed with { sectors: [[level, room]] }.
 (() => {
   const api = window.__PURGATORY__,
     g = api.game,
     options = window.__AUTOPILOT__ || {};
-  const SECTORS = options.sectors || [
-    [0, 0],
-    [0, 3],
-    [5, 0],
-    [12, 2],
-    [17, 4],
-    [22, 4],
-    [4, 2],
-    [10, 2],
-    [19, 2],
-    [23, 3],
-  ];
+  const SECTORS =
+    options.sectors === "all"
+      ? api.campaign.flatMap((l, level) =>
+          Array.from({ length: l.rooms }, (_, room) => [level, room]),
+        )
+      : options.sectors || [
+          [0, 0],
+          [0, 3],
+          [5, 0],
+          [12, 2],
+          [17, 4],
+          [22, 4],
+          [4, 2],
+          [10, 2],
+          [19, 2],
+          [23, 3],
+        ];
   const DIFFICULTIES = options.difficulties || [0, 1, 2];
   const SEEDS = options.seeds || 2;
   const LIMIT = 60 * 60 * 6;
   const saved = structuredClone(g.save),
     difficulty = g.difficulty,
-    random = Math.random,
     render = g.renderWorld,
-    hurt = g.hurt;
+    hurt = g.hurt,
+    relocate = g.relocate;
   g.sound.setVolume(0);
   g.renderWorld = () => {};
 
-  function seeded(seed) {
-    return () => {
-      seed = (seed + 0x6d2b79f5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
   function run(level, room, diff, seed) {
-    Math.random = seeded(1 + level * 1000 + room * 10 + diff + seed * 7919);
+    api.seed(1 + level * 1000 + room * 10 + diff + seed * 7919);
     g.difficulty = diff;
     api.start(level, room);
     const causes = {};
@@ -55,6 +54,16 @@
       const taken = before - (this.health + this.armor);
       if (taken > 0) causes[cause] = (causes[cause] || 0) + taken;
     };
+    // Stuck-enemy rescues (where each enemy was wedged) and anything outside the arena.
+    const rescues = [],
+      escaped = new Set();
+    const where = (p) => [p.x, p.z].map((v) => +v.toFixed(1));
+    g.relocate = function (e) {
+      rescues.push({ type: e.type, at: where(e.model.root.position) });
+      return relocate.call(this, e);
+    };
+    const outside = (p) =>
+      Math.abs(p.x) > 27.5 || Math.abs(p.z) > 32.5 || p.y < -2;
     let frames = 0,
       minHealth = 100;
     while (frames < LIMIT && g.mode === "playing" && !g.arenaCleared) {
@@ -96,11 +105,15 @@
       if (ringClose || frames % 47 === 0) g.keys.add("Space");
       api.step(1);
       frames++;
+      if (outside(g.position)) escaped.add("player");
+      for (const e of g.enemies)
+        if (outside(e.model.root.position)) escaped.add(e.type);
       minHealth = Math.min(minHealth, g.health);
     }
     g.mouse = [false, false];
     g.keys.clear();
     g.hurt = hurt;
+    g.relocate = relocate;
     const taken = Object.values(causes).reduce((a, b) => a + b, 0);
     return {
       level,
@@ -128,6 +141,8 @@
               ),
             }))
           : [],
+      rescues,
+      escaped: [...escaped],
       causes: Object.fromEntries(
         Object.entries(causes).map(([k, v]) => [k, Math.round(v)]),
       ),
@@ -141,9 +156,9 @@
         for (let seed = 0; seed < SEEDS; seed++)
           runs.push(run(level, room, diff, seed));
   } finally {
-    Math.random = random;
     g.renderWorld = render;
     g.hurt = hurt;
+    g.relocate = relocate;
     g.difficulty = difficulty;
     g.save = saved;
     g.persist();
@@ -168,6 +183,7 @@
         cleared: set.filter((r) => r.outcome === "cleared").length,
         died: set.filter((r) => r.outcome === "died").length,
         timeouts: set.filter((r) => r.outcome === "timeout").length,
+        rescues: set.reduce((n, r) => n + r.rescues.length, 0),
         medianSeconds: median(set.map((r) => r.seconds)),
         medianDamage: median(set.map((r) => r.damageTaken)),
       });

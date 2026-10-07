@@ -1,3 +1,4 @@
+import { generator } from "./random";
 export type EnemyCue =
   | "spawn"
   | "windup"
@@ -47,6 +48,11 @@ export class Sound {
   nextBeat = 0;
   beat = 0;
   cues = new CueBudget();
+  /**
+   * Sound's own noise source. Sounds play on the audio clock and a wall-clock budget, so
+   * drawing from the game's sequence made seeded runs differ from one session to the next.
+   */
+  private random = generator(0x2f6b9d1);
   start() {
     if (!this.ctx) {
       this.ctx = new AudioContext();
@@ -96,7 +102,7 @@ export class Sound {
       b = c.createBuffer(1, c.sampleRate * duration, c.sampleRate),
       d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++)
-      d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      d[i] = (this.random() * 2 - 1) * (1 - i / d.length);
     const s = c.createBufferSource(),
       g = c.createGain();
     s.buffer = b;
@@ -218,7 +224,7 @@ export class Sound {
   }
   footstep(soft: boolean) {
     this.noise(soft ? 0.1 : 0.055, soft ? 0.045 : 0.035, soft ? 1600 : 3100);
-    this.tone(90 + Math.random() * 18, 0.065, "triangle", 0.065, 35);
+    this.tone(90 + this.random() * 18, 0.065, "triangle", 0.065, 35);
   }
   mechanism(id: number, draw = false) {
     this.noise(
