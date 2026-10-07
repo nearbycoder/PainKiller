@@ -157,7 +157,7 @@ The simulation advances in fixed 1/60 s steps, and until round 7 every frame dre
 | 144 Hz, ±1.5 ms | 42 / 72               | 1.20                   | 0 / 72               | 0                     |
 | Enemy, 144 Hz   | 84 / 143              | 1.19                   | 0 / 143              | 0                     |
 
-The same file checks that a 14-second seeded rocket fight driven through the frame loop at 144 Hz with uneven frames ends in exactly the same state with interpolation on and off (positions, health, kills, the random sequence and every ragdoll body), that frames without a step leave every simulated position untouched, and that a new sector is drawn at its start rather than slid to it. `tests/interpolate.test.ts` covers the interpolator. Synthetic timing only: **no 120 or 144 Hz display has been looked at.**
+The same file checks that a 14-second seeded rocket fight driven through the frame loop at 144 Hz with uneven frames ends in exactly the same state with interpolation on and off (positions, health, kills, the random sequence and every ragdoll body), that frames without a step leave every simulated position untouched, and that a new sector is drawn at its start rather than slid to it. `tests/interpolate.test.ts` covers the interpolator. Chart: `docs/media/improvements/round7/r7-1-motion.jpg` (per-frame data from `tools/media/round7/motion-data.js`, drawn by `motion-chart.py`). Synthetic timing only: **no 120 or 144 Hz display has been looked at.**
 
 ## Low-health warning (round 7)
 

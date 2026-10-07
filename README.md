@@ -192,7 +192,7 @@ docs/                development notes and README media
 
 ## Tech highlights
 
-- **Fixed-step simulation.** Gameplay advances in 1/60 s steps decoupled from rendering, and draws from its own seeded random sequence that neither sound nor Three.js touches, so a seeded run replays exactly whatever the frame rate or the machine's load. The same step function powers the development API used by the tests, the balance autopilot and the virtual-time trailer capture.
+- **Fixed-step simulation.** Gameplay advances in 1/60 s steps decoupled from rendering, and draws from its own seeded random sequence that neither sound nor Three.js touches, so a seeded run replays exactly whatever the frame rate or the machine's load. Each frame draws the camera, enemies, projectiles and pickups between the last two steps, so motion stays even on 75, 120 or 144 Hz displays and through uneven frames. The same step function powers the development API used by the tests, the balance autopilot and the virtual-time trailer capture.
 - **Hybrid physics.** Players and living enemies use fast swept-box collision against arena volumes. Death hands the current animated pose to a **Rapier 3D** ragdoll. Grenades are rigid bodies with continuous collision detection. Stakes ray-cast ahead of a flying corpse and pin the struck bone to static architecture with a spherical joint.
 - **Rendering.** Three.js r180 PBR materials with an HDR sky, PCF soft shadows refreshed at 30 Hz, half-resolution SSAO on High, and FXAA over the composed world and first-person weapon passes. Static meshes are merged by material, and an adaptive resolution controller kicks in under load.
 - **Blender pipeline.** Every environment, weapon and enemy costume is built by headless Blender Python scripts. They handle procedural masonry, baked weapon materials, animation retargeting onto new rigs, LOD reduction, and texture-optimized GLB export.
@@ -222,7 +222,7 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run. It passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in Firefox, and Safari has not been tried.
 - Keyboard, mouse and controller buttons can be rebound and the sticks swapped; the touch layout is fixed. Saves resume the start of the current wave, not the exact moment you quit.
-- The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark. Shaders are compiled ahead of the fight, so the first title screen after launch holds one frame for about half a second, and starting a level holds about half a second.
+- The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark, though an optional readout (Options › Video) shows the frame rate. Motion between simulation steps is checked with synthetic frame timing at 60–144 Hz; nobody has looked at it on a real 120 or 144 Hz display. Shaders are compiled ahead of the fight, so the first title screen after launch holds one frame for about half a second, and starting a level holds about half a second.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.
 
