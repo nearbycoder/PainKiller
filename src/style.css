@@ -817,6 +817,10 @@ body[data-mode="dead"] #world {
     inset 0 0 30px #6f401224,
     0 0 20px #b3792120;
 }
+.difficulty-grid .tarot-card:is(:hover, :focus-visible) {
+  border-color: #d9ad69;
+  color: #f0dcb4;
+}
 .tarot-card.locked {
   opacity: 0.45;
 }

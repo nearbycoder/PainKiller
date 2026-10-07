@@ -23,6 +23,8 @@
     Object.keys(api),
   );
   document.querySelector('[data-action="start"]').click();
+  // Since round 6 a fresh save asks for the difficulty first; take the one offered.
+  document.querySelector('[data-action="begin"][data-default]')?.click();
   const t0 = performance.now();
   while (api.state().mode !== "playing" && performance.now() - t0 < 60000)
     await wait(100);

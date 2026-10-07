@@ -35,9 +35,16 @@ const icon = (id: number) =>
   ][id];
 const gunIcon = (id: number) =>
   `<svg viewBox="0 0 100 65" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true">${icon(id)}</svg>`;
+const DIFFICULTY_NOTES = [
+  "Forgiving combat. Enemies have less health and deal less damage.",
+  "The standard combat balance. Keep moving and use both fire modes.",
+  "Relentless combat. Tougher enemies and heavier incoming damage.",
+];
 export class UI {
   root: HTMLElement;
   page = "home";
+  /** What the difficulty page leads to: continuing a fresh save, or a new game. */
+  beginning: "start" | "new" = "start";
   chapter = 1;
   selectedLevel = 0;
   armory = 1;
@@ -364,12 +371,7 @@ export class UI {
     if (action === "confirm") {
       const target = this.dialog;
       this.dialog = "";
-      if (target === "new") {
-        g.save = freshSave();
-        g.persist();
-        this.page = "home";
-        g.start(0, 0);
-      }
+      if (target === "new") this.chooseDifficulty("new");
       if (target === "retry") {
         this.page = "home";
         g.retry();
@@ -398,8 +400,24 @@ export class UI {
       this.render();
     }
     if (action === "start") {
+      if (!this.hasProgress()) {
+        this.chooseDifficulty("start");
+        return;
+      }
       this.page = "home";
       g.continueGame();
+    }
+    if (action === "begin") {
+      const options = g.settings();
+      options.difficulty = Number(value);
+      g.applySettings(options);
+      g.saveOptions();
+      this.page = "home";
+      if (this.beginning === "new") {
+        g.save = freshSave();
+        g.persist();
+        g.start(0, 0);
+      } else g.continueGame();
     }
     if (action === "level") {
       this.page = "home";
@@ -530,7 +548,7 @@ export class UI {
     else if (this.page === "home")
       content = paused ? this.pause() : this.home();
     else
-      content = `<main class="game-panel ${this.page}-panel"><div class="screen-heading"><button class="back-command" data-action="back" aria-label="Back">‹</button><div><p class="menu-kicker">${paused ? "PAUSED" : "PURGATORY"}</p><h1>${({ campaign: "Select level", settings: "Options", arsenal: "The arsenal", tarot: "Grave tarot" } as Record<string, string>)[this.page] || "Purgatory"}</h1></div><span class="heading-ornament" aria-hidden="true">◆</span></div>${this.panel()}</main>`;
+      content = `<main class="game-panel ${this.page}-panel"><div class="screen-heading"><button class="back-command" data-action="back" aria-label="Back">‹</button><div><p class="menu-kicker">${paused ? "PAUSED" : "PURGATORY"}</p><h1>${({ campaign: "Select level", settings: "Options", arsenal: "The arsenal", tarot: "Grave tarot", difficulty: "Choose your difficulty" } as Record<string, string>)[this.page] || "Purgatory"}</h1></div><span class="heading-ornament" aria-hidden="true">◆</span></div>${this.panel()}</main>`;
     this.root.innerHTML = `<div class="game-menu ${paused ? "is-paused" : ""} ${g.mode === "dead" ? "is-dead" : ""}"><div class="menu-vignette"></div><div class="menu-grain"></div><div class="frame-corner tl"></div><div class="frame-corner tr"></div><div class="frame-corner bl"></div><div class="frame-corner br"></div>${content}${this.footer()}${this.dialog ? this.confirmation() : ""}</div>`;
     const scope = this.root.querySelector(".confirm-dialog") || this.root;
     const focus =
@@ -543,9 +561,19 @@ export class UI {
     if (focus?.classList.contains("menu-command"))
       focus.classList.add("nav-current");
   }
+  hasProgress() {
+    const save = this.game.save;
+    return save.kills > 0 || save.unlocked > 0 || save.room > 0;
+  }
+  /** A campaign is beginning: ask for the difficulty first. */
+  chooseDifficulty(beginning: "start" | "new") {
+    this.beginning = beginning;
+    this.page = "difficulty";
+    this.render();
+  }
   home() {
     const g = this.game,
-      saved = g.save.kills > 0 || g.save.unlocked > 0 || g.save.room > 0;
+      saved = this.hasProgress();
     return `<main class="title-screen"><div class="title-crest" aria-hidden="true">${seal}</div><div class="logo"><h1>PURGATORY</h1><div class="logo-rule"><i></i><span>A REQUIEM IN STEEL</span><i></i></div></div><nav class="title-commands" aria-label="Main menu">${this.button(saved ? "Continue" : "Enter Purgatory", "start", undefined, "data-default")}${this.button("New game", "new")}${this.button("Select level", "page", "campaign")}${this.button("Options", "page", "settings")}${this.button("The arsenal", "page", "arsenal")}${this.button("Grave tarot", "page", "tarot")}${window.desktop ? this.button("Quit game", "quit") : ""}</nav><p class="checkpoint-caption">${saved ? `CONTINUE · ${LEVELS[g.save.level].name} · SECTOR ${g.save.room + 1}${g.save.resume ? ` · WAVE ${g.save.resume.wave}` : ""}` : "A SOUL BETWEEN HEAVEN AND HELL"}</p></main>`;
   }
   pause() {
@@ -581,6 +609,8 @@ export class UI {
   panel() {
     const g = this.game;
     if (this.page === "settings") return this.settings();
+    if (this.page === "difficulty")
+      return `<div class="tarot-grid difficulty-grid">${["Reverie", "Purgatory", "Torment"].map((name, i) => `<button class="tarot-card ${g.difficulty === i ? "selected" : ""}" data-action="begin" data-value="${i}" ${g.difficulty === i ? "data-default" : ""}><span class="menu-kicker">${roman[i]}</span><div class="tarot-symbol">${["☾", "⚖", "☠"][i]}</div><h2>${name}</h2><p>${DIFFICULTY_NOTES[i]}</p><span class="card-state">BEGIN</span></button>`).join("")}</div><p class="screen-note">You can change this at any time under Options › Gameplay.</p>`;
     if (this.page === "campaign") {
       const l = LEVELS[this.selectedLevel];
       return `<div class="chapter-select" aria-label="Chapters">${CHAPTERS.map((c, i) => `<button class="${this.chapter === i + 1 ? "selected" : ""}" data-action="chapter" data-value="${i + 1}" aria-pressed="${this.chapter === i + 1}"><b>${roman[i]}</b><span>${c}</span></button>`).join("")}</div><div class="campaign-layout"><nav class="level-list" aria-label="Levels">${LEVELS.map((level, i) => (level.chapter === this.chapter ? `<button class="${this.selectedLevel === i ? "selected" : ""}" data-action="select-level" data-value="${i}" aria-pressed="${this.selectedLevel === i}"><small>${String(i + 1).padStart(2, "0")}</small><span>${level.name}</span><i>${g.save.best[i] ? "✓" : level.boss ? "†" : "◆"}</i></button>` : "")).join("")}</nav><section class="level-preview"><img src="${import.meta.env.BASE_URL}assets/previews/level-${this.selectedLevel}.jpg" alt="${l.name} environment"><div class="preview-caption"><p class="menu-kicker">CHAPTER ${roman[l.chapter - 1]} · ${l.rooms} SECTORS ${l.boss ? "· BOSS ENCOUNTER" : ""}</p><h2>${l.name}</h2><p>${l.subtitle}</p>${this.recordLine(this.selectedLevel)}${this.button("Enter level", "level", String(this.selectedLevel))}</div></section></div><p class="screen-note">All 24 levels are available. Selecting a level changes your checkpoint and keeps your earned cards and scores.</p>`;
@@ -772,7 +802,7 @@ export class UI {
             ["Torment", 2],
           ],
         ) +
-        `<p class="difficulty-note">${["Forgiving combat. Enemies have less health and deal less damage.", "The standard combat balance. Keep moving and use both fire modes.", "Relentless combat. Tougher enemies and heavier incoming damage."][this.game.difficulty]} Enemy health changes apply to newly spawned enemies.</p>` +
+        `<p class="difficulty-note">${DIFFICULTY_NOTES[this.game.difficulty]} Enemy health changes apply to newly spawned enemies.</p>` +
         this.choice(
           "headBob",
           "Camera movement",

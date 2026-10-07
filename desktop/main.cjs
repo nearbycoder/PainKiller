@@ -143,10 +143,13 @@ app.whenReady().then(() => {
             document.querySelector('[data-action="select-level"][data-value="${selectedLevel}"]').click();
             document.querySelector('[data-action="level"][data-value="${selectedLevel}"]').click();
           })()`);
-        } else
-          await window.webContents.executeJavaScript(
-            `document.querySelector('[data-action="start"]').click()`,
+        } else {
+          // A fresh save asks for the difficulty first; take the one offered.
+          const chose = await window.webContents.executeJavaScript(
+            `(()=>{document.querySelector('[data-action="start"]').click();const begin=document.querySelector('[data-action="begin"][data-default]');begin?.click();return begin?.dataset.value ?? null;})()`,
           );
+          console.log("SMOKE difficulty offered", chose);
+        }
         await new Promise((resolve) => setTimeout(resolve, 5500));
         const state = await window.webContents.executeJavaScript(
           "window.__PURGATORY__.state()",

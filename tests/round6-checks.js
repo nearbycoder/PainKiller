@@ -218,7 +218,126 @@
 
   sound.tone = tone;
   sound.noise = noise;
+
+  // R6-2: the difficulty is chosen when a campaign begins.
+  const { freshSave } = await import("/src/core.ts");
+  const click = (selector) => {
+    const b = document.querySelector(selector);
+    assert(b && !b.disabled, "Missing " + selector);
+    b.click();
+  };
+  const key = (code) =>
+    document.activeElement.dispatchEvent(
+      new KeyboardEvent("keydown", { code, key: code, bubbles: true }),
+    );
+  const title = () => {
+    g.setMode("playing");
+    g.setMode("menu");
+  };
+  const storedDifficulty = () =>
+    JSON.parse(localStorage.getItem("purgatory.options") || "{}").difficulty;
+
+  await check(
+    "a fresh save asks for the difficulty, with the current one focused",
+    () => {
+      g.applySettings({ ...g.settings(), difficulty: 1 });
+      g.save = freshSave();
+      title();
+      click('[data-action="start"]');
+      assert(g.mode === "menu", "the game started without asking");
+      const cards = [...document.querySelectorAll('[data-action="begin"]')];
+      assert(cards.length === 3, cards.length + " difficulty cards");
+      assert(
+        cards.map((c) => c.querySelector("h2").textContent).join() ===
+          "Reverie,Purgatory,Torment",
+        "wrong names",
+      );
+      assert(document.activeElement === cards[1], "Purgatory is not focused");
+      assert(/Options › Gameplay/.test(document.body.textContent), "no note");
+      return document.querySelector("h1").textContent;
+    },
+  );
+
+  await check("Back returns to the title without starting", () => {
+    key("Escape");
+    assert(g.mode === "menu", "mode " + g.mode);
+    assert(document.querySelector('[data-action="start"]'), "not on the title");
+    assert(g.save.kills === 0 && g.save.room === 0, "the save changed");
+    return "ok";
+  });
+
+  await check(
+    "choosing Reverie by keyboard starts Hallowed Ground on Reverie and saves it",
+    () => {
+      click('[data-action="start"]');
+      key("ArrowUp");
+      assert(
+        document.activeElement.dataset.value === "0",
+        "Up did not reach Reverie",
+      );
+      document.activeElement.click(); // Enter on a focused button
+      assert(g.mode === "playing", "mode " + g.mode);
+      assert(
+        g.level === 0 && g.room === 0,
+        `level ${g.level}, sector ${g.room}`,
+      );
+      assert(g.difficulty === 0, "difficulty " + g.difficulty);
+      assert(storedDifficulty() === 0, "not saved: " + storedDifficulty());
+      return "ok";
+    },
+  );
+
+  await check("Continue with a save skips the page", () => {
+    g.save = { ...freshSave(), level: 2, room: 1, kills: 40 };
+    title();
+    click('[data-action="start"]');
+    assert(g.mode === "playing", "mode " + g.mode);
+    assert(g.level === 2 && g.room === 1, `level ${g.level}, sector ${g.room}`);
+    assert(g.difficulty === 0, "difficulty changed");
+    return "ok";
+  });
+
+  await check(
+    "New game asks after its confirmation, and backing out keeps the save",
+    () => {
+      g.save = { ...freshSave(), level: 2, room: 1, kills: 40 };
+      title();
+      click('[data-action="new"]');
+      click('[data-action="confirm"]');
+      assert(g.mode === "menu", "started without asking");
+      assert(
+        document.querySelectorAll('[data-action="begin"]').length === 3,
+        "no page",
+      );
+      assert(
+        document.activeElement.dataset.value === "0",
+        "the current difficulty is not focused",
+      );
+      key("Escape");
+      assert(
+        g.save.level === 2 && g.save.kills === 40,
+        "backing out reset the save",
+      );
+      click('[data-action="new"]');
+      click('[data-action="confirm"]');
+      click('[data-action="begin"][data-value="2"]');
+      assert(
+        g.mode === "playing" && g.level === 0 && g.room === 0,
+        "not at the start",
+      );
+      assert(
+        g.save.kills === 0 && g.save.level === 0,
+        "the save was not reset",
+      );
+      assert(
+        g.difficulty === 2 && storedDifficulty() === 2,
+        "Torment not applied",
+      );
+      return "ok";
+    },
+  );
   g.applySettings(options);
+  g.saveOptions();
   g.sound.setVolume(volume);
   g.save = saved;
   g.persist();
