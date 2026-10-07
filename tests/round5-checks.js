@@ -106,7 +106,11 @@
     "R5-1 the storm orb hits as often at 30, 60, 120 and 144 Hz",
     () => {
       const hitEnemy = g.hitEnemy,
+        raf = window.requestAnimationFrame,
         rates = {};
+      // Each g.loop() call schedules the next frame; without this, every call below would
+      // leave another frame loop running for the rest of the session.
+      window.requestAnimationFrame = () => 0;
       try {
         for (const hz of [30, 60, 120, 144])
           for (const phase of [0, 1]) {
@@ -144,6 +148,7 @@
           }
       } finally {
         g.hitEnemy = hitEnemy;
+        window.requestAnimationFrame = raf;
       }
       const values = Object.values(rates);
       assert(
