@@ -1435,13 +1435,54 @@ body[data-mode="dead"] #world {
   width: 65px;
   height: 50px;
   border-bottom: 2px solid #b7c5ac35;
-  opacity: 0.43;
   position: relative;
+}
+/* Weapons not in hand are dimmed, the icon more than its number and reserves. */
+.weapon-slots > button:not(.active) svg {
+  opacity: 0.45;
+}
+.weapon-slots > button:not(.active) small,
+.weapon-slots > button:not(.active) .slot-ammo {
+  opacity: 0.8;
 }
 .weapon-slots > button.active {
   border-bottom-color: #d5bb83;
-  opacity: 1;
   background: linear-gradient(0deg, #ddbd7220, transparent);
+}
+/* Two thin bars per slot: primary and alternate reserves, red when low. */
+.slot-ammo {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 3px;
+  display: grid;
+  gap: 2px;
+}
+.slot-ammo b {
+  display: block;
+  height: 2px;
+  background: #ffffff1f;
+  box-shadow: 0 0 0 1px #0009;
+}
+.slot-ammo i {
+  display: block;
+  height: 100%;
+  background: #d9cfb4;
+  transform-origin: left;
+}
+.slot-ammo b:last-child i {
+  background: #9fc7c0;
+}
+.slot-ammo i.low {
+  background: #ff5a43;
+}
+.weapon-slots > button.dry svg {
+  opacity: 0.2;
+}
+.weapon-slots > button.dry small {
+  color: #ff7a63;
+  text-decoration: line-through;
+  opacity: 1;
 }
 .weapon-slots svg {
   height: 45px;
@@ -1452,7 +1493,9 @@ body[data-mode="dead"] #world {
   position: absolute;
   top: -1px;
   left: 3px;
-  font-size: 9px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ece4cc;
 }
 .weapon-hud > p {
   font-size: 12px;

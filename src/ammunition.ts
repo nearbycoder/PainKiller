@@ -69,3 +69,25 @@ export function fallbackWeapon(
 export function lowAmmo(count: number, start: number) {
   return Number.isFinite(count) && count <= Math.ceil(start * 0.2);
 }
+/**
+ * What a weapon slot shows: each mode's reserve as a share of its maximum, whether it is
+ * low (as the counter's red), and whether neither mode can fire. `start` is what a level
+ * starts with ({ ammo, alt } from WEAPONS).
+ */
+export function slotAmmo(
+  id: number,
+  count: number,
+  altCount: number,
+  start: { ammo: number; alt: number },
+) {
+  const a = AMMUNITION[id];
+  const share = (n: number, max: number) =>
+    Number.isFinite(max) ? Math.max(0, Math.min(1, Math.floor(n) / max)) : 1;
+  return {
+    primary: share(count, a.max),
+    alternate: share(altCount, a.altMax),
+    primaryLow: lowAmmo(count, start.ammo),
+    alternateLow: lowAmmo(altCount, start.alt),
+    dry: count < 1 && altCount < 1,
+  };
+}

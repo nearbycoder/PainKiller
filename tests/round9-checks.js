@@ -296,6 +296,91 @@
     },
   );
 
+  // R9-3: the weapon bar shows each weapon's reserves.
+  const slotState = (i) => {
+    g.onHUD();
+    const slot = document.getElementById("slot-" + i),
+      [p, a] = [...slot.querySelectorAll(".slot-ammo i")];
+    const scale = (n) =>
+      Number(/scaleX\(([\d.e-]+)\)/.exec(n.style.transform)?.[1] ?? NaN);
+    return {
+      primary: scale(p),
+      alternate: scale(a),
+      primaryLow: p.classList.contains("low"),
+      alternateLow: a.classList.contains("low"),
+      dry: slot.classList.contains("dry"),
+      label: slot.getAttribute("aria-label"),
+    };
+  };
+  await check(
+    "R9-3 the slot bars follow firing, running dry and an ammunition pickup",
+    async () => {
+      await resize(1280, 800);
+      fight(0);
+      g.autoSwitch = false;
+      g.equip(1);
+      g.ammo[1] = 50;
+      g.altAmmo[1] = 25;
+      let s = slotState(1);
+      assert(s.primary === 0.5 && s.alternate === 0.25, JSON.stringify(s));
+      g.cooldown = 0;
+      g.shoot(false);
+      assert(g.ammo[1] === 49, "the shotgun did not fire: " + g.ammo[1]);
+      s = slotState(1);
+      assert(s.primary === 0.49, "the bar did not follow a shot: " + s.primary);
+      // Every slot follows its own reserves, not the weapon in hand.
+      g.ammo[3] = 5;
+      g.altAmmo[3] = 250;
+      s = slotState(3);
+      assert(
+        s.primary === 0.05 && s.alternate === 0.5 && s.primaryLow,
+        "rockets: " + JSON.stringify(s),
+      );
+      assert(!s.alternateLow, "250 rounds marked low");
+      const blade = slotState(0);
+      assert(
+        blade.primary === 1 && blade.alternate === 1 && !blade.dry,
+        "the Thresher: " + JSON.stringify(blade),
+      );
+      // Empty both stake modes: dry, and said so to a screen reader.
+      g.equip(2);
+      g.ammo[2] = 1;
+      g.altAmmo[2] = 0;
+      assert(!slotState(2).dry, "dry with one stake left");
+      g.cooldown = 0;
+      g.shoot(false);
+      s = slotState(2);
+      assert(s.dry && /out of ammunition/.test(s.label), JSON.stringify(s));
+      const dryStyle = getComputedStyle(
+        document.querySelector("#slot-2 small"),
+      );
+      assert(
+        /line-through/.test(dryStyle.textDecorationLine),
+        "the dry number is not struck through",
+      );
+      // An ammunition pickup refills it.
+      g.addPickup("ammo", g.position.clone().setY(0.65));
+      for (let i = 0; i < 5; i++) g.update(1 / 60);
+      s = slotState(2);
+      assert(
+        !s.dry && s.primary > 0 && s.alternate > 0,
+        "after a pickup: " + JSON.stringify(s),
+      );
+      g.autoSwitch = true;
+      return { stakesAfterPickup: s, rockets: slotState(3) };
+    },
+  );
+  await check(
+    "R9-3 the weapon bar keeps clear of the other panels at 75–150%",
+    async () => {
+      await resize(1280, 800);
+      fight(0);
+      g.ammo[2] = g.altAmmo[2] = 0;
+      g.onHUD();
+      return await hudFits("1280×800");
+    },
+  );
+
   await resize(...startSize);
   g.canvas.requestPointerLock = requestLock;
   g.applySettings(options);

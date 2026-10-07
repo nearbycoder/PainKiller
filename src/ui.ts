@@ -2,7 +2,7 @@ import { Game } from "./game";
 import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
 import { formatTime, freshSave } from "./core";
 import { cardConditionMet, levelCard, TAROT_SOULS } from "./tarot";
-import { AMMUNITION, lowAmmo } from "./ammunition";
+import { AMMUNITION, lowAmmo, slotAmmo } from "./ammunition";
 import {
   CROSSHAIR_COLORS,
   CROSSHAIR_STYLES,
@@ -960,7 +960,7 @@ export class UI {
     return `<div class="settings-layout"><nav class="settings-categories" aria-label="Settings categories">${tabs.map(([id, label]) => `<button class="${id === this.settingsTab ? "selected" : ""}" data-action="settings-tab" data-value="${id}" aria-pressed="${id === this.settingsTab}"><span>◆</span>${label}</button>`).join("")}</nav><section class="settings-options" aria-label="${this.settingsTab} settings"><h2>${tabs.find((t) => t[0] === this.settingsTab)![1]}</h2>${content}<div class="settings-bottom"><span>Changes are saved automatically.</span><button data-action="defaults">Restore all defaults</button></div></section></div>`;
   }
   renderHUD() {
-    this.root.innerHTML = `<div id="hud-scrim" aria-hidden="true"></div><div id="damage-overlay"></div><div id="hud-fps" aria-hidden="true"></div><div id="low-health-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b><s></s></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div id="mouse-prompt" role="status" hidden><b>Click to return to the fight</b><span>The fight waits for the mouse. Esc pauses.</span></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}</button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ <span id="hud-prev-key"></span></button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon"><span id="hud-next-key"></span> ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
+    this.root.innerHTML = `<div id="hud-scrim" aria-hidden="true"></div><div id="damage-overlay"></div><div id="hud-fps" aria-hidden="true"></div><div id="low-health-overlay"></div><div id="demon-overlay"></div><div class="hud-top"><div><p class="eyebrow" id="hud-chapter"></p><h2 id="hud-level"></h2></div><div class="objective"><p id="hud-gate"></p><span id="hud-objective"></span></div><div class="combat-stats"><p><b id="hud-enemies">0</b> REMAINING</p><span><b id="hud-kills">0</b> SLAIN</span><button class="hud-pause" data-action="pause" aria-label="Pause game">Ⅱ</button></div></div><div id="boss-hud"><span id="boss-name"></span><div><i id="boss-fill"></i></div></div><div id="crosshair"><i></i><i></i><i></i><i></i><b></b><s></s></div><div id="hitmarker">×</div><div id="threat-ring" aria-hidden="true"></div><div id="toast" role="status"></div><div id="hint" role="status"></div><div id="gate-prompt"></div><div id="mouse-prompt" role="status" hidden><b>Click to return to the fight</b><span>The fight waits for the mouse. Esc pauses.</span></div><div class="hud-bottom"><div class="vitals"><div class="health"><span class="vital-icon">✚</span><b id="hud-health">100</b><span>HEALTH</span></div><div class="armor"><span class="vital-icon">◇</span><b id="hud-armor">50</b><span>ARMOR</span></div><div class="soul-bar"><i id="soul-fill"></i></div><small id="hud-souls">0 / 66 SOULS</small></div><div class="weapon-hud"><div class="weapon-slots">${WEAPONS.map((_, i) => `<button id="slot-${i}" data-action="equip-weapon" data-value="${i}" aria-label="Equip ${WEAPONS[i].short}"><small>${i + 1}</small>${gunIcon(i)}<span class="slot-ammo" aria-hidden="true"><b><i></i></b><b><i></i></b></span></button>`).join("")}</div><div class="weapon-cycle"><button data-action="cycle-weapon" data-value="-1" aria-label="Previous weapon">◀ <span id="hud-prev-key"></span></button><p id="hud-weapon"></p><button data-action="cycle-weapon" data-value="1" aria-label="Next weapon"><span id="hud-next-key"></span> ▶</button></div><span id="hud-card"></span></div><div class="ammo"><span id="hud-primary-label"></span><div><b id="hud-ammo">65</b><span id="hud-alt">24</span></div><small id="hud-secondary-label"></small></div></div><div id="hud-help">WASD MOVE <i>·</i> SPACE JUMP <i>·</i> LMB / RMB FIRE <i>·</i> R / V SWITCH <i>·</i> F INSPECT <i>·</i> ESC PAUSE</div>`;
     this.root
       .querySelector('[data-action="pause"]')
       ?.addEventListener("click", () => this.game.setMode("paused"));
@@ -1113,10 +1113,24 @@ export class UI {
     );
     document.getElementById("hud-help")!.style.opacity =
       g.elapsed < 20 ? "1" : "0";
-    for (let i = 0; i < 5; i++)
-      document
-        .getElementById("slot-" + i)!
-        .classList.toggle("active", g.weapon === i);
+    for (let i = 0; i < 5; i++) {
+      const slot = document.getElementById("slot-" + i)!,
+        a = slotAmmo(i, g.ammo[i], g.altAmmo[i], WEAPONS[i]),
+        bars = slot.querySelectorAll<HTMLElement>(".slot-ammo i"),
+        primary = bars[0],
+        alternate = bars[1];
+      slot.classList.toggle("active", g.weapon === i);
+      // Each slot's two reserves as thin bars; a weapon with neither is marked dry.
+      slot.classList.toggle("dry", a.dry);
+      primary.style.transform = `scaleX(${a.primary})`;
+      alternate.style.transform = `scaleX(${a.alternate})`;
+      primary.classList.toggle("low", a.primaryLow);
+      alternate.classList.toggle("low", a.alternateLow);
+      slot.setAttribute(
+        "aria-label",
+        `Equip ${WEAPONS[i].short}` + (a.dry ? ", out of ammunition" : ""),
+      );
+    }
     const boss = g.enemies.find((e) => e.type === "boss");
     document.getElementById("boss-hud")!.style.display = boss
       ? "block"
