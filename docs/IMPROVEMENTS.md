@@ -84,6 +84,43 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** whether _Switch weapon when empty_ should be on by default (it is, as in most arena shooters; it changes no numbers, but it does keep a player firing who would otherwise stall); the difficulty direction, including a warning before the generals' shockwaves; weapon progression; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Human checks still needed: a physical controller, phones, a person playing in Firefox, Safari, and a listen to the new dry click.
 
+## Round 5 scope (2026-10-06)
+
+Round 4 left one measurement problem open: the balance autopilot gave different results run to run on the same code, so balance numbers could not be compared. A first look this round found both causes:
+
+- **Sound draws from the game's random sequence.** `Sound.noise()` fills each noise buffer with `Math.random()` (hundreds to thousands of draws per sound), and the music beat and the enemy-cue budget run on the audio clock and `performance.now()`. How many numbers sound takes therefore depends on wall-clock time, and every draw after that shifts enemy spawns and attacks. Two sessions of three sectors with the same seeds (load 3–5) gave three different results, one a death instead of a clear. With sound on its own generator, two sessions matched exactly.
+- **Three.js draws four `Math.random()` numbers for every object, material and geometry it creates** (`generateUUID`). Models and materials built for the first time (caches, pools) therefore shift the sequence, so a sector's result depends on which sectors ran before it: The Barrow on its own and after Hallowed Ground 4 gave a clear and a death.
+
+The fix is the same for both: gameplay draws from its own seeded generator, which nothing else touches. That also makes a full sweep of the campaign reproducible, so a broken encounter found by the bot can be replayed exactly. Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, meshopt, hosting, licensing, releases.
+
+### R5-1. Reproducible gameplay randomness
+
+A `src/random.ts` generator (seeded from `Math.random()` at start-up, so play stays as random as before) replaces `Math.random()` in gameplay and combat effects. Sound gets its own generator. The shader warm-up builds its models without touching the gameplay sequence. The development API gets `seed(n)`, and the autopilot uses it instead of replacing `Math.random`. No balance values change.
+
+**Accept / verify:** unit tests for the generator (same seed, same sequence; reseeding; range). A browser check that a scripted fight gives the same result twice with the same seed even with sound playing, real time passing between frames, and other sectors and fresh models in between, and that the warm-up leaves the sequence untouched. Two complete default autopilot runs in separate sessions match in 60 of 60 runs, and a sector run on its own matches the same sector inside the full set.
+
+### R5-2. Every-sector sweep for broken encounters
+
+Run the autopilot once through all 104 sectors on Purgatory and look at every timeout, every enemy or player outside the arena, and every sector whose gate does not open. Replay each one with its seed, and fix what is clearly broken in the level or the spawning (as round 1 did for the headstone corner). Report what is only the bot's lack of pathfinding. No difficulty values change.
+
+**Accept / verify:** the sweep's results in DEVELOPMENT.md; each fix has a check that reproduces the broken case and fails on the old code; a second sweep with no new timeouts caused by the fixes; the arena collider fixture either unchanged or updated with the reason stated.
+
+### R5-3. Listen to the dry click (by measurement)
+
+Nobody has heard the empty-weapon click from round 4. Render it offline, with the footsteps, weapon switch, menu tick and gunfire it plays among, and compare peak and loudness. If it is clearly too quiet to notice over footsteps and music, raise it; otherwise leave it. Either way, commit a short listening clip for the owner.
+
+**Accept / verify:** a table of levels in DEVELOPMENT.md and `docs/media/improvements/round5/r5-3-dry-click.mp3`. It is still **not heard by a person**, and will be reported as such.
+
+### R5-4. Web start-up progress and retry
+
+The web build downloads 50 MB before the menu, and the progress bar only moves when a whole file finishes: the 21 MB cemetery is first, so a player on a slow connection sees 0% for most of the wait, and the 4.9 MB sky is not counted at all. If any boot download fails, the page says "Restart the game to retry". Count progress in bytes across every boot file including the sky, and on a failed download offer _Try again_, which retries only what failed.
+
+**Accept / verify:** a served production build with a deliberately slow server shows the bar moving steadily during the cemetery download; a blocked file shows the retry screen and recovers when unblocked, without reloading the page; the desktop smoke test and the existing loading checks stay green; a capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run build`, `npm run package:web`, `npm run format:check`, the arena collider fixture, and the autopilot runs above. `~/.config/Purgatory` is checked before and after (it did not exist at the start of the round).
+
 ## Round 4 scope (2026-10-06)
 
 The ranked list is done apart from owner decisions (meshopt, weapon progression, difficulty, hosting) and work that cannot be tested here (Windows and macOS) or needs new art (bespoke generals). So this round's items come from a fresh look at the running game. Two things turned up:
