@@ -44,14 +44,14 @@ Clear each **sector** by surviving three waves. Red arcs around the crosshair po
 | Combo fire (Tempest storm orb) | Both mouse buttons                  | RT + LT                       | FIRE + ALT                        |
 | Next / previous weapon         | R / V, mouse wheel, or 1–5          | RB / LB                       | ▶ / ◀                             |
 | Jump (hold to hop)             | Space                               | A                             | JUMP                              |
-| Sprint                         | Shift                               | Left-stick click              | RUN                               |
+| Sprint (hold, or toggle)       | Shift                               | Left-stick click              | RUN                               |
 | Use the open gate              | E                                   | X                             | USE                               |
 | Activate tarot card            | Q                                   | Y                             | TAROT                             |
 | Inspect weapon                 | F                                   | B                             | INSPECT                           |
 | Pause                          | Esc or P                            | Start                         | Ⅱ                                 |
 | Fullscreen (desktop)           | F11                                 |                               |                                   |
 
-These are the defaults. Every keyboard and mouse action can be rebound to any key or mouse button (including side buttons), two per action, under **Options › Controls**, and so can the controller's buttons, including the D-pad and Back, which are free by default and can pick weapons directly. Esc and Start always pause, and the sticks always move and look. The touch layout is fixed. Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch controls appear automatically on coarse-pointer devices or windows narrower than 900 px.
+These are the defaults. Every keyboard and mouse action can be rebound to any key or mouse button (including side buttons), two per action, under **Options › Controls**, and so can the controller's buttons, including the D-pad and Back, which are free by default and can pick weapons directly. Esc and Start always pause. The sticks move and look, and can be swapped for left-handed play; sprint can be held or toggled (a toggled sprint ends when you press it again or stop moving). The touch layout is fixed. Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B. Touch controls appear automatically on coarse-pointer devices or windows narrower than 900 px.
 
 ## Features
 
@@ -217,11 +217,11 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - Four themes (cemetery, cathedral, crypt, foundry) use Blender-authored scenes. The other 18 are compact procedural arenas. Each has its own ground (snow, sand, tile, marble, planks, cobbles, lava-cracked basalt and more) and some dressing, but they are much plainer than the authored scenes, and sectors reuse each theme's layout with varied cover.
 - The five generals share one rig and differ in attack patterns. Each has its own crown, antlers, horns, halo or wings, glowing eyes and colours, but these are pieces fixed to the shared skeleton, not bespoke models, and the colour differences are subtle under torchlight. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
 - Campaign length and balance have not been measured end to end with human playtesters. A scripted autopilot ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#balance-autopilot)) samples ten sectors on every difficulty and has played all 104 sectors on Purgatory without getting stuck (it dies only at two generals); since round 5 its runs are reproducible. For it, ordinary sectors are easy even on Torment and the generals, especially their shockwaves, cause most deaths. A bot is not a player, though.
-- Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried, so controller vibration, the stick dead zone and the precise look response have never been felt.
+- Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried, so controller vibration, the stick dead zone, the precise look response, swapped sticks and toggle sprint have never been felt.
 - The sound is measured, not heard: levels of the empty-weapon click, the five chapter music themes (round 6) and the low-health heartbeat (round 7) were checked by offline rendering, and listening clips are in `docs/media/improvements/`, but no person has listened to them yet.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run. It passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in Firefox, and Safari has not been tried.
-- Keyboard, mouse and controller buttons can be rebound; the sticks and the touch layout cannot. Saves resume the start of the current wave, not the exact moment you quit.
+- Keyboard, mouse and controller buttons can be rebound and the sticks swapped; the touch layout is fixed. Saves resume the start of the current wave, not the exact moment you quit.
 - The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark. Shaders are compiled ahead of the fight, so the first title screen after launch holds one frame for about half a second, and starting a level holds about half a second.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.

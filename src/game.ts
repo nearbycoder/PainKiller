@@ -4,7 +4,7 @@ import { Atmosphere } from "./surface-effects";
 import { Physics, type Ragdoll } from "./physics";
 import type { RigidBody } from "@dimforge/rapier3d-compat";
 import { projectileModel } from "./projectile-models";
-import { Controls } from "./controls";
+import { Controls, toggleSprint } from "./controls";
 import { AMMUNITION, fallbackWeapon, refillAmmo } from "./ammunition";
 import { authoredPickup } from "./authored-models";
 import { art, DEFERRED_ART, ensureArt, hasArt } from "./assets";
@@ -257,6 +257,12 @@ export class Game {
   vibration = true;
   autoSwitch = true;
   lowHealthWarning = true;
+  swapSticks = false;
+  toggleSprint = false;
+  /** Running at sprint speed this step. */
+  sprinting = false;
+  /** Whether sprint was held at the last step, to see a fresh press in toggle mode. */
+  private sprintHeld = false;
   /** Seconds until the next low-health heartbeat. */
   heartbeat = 0;
   hudScale = 1;
@@ -457,6 +463,8 @@ export class Game {
       stickSpeed: this.stickSpeed,
       stickDeadzone: this.stickDeadzone,
       lookCurve: this.lookCurve,
+      swapSticks: this.swapSticks,
+      toggleSprint: this.toggleSprint,
       vibration: this.vibration,
       autoSwitch: this.autoSwitch,
       lowHealthWarning: this.lowHealthWarning,
@@ -483,6 +491,8 @@ export class Game {
       stickSpeed: s.stickSpeed,
       stickDeadzone: s.stickDeadzone,
       lookCurve: s.lookCurve,
+      swapSticks: s.swapSticks,
+      toggleSprint: s.toggleSprint,
       vibration: s.vibration,
       autoSwitch: s.autoSwitch,
       lowHealthWarning: s.lowHealthWarning,
@@ -849,6 +859,7 @@ export class Game {
     this.accumulator = 0;
     this.motion.reset();
     this.previousPosition.copy(this.position);
+    this.sprinting = false;
     this.weaponMotion.equip(this.weapon);
     this.invulnerable = 1;
     this.taken = new Set();
@@ -1744,9 +1755,6 @@ export class Game {
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.damageFlash = Math.max(0, this.damageFlash - dt);
     const haste = this.cardTime > 0 && this.save.selectedCard === 1;
-    const speed =
-      (this.held("sprint") || this.controls.sprint ? 13 : 10) *
-      (haste ? 1.4 : 1);
     let x =
         Number(this.held("right")) -
         Number(this.held("left")) +
@@ -1755,6 +1763,16 @@ export class Game {
         Number(this.held("back")) -
         Number(this.held("forward")) +
         this.controls.moveY;
+    const sprintHeld = this.held("sprint") || this.controls.sprint;
+    this.sprinting = this.toggleSprint
+      ? toggleSprint(
+          this.sprinting,
+          sprintHeld && !this.sprintHeld,
+          x !== 0 || z !== 0,
+        )
+      : sprintHeld;
+    this.sprintHeld = sprintHeld;
+    const speed = (this.sprinting ? 13 : 10) * (haste ? 1.4 : 1);
     const len = Math.max(1, Math.hypot(x, z));
     x /= len;
     z /= len;
@@ -2612,7 +2630,7 @@ export class Game {
       this.velocity.x * Math.cos(this.yaw) -
         this.velocity.z * Math.sin(this.yaw),
       this.grounded,
-      this.held("sprint"),
+      this.sprinting,
     );
     w.root.position.set(pose.x, pose.y, pose.z);
     w.root.rotation.set(pose.rx, pose.ry, pose.rz);

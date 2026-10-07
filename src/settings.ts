@@ -14,6 +14,10 @@ export const defaults = {
   stickDeadzone: 0.18,
   /** Right-stick response: 0 linear, 1 precise (slower near the centre). */
   lookCurve: 0,
+  /** Move with the right stick and look with the left. */
+  swapSticks: false,
+  /** Sprint stays on after a press until pressed again or you stop moving. */
+  toggleSprint: false,
   vibration: true,
   fov: 80,
   volume: 0.45,
@@ -105,6 +109,8 @@ export function parseSettings(raw: string | null): Settings {
     "vibration",
     "autoSwitch",
     "lowHealthWarning",
+    "swapSticks",
+    "toggleSprint",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);

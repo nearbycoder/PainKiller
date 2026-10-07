@@ -408,6 +408,192 @@
   });
   g.sound.heartbeat = heartbeat;
 
+  // R7-3: toggle sprint and swapped sticks, with synthetic keys and a synthetic gamepad.
+  const pad = (axes, pressed = []) => ({
+    connected: true,
+    mapping: "standard",
+    axes,
+    buttons: Array.from({ length: 17 }, (_, i) => ({
+      pressed: pressed.includes(i),
+      value: pressed.includes(i) ? 1 : 0,
+    })),
+  });
+  const speed = () => Math.hypot(g.velocity.x, g.velocity.z);
+  const comfort = (extra) =>
+    g.applySettings({
+      ...g.settings(),
+      stickDeadzone: 0.18,
+      lookCurve: 0,
+      stickSpeed: 1,
+      toggleSprint: false,
+      swapSticks: false,
+      ...extra,
+    });
+  // One simulation step with the controller in this state (as the frame loop does).
+  const padStep = (state, frames = 1) => {
+    for (let i = 0; i < frames; i++) {
+      g.controls.poll(1 / 60, [state]);
+      api.step(1);
+    }
+  };
+  const noPad = () => g.controls.poll(1 / 60, []);
+
+  await check("R7-3 hold sprint is unchanged", () => {
+    calm();
+    comfort({ toggleSprint: false });
+    g.keys.add("KeyW");
+    g.keys.add("ShiftLeft");
+    api.step(45);
+    const held = speed();
+    g.keys.delete("ShiftLeft");
+    api.step(45);
+    const released = speed();
+    g.keys.clear();
+    assert(Math.abs(held - 13) < 0.1, "held " + held);
+    assert(Math.abs(released - 10) < 0.1, "released " + released);
+    return { held: round(held, 2), released: round(released, 2) };
+  });
+
+  await check(
+    "R7-3 toggle sprint runs after one press, until pressed again or you stop",
+    () => {
+      calm();
+      comfort({ toggleSprint: true });
+      g.keys.add("KeyW");
+      api.step(20);
+      g.keys.add("ShiftLeft");
+      api.step(3);
+      g.keys.delete("ShiftLeft");
+      api.step(60);
+      const afterTap = speed();
+      g.keys.add("ShiftLeft");
+      api.step(3);
+      g.keys.delete("ShiftLeft");
+      api.step(60);
+      const secondTap = speed();
+      g.keys.add("ShiftLeft");
+      api.step(3);
+      g.keys.delete("ShiftLeft");
+      api.step(30);
+      g.keys.delete("KeyW");
+      api.step(30);
+      const stopped = g.sprinting;
+      g.keys.add("KeyW");
+      api.step(60);
+      const walkingAgain = speed();
+      g.keys.clear();
+      assert(
+        Math.abs(afterTap - 13) < 0.1,
+        "not running after a tap: " + afterTap,
+      );
+      assert(Math.abs(secondTap - 10) < 0.1, "still running: " + secondTap);
+      assert(!stopped, "still sprinting after stopping");
+      assert(Math.abs(walkingAgain - 10) < 0.1, "restarted: " + walkingAgain);
+      return {
+        afterTap: round(afterTap, 2),
+        secondTap: round(secondTap, 2),
+        walkingAgain: round(walkingAgain, 2),
+      };
+    },
+  );
+
+  await check("R7-3 toggle sprint on a controller's stick click", () => {
+    calm();
+    comfort({ toggleSprint: true });
+    const forward = [0, -1, 0, 0];
+    padStep(pad(forward), 20);
+    padStep(pad(forward, [10]), 3);
+    padStep(pad(forward), 60);
+    const running = speed();
+    padStep(pad([0, 0, 0, 0]), 20);
+    const stopped = g.sprinting;
+    padStep(pad(forward), 60);
+    const walking = speed();
+    noPad();
+    assert(Math.abs(running - 13) < 0.1, "not running: " + running);
+    assert(!stopped, "still sprinting after letting go of the stick");
+    assert(Math.abs(walking - 10) < 0.1, "restarted: " + walking);
+    return { running: round(running, 2), walking: round(walking, 2) };
+  });
+
+  await check(
+    "R7-3 swapped sticks move with the right stick and look with the left",
+    () => {
+      calm();
+      const look = (axes, frames = 30) => {
+        const yaw = g.yaw;
+        for (let i = 0; i < frames; i++) g.controls.poll(1 / 60, [pad(axes)]);
+        g.controls.poll(1 / 60, [pad([0, 0, 0, 0])]);
+        return yaw - g.yaw;
+      };
+      const move = (axes) => {
+        g.controls.poll(1 / 60, [pad(axes)]);
+        const m = g.controls.moveX;
+        g.controls.poll(1 / 60, [pad([0, 0, 0, 0])]);
+        return m;
+      };
+      comfort({ swapSticks: false });
+      const standard = {
+        leftMoves: move([0.59, 0, 0, 0]),
+        rightLooks: look([0, 0, 0.59, 0]),
+        leftLooks: look([0.59, 0, 0, 0]),
+      };
+      comfort({ swapSticks: true });
+      const swapped = {
+        rightMoves: move([0, 0, 0.59, 0]),
+        leftMoves: move([0.59, 0, 0, 0]),
+        leftLooks: look([0.59, 0, 0, 0]),
+        rightLooks: look([0, 0, 0.59, 0]),
+      };
+      comfort({ swapSticks: true, lookCurve: 1 });
+      const precise = {
+        leftLooks: look([0.59, 0, 0, 0]),
+        rightMoves: move([0, 0, 0.59, 0]),
+      };
+      noPad();
+      assert(
+        Math.abs(swapped.rightMoves - 0.5) < 0.001,
+        "right stick does not move",
+      );
+      assert(swapped.leftMoves === 0, "left stick still moves");
+      assert(
+        Math.abs(swapped.leftLooks - standard.rightLooks) < 1e-9,
+        "left stick does not look as the right did",
+      );
+      assert(swapped.rightLooks === 0, "right stick still looks");
+      assert(
+        Math.abs(precise.leftLooks / swapped.leftLooks - 0.5) < 0.01,
+        "precise response not on the look stick",
+      );
+      assert(
+        Math.abs(precise.rightMoves - 0.5) < 0.001,
+        "the move stick was curved",
+      );
+      return { standard, swapped, precise };
+    },
+  );
+
+  await check("R7-3 both options save from the Controls page", () => {
+    calm();
+    comfort({});
+    setOption("controls", "swapSticks", true);
+    setOption("controls", "toggleSprint", true);
+    const stored = storedOptions();
+    assert(stored.swapSticks === true, "stick layout not saved");
+    assert(stored.toggleSprint === true, "sprint not saved");
+    assert(g.swapSticks && g.toggleSprint, "not applied");
+    g.controls.poll(1 / 60, [pad([0, 0, 0, 0])]);
+    g.elapsed = 0;
+    g.onHUD();
+    const line = document.getElementById("hud-help").textContent;
+    noPad();
+    assert(
+      /^RIGHT STICK MOVE · LEFT STICK LOOK/.test(line),
+      "key line: " + line,
+    );
+    return { line: line.slice(0, 40) };
+  });
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

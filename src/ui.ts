@@ -784,6 +784,24 @@ export class UI {
           ],
         ) +
         this.choice(
+          "swapSticks",
+          "Stick layout",
+          "Swapped moves with the right stick and looks with the left, for left-handed play.",
+          [
+            ["Standard", false],
+            ["Swapped", true],
+          ],
+        ) +
+        this.choice(
+          "toggleSprint",
+          "Sprint",
+          "Toggle runs from one press until you press again or stop moving; easier on a stick click.",
+          [
+            ["Hold", false],
+            ["Toggle", true],
+          ],
+        ) +
+        this.choice(
           "vibration",
           "Controller vibration",
           "Rumble when you are hit, near explosions and when the Wraith wakes.",
@@ -804,7 +822,10 @@ export class UI {
         this.bindingRows() +
         `<div class="binding-list">${[
           ["MOUSE · WHEEL", "Look · next / previous weapon"],
-          ["LEFT / RIGHT STICK", "Controller move / look"],
+          [
+            this.game.swapSticks ? "RIGHT / LEFT STICK" : "LEFT / RIGHT STICK",
+            "Controller move / look",
+          ],
           ["START", "Controller pause"],
         ]
           .map(
@@ -1036,7 +1057,7 @@ export class UI {
     document.getElementById("soul-fill")!.style.width =
       (g.souls / 66) * 100 + "%";
     document.getElementById("hud-help")!.textContent = g.controls.connected
-      ? `LEFT STICK MOVE · RIGHT STICK LOOK · ${g.padFor("primary")} / ${g.padFor("alternate")} FIRE · ${g.padFor("previous")} / ${g.padFor("next")} WEAPONS · ${g.padFor("jump")} JUMP · ${g.padFor("use")} USE · START PAUSE`
+      ? `${g.swapSticks ? "RIGHT STICK MOVE · LEFT STICK LOOK" : "LEFT STICK MOVE · RIGHT STICK LOOK"} · ${g.padFor("primary")} / ${g.padFor("alternate")} FIRE · ${g.padFor("previous")} / ${g.padFor("next")} WEAPONS · ${g.padFor("jump")} JUMP · ${g.padFor("use")} USE · START PAUSE`
       : `${g.moveKeys()} MOVE · ${g.keyFor("jump")} JUMP · ${g.keyFor("primary")} / ${g.keyFor("alternate")} FIRE · ${g.keyFor("next")} / ${g.keyFor("previous")} SWITCH · ${g.keyFor("inspect")} INSPECT · ESC PAUSE`;
     set(
       "hud-prev-key",

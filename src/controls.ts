@@ -16,6 +16,18 @@ export function stickAxis(value: number, deadzone = 0.18, exponent = 1) {
   const t = Math.min(1, (Math.abs(value) - deadzone) / (1 - deadzone));
   return Math.sign(value) * t ** exponent;
 }
+/**
+ * Sprint in toggle mode, once per simulation step: a fresh press of sprint starts or
+ * stops running, and running ends when the player stops moving.
+ */
+export function toggleSprint(
+  running: boolean,
+  pressed: boolean,
+  moving: boolean,
+) {
+  if (pressed) running = !running;
+  return running && moving;
+}
 /** The look exponent for each _Look response_ choice. */
 export const LOOK_CURVES = [1, 2];
 export type RumbleKind = "hurt" | "shockwave" | "explosion" | "wraith";
@@ -245,14 +257,16 @@ export class Controls {
         return button !== null && !!down[button];
       };
       const zone = this.game.stickDeadzone,
-        curve = LOOK_CURVES[this.game.lookCurve] ?? 1;
+        curve = LOOK_CURVES[this.game.lookCurve] ?? 1,
+        // Swapped (left-handed): the right stick moves and the left looks.
+        [mx, my, lx, ly] = this.game.swapSticks ? [2, 3, 0, 1] : [0, 1, 2, 3];
       this.moveX = clamp(
-        this.touchX + (pad ? stickAxis(pad.axes[0] || 0, zone) : 0),
+        this.touchX + (pad ? stickAxis(pad.axes[mx] || 0, zone) : 0),
         -1,
         1,
       );
       this.moveY = clamp(
-        this.touchY + (pad ? stickAxis(pad.axes[1] || 0, zone) : 0),
+        this.touchY + (pad ? stickAxis(pad.axes[my] || 0, zone) : 0),
         -1,
         1,
       );
@@ -262,11 +276,11 @@ export class Controls {
       this.sprint = this.held.has("sprint") || padHeld("sprint");
       if (pad)
         this.look(
-          stickAxis(pad.axes[2] || 0, zone, curve) *
+          stickAxis(pad.axes[lx] || 0, zone, curve) *
             dt *
             2.5 *
             this.game.stickSpeed,
-          stickAxis(pad.axes[3] || 0, zone, curve) *
+          stickAxis(pad.axes[ly] || 0, zone, curve) *
             dt *
             2 *
             this.game.stickSpeed,
