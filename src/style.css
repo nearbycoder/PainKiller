@@ -1240,7 +1240,9 @@ body[data-mode="dead"] #world {
   button {
     transition: none;
   }
-  #threat-ring i.incoming {
+  #threat-ring i.incoming,
+  .health.low > b,
+  .health.low > .vital-icon {
     animation: none;
   }
 }
@@ -1679,6 +1681,7 @@ body[data-mode="dead"] #world {
   text-shadow: 0 2px 4px #000;
 }
 #damage-overlay,
+#low-health-overlay,
 #demon-overlay {
   position: absolute;
   inset: 0;
@@ -1687,6 +1690,26 @@ body[data-mode="dead"] #world {
 #damage-overlay {
   box-shadow: inset 0 0 180px 50px #b5110f;
   background: #b10d0d18;
+}
+#low-health-overlay {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 52%,
+    #6e0a0a66 78%,
+    #8c0d0dcc 100%
+  );
+  transition: opacity 0.3s;
+}
+.health.low > b,
+.health.low > .vital-icon {
+  color: #ff5a43;
+  text-shadow: 0 0 16px #c8321f99;
+  animation: low-health 0.9s ease-in-out infinite;
+}
+@keyframes low-health {
+  50% {
+    opacity: 0.55;
+  }
 }
 #demon-overlay {
   box-shadow: inset 0 0 150px #64d8d1;

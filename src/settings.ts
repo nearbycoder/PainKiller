@@ -38,6 +38,8 @@ export const defaults = {
   hints: true,
   /** Switch to another weapon when the mode in hand runs dry. */
   autoSwitch: true,
+  /** A red HUD and a heartbeat at low health. */
+  lowHealthWarning: true,
   bindings: cloneBindings(DEFAULT_BINDINGS),
   padBindings: clonePadBindings(DEFAULT_PAD_BINDINGS),
 };
@@ -102,6 +104,7 @@ export function parseSettings(raw: string | null): Settings {
     "hints",
     "vibration",
     "autoSwitch",
+    "lowHealthWarning",
   ] as const)
     if (typeof saved[key] === "boolean") result[key] = saved[key];
   result.bindings = parseBindings(saved.bindings);

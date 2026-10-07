@@ -254,6 +254,15 @@ export class Sound {
     );
     this.tone(draw ? 290 : 440, 0.045, "triangle", 0.035, 115);
   }
+  /** One low-health heartbeat, lub-dub; `strength` (0–1) deepens it. */
+  heartbeat(strength = 1) {
+    if (!this.ctx) return;
+    const volume = 0.095 + 0.06 * strength,
+      t = this.ctx.currentTime;
+    this.tone(78, 0.12, "triangle", volume, 42, false, 0, 0, 0.01);
+    this.noise(0.05, volume * 0.35, 220);
+    this.tone(70, 0.15, "triangle", volume * 0.7, 38, false, 0, t + 0.2, 0.01);
+  }
   /** The hammer falling on an empty chamber. */
   dry() {
     this.noise(0.03, 0.06, 5200);

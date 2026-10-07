@@ -47,6 +47,7 @@ import { Sound, type EnemyCue } from "./audio";
 import { layerFor } from "./music";
 import { isolated, random } from "./random";
 import { between, Interpolator } from "./interpolate";
+import { heartbeatInterval, lowHealth } from "./vitals";
 import { CROSSHAIR_COLORS, parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
@@ -255,6 +256,9 @@ export class Game {
   lookCurve = 0;
   vibration = true;
   autoSwitch = true;
+  lowHealthWarning = true;
+  /** Seconds until the next low-health heartbeat. */
+  heartbeat = 0;
   hudScale = 1;
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
@@ -455,6 +459,7 @@ export class Game {
       lookCurve: this.lookCurve,
       vibration: this.vibration,
       autoSwitch: this.autoSwitch,
+      lowHealthWarning: this.lowHealthWarning,
       hudScale: this.hudScale,
     };
   }
@@ -480,6 +485,7 @@ export class Game {
       lookCurve: s.lookCurve,
       vibration: s.vibration,
       autoSwitch: s.autoSwitch,
+      lowHealthWarning: s.lowHealthWarning,
       hudScale: s.hudScale,
     });
     const root = document.documentElement;
@@ -1893,6 +1899,12 @@ export class Game {
       }
     }
     this.arena.portal.rotation.z += dt * 0.17;
+    // Low health: a heartbeat, quickening as health falls (sound only; no random draws).
+    const warning = this.lowHealth();
+    if (warning > 0 && (this.heartbeat -= dt) <= 0) {
+      this.sound.heartbeat(warning);
+      this.heartbeat = heartbeatInterval(this.health);
+    } else if (!warning) this.heartbeat = 0;
     this.sound.update(
       layerFor({
         cleared: this.arenaCleared,
@@ -1909,6 +1921,12 @@ export class Game {
         1,
         2,
       );
+  }
+  /** How strongly to warn of low health (0 when the warning is off or not wanted). */
+  lowHealth() {
+    return this.lowHealthWarning && this.mode === "playing" && this.demon <= 0
+      ? lowHealth(this.health)
+      : 0;
   }
   /** Everything drawn between simulation steps (see {@link interpolate}). */
   *movers() {

@@ -255,6 +255,159 @@
 
   g.renderWorld = renderWorld;
   g.interpolate = true;
+
+  // R7-2: the low-health warning.
+  const storedOptions = () =>
+    JSON.parse(localStorage.getItem("purgatory.options") || "{}");
+  const click = (selector) => {
+    const el = document.querySelector(selector);
+    assert(el, "missing " + selector);
+    el.click();
+  };
+  const setOption = (tab, key, value) => {
+    g.setMode("paused");
+    click('[data-action="page"][data-value="settings"]');
+    click(`[data-action="settings-tab"][data-value="${tab}"]`);
+    click(`[data-action="option"][data-value="${key}:${value}"]`);
+    g.setMode("playing");
+    g.onHUD();
+  };
+  const calm = (level = 0, room = 0) => {
+    api.seed(9);
+    api.start(level, room, false);
+    g.waveDelay = 1e9;
+    g.invulnerable = 1e9;
+  };
+  const warning = (health) => {
+    g.health = health;
+    g.onHUD();
+    return {
+      // What the HUD asks for; the overlay fades to it over 0.3 s.
+      overlay: +document.getElementById("low-health-overlay").style.opacity,
+      red: document.querySelector(".health").classList.contains("low"),
+    };
+  };
+  let beats = 0;
+  const heartbeat = g.sound.heartbeat;
+  g.sound.heartbeat = function (...a) {
+    beats++;
+    return heartbeat.apply(this, a);
+  };
+  const beatsIn = (seconds) => {
+    beats = 0;
+    api.step(Math.round(seconds * 60));
+    return beats;
+  };
+
+  await check(
+    "R7-2 the HUD warns at low health, more strongly near death",
+    () => {
+      calm();
+      const seen = {};
+      for (const h of [100, 26, 25, 20, 5]) seen[h] = warning(h);
+      assert(!seen[100].red && seen[100].overlay === 0, "warning at 100");
+      assert(!seen[26].red && seen[26].overlay === 0, "warning at 26");
+      assert(seen[25].red && seen[25].overlay > 0, "no warning at 25");
+      assert(seen[20].red && seen[20].overlay > 0, "no warning at 20");
+      assert(seen[5].overlay > seen[20].overlay, "not stronger at 5");
+      g.demon = 5;
+      const wraith = warning(5);
+      g.demon = 0;
+      assert(!wraith.red && wraith.overlay === 0, "warning in Wraith form");
+      return { ...seen, wraith };
+    },
+  );
+
+  await check("R7-2 a health pickup clears the warning", () => {
+    calm();
+    g.invulnerable = 0;
+    warning(12);
+    g.addPickup("health", g.position.clone().setY(0.65));
+    api.step(30);
+    const after = warning(g.health);
+    assert(g.health > 25, "not healed: " + g.health);
+    assert(!after.red && after.overlay === 0, "still warning");
+    return { health: Math.round(g.health) };
+  });
+
+  await check(
+    "R7-2 the heartbeat plays only while low and playing, faster near death",
+    () => {
+      calm();
+      g.health = 100;
+      const full = beatsIn(4);
+      g.health = 22;
+      const low = beatsIn(4);
+      g.health = 3;
+      const near = beatsIn(4);
+      g.demon = 3;
+      const wraith = beatsIn(2.5);
+      g.demon = 0;
+      g.lowHealthWarning = false;
+      const off = beatsIn(4);
+      g.lowHealthWarning = true;
+      // Paused: drive the real frame loop; nothing steps and nothing beats.
+      g.setMode("paused");
+      beats = 0;
+      let t = 1000;
+      g.lastTime = t;
+      drive(Array.from({ length: 240 }, () => (t += 1000 / 60)));
+      const paused = beats;
+      g.setMode("playing");
+      assert(full === 0, `${full} beats at full health`);
+      assert(low >= 4 && low <= 5, `${low} beats in 4 s at 22`);
+      assert(near > low, `not faster near death (${near} vs ${low})`);
+      assert(
+        wraith === 0 && off === 0 && paused === 0,
+        "beats when it should not",
+      );
+      // Death ends it.
+      g.health = 3;
+      g.invulnerable = 0;
+      g.hurt(50, undefined, "melee", "brute");
+      assert(g.mode === "dead", "did not die");
+      assert(g.lowHealth() === 0, "warning on the death screen");
+      return { full, low, near, wraith, off, paused };
+    },
+  );
+
+  await check(
+    "R7-2 the heartbeat leaves the game's random sequence alone",
+    () => {
+      const run = (on) => {
+        api.seed(12);
+        api.start(0, 0, false);
+        g.lowHealthWarning = on;
+        g.health = 15;
+        g.invulnerable = 1e9;
+        g.waveDelay = 0.5;
+        api.step(600);
+        return JSON.stringify({
+          random: api.randomState(),
+          enemies: api.state().enemies,
+        });
+      };
+      const on = run(true),
+        off = run(false);
+      g.lowHealthWarning = true;
+      assert(on === off, "the fight differs with the heartbeat");
+      return "same";
+    },
+  );
+
+  await check("R7-2 the option turns the warning off, and saves", () => {
+    calm();
+    setOption("gameplay", "lowHealthWarning", false);
+    const off = warning(10);
+    assert(storedOptions().lowHealthWarning === false, "not saved");
+    assert(!off.red && off.overlay === 0, "still warning with the option off");
+    setOption("gameplay", "lowHealthWarning", true);
+    assert(storedOptions().lowHealthWarning === true, "not saved back on");
+    assert(warning(10).red, "not back on");
+    return "ok";
+  });
+  g.sound.heartbeat = heartbeat;
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

@@ -159,6 +159,28 @@ The simulation advances in fixed 1/60 s steps, and until round 7 every frame dre
 
 The same file checks that a 14-second seeded rocket fight driven through the frame loop at 144 Hz with uneven frames ends in exactly the same state with interpolation on and off (positions, health, kills, the random sequence and every ragdoll body), that frames without a step leave every simulated position untouched, and that a new sector is drawn at its start rather than slid to it. `tests/interpolate.test.ts` covers the interpolator. Synthetic timing only: **no 120 or 144 Hz display has been looked at.**
 
+## Low-health warning (round 7)
+
+At 25 health or less (`LOW_HEALTH` in `src/vitals.ts`) the health readout turns red and pulses (steady under _prefers-reduced-motion_), a red vignette deepens toward the screen edges, and `Sound.heartbeat()` plays a lub-dub on the effects channel: about 67 beats a minute at 25 health, quickening to about 109 close to none. Strength runs from 0.4 at 25 health to 1 near 0 (`lowHealth()`). It is off in Wraith form (you cannot be hurt), while paused and on the death screen, and with _Low-health warning_ (Options › Gameplay, on by default) turned off. The heartbeat is timed inside the simulation step but draws no random numbers, so seeded runs are unchanged. It describes the player's own state and warns of no attack; no health, damage or timing value changed.
+
+`tools/media/round7/heartbeat.js` renders it offline with the game's synthesizer at the default volumes (`npm run test:browser -- --checks tools/media/round7/heartbeat.js --out artifacts/r7/heartbeat.json`). Levels in dBFS; "loudest 50 ms" is the RMS of the loudest 50 ms window:
+
+| Sound                      | Peak  | Loudest 50 ms |
+| -------------------------- | ----- | ------------- |
+| Heartbeat, 25 health       | −26.9 | −36.6         |
+| Heartbeat, near death      | −24.6 | −34.5         |
+| Footstep, stone            | −31.0 | −43.3         |
+| Hit marker                 | −29.3 | −42.4         |
+| Taking a hit               | −23.3 | −32.5         |
+| Melee wind-up (brute), 6 m | −24.3 | −32.3         |
+| Shotgun blast              | −11.2 | −21.7         |
+| Rocket                     | −12.7 | −22.5         |
+| Combat music, one bar      | −25.3 | −35.4         |
+
+A first draft was 4 dB louder, level with a brute's melee wind-up, and since it repeats every 0.6–0.9 s it could have covered the wind-up cues, so it was turned down to sit with the music, 2–4 dB under a wind-up. It is a low triangle thump (78 → 42 Hz) with a little filtered noise so it carries on small speakers. The 14-second clip `docs/media/improvements/round7/r7-2-heartbeat.mp3` has walking to the music, a hit down to 22 health with the heartbeat and two shotgun blasts, a hit down to 6 with the faster heartbeat, a health pickup ending it, and four beats with no music. **Nobody has listened to it.**
+
+`tests/round7-checks.js` checks that nothing shows at 100 or 26 health, the warning at 25 and 20 and stronger at 5, none in Wraith form, that a health pickup clears it, that heartbeats come only while low and playing (4–5 in 4 s at 22 health, more at 3, none at full health, in Wraith form, with the option off, paused or dead), that a seeded fight is identical with the heartbeat on and off, and that the option saves from the Gameplay page. `tests/vitals.test.ts` covers the threshold, strength, interval and option parsing.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.
