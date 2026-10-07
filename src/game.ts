@@ -46,7 +46,7 @@ import {
 import { Sound, type EnemyCue } from "./audio";
 import { layerFor } from "./music";
 import { isolated, random } from "./random";
-import { parseSettings, type Settings } from "./settings";
+import { CROSSHAIR_COLORS, parseSettings, type Settings } from "./settings";
 import { HintQueue, hintText, type HintId } from "./hints";
 import { damageKey, deathRecap, type DamageLog } from "./recap";
 import {
@@ -255,6 +255,9 @@ export class Game {
   hudScale = 1;
   private codeActions = actionsByCode(this.bindings);
   crosshair = true;
+  crosshairStyle = 0;
+  crosshairColor = 0;
+  crosshairSize = 1;
   enemies: Enemy[] = [];
   projectiles: Projectile[] = [];
   pickups: Pickup[] = [];
@@ -430,6 +433,9 @@ export class Game {
       invertY: this.invertY,
       headBob: this.headBob,
       crosshair: this.crosshair,
+      crosshairStyle: this.crosshairStyle,
+      crosshairColor: this.crosshairColor,
+      crosshairSize: this.crosshairSize,
       hints: this.hints.enabled,
       bindings: cloneBindings(this.bindings),
       padBindings: clonePadBindings(this.padBindings),
@@ -453,15 +459,22 @@ export class Game {
       invertY: s.invertY,
       headBob: s.headBob,
       crosshair: s.crosshair,
+      crosshairStyle: s.crosshairStyle,
+      crosshairColor: s.crosshairColor,
+      crosshairSize: s.crosshairSize,
       stickSpeed: s.stickSpeed,
       vibration: s.vibration,
       autoSwitch: s.autoSwitch,
       hudScale: s.hudScale,
     });
-    document.documentElement.style.setProperty(
-      "--hud-scale",
-      String(s.hudScale),
+    const root = document.documentElement;
+    root.style.setProperty("--hud-scale", String(s.hudScale));
+    root.style.setProperty("--crosshair-size", String(s.crosshairSize));
+    root.style.setProperty(
+      "--crosshair-color",
+      CROSSHAIR_COLORS[s.crosshairColor][1],
     );
+    root.dataset.crosshair = String(s.crosshairStyle);
     this.hints.setEnabled(s.hints);
     this.bindings = cloneBindings(s.bindings);
     this.codeActions = actionsByCode(this.bindings);

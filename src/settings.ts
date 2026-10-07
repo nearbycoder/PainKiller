@@ -26,6 +26,11 @@ export const defaults = {
   invertY: false,
   headBob: true,
   crosshair: true,
+  /** 0 cross and dot, 1 cross, 2 dot, 3 circle; see CROSSHAIR_STYLES. */
+  crosshairStyle: 0,
+  /** Index into CROSSHAIR_COLORS. */
+  crosshairColor: 0,
+  crosshairSize: 1,
   hints: true,
   /** Switch to another weapon when the mode in hand runs dry. */
   autoSwitch: true,
@@ -33,6 +38,14 @@ export const defaults = {
   padBindings: clonePadBindings(DEFAULT_PAD_BINDINGS),
 };
 export type Settings = typeof defaults;
+export const CROSSHAIR_STYLES = ["Cross and dot", "Cross", "Dot", "Circle"];
+export const CROSSHAIR_COLORS: [string, string][] = [
+  ["Bone", "#edf2df"],
+  ["Green", "#6cff7a"],
+  ["Yellow", "#ffe14d"],
+  ["Cyan", "#4ff0ff"],
+  ["Magenta", "#ff4fd8"],
+];
 export function parseSettings(raw: string | null): Settings {
   let saved: Record<string, unknown> = {};
   try {
@@ -53,6 +66,9 @@ export function parseSettings(raw: string | null): Settings {
     renderScale: [0.5, 1],
     brightness: [0.65, 1.5],
     hudScale: [0.75, 1.5],
+    crosshairStyle: [0, CROSSHAIR_STYLES.length - 1],
+    crosshairColor: [0, CROSSHAIR_COLORS.length - 1],
+    crosshairSize: [0.75, 2],
   };
   for (const key of Object.keys(limits) as (keyof typeof limits)[]) {
     const v = saved[key],
@@ -68,6 +84,8 @@ export function parseSettings(raw: string | null): Settings {
     );
   result.quality = Math.round(result.quality);
   result.difficulty = Math.round(result.difficulty);
+  result.crosshairStyle = Math.round(result.crosshairStyle);
+  result.crosshairColor = Math.round(result.crosshairColor);
   for (const key of [
     "music",
     "invertY",

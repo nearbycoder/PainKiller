@@ -336,6 +336,87 @@
       return "ok";
     },
   );
+  // R6-3: crosshair style, colour, size and outline, set through the real Options page.
+  const storedOptions = () =>
+    JSON.parse(localStorage.getItem("purgatory.options") || "{}");
+  const shown = (el) => getComputedStyle(el).display !== "none";
+  const options6 = (key, value) => {
+    g.setMode("paused");
+    click('[data-action="page"][data-value="settings"]');
+    click('[data-action="settings-tab"][data-value="gameplay"]');
+    if (typeof value === "string") {
+      const input = document.getElementById(key);
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    } else click(`[data-action="option"][data-value="${key}:${value}"]`);
+    g.setMode("playing");
+    g.onHUD();
+  };
+  await check("each crosshair style draws the right marks, outlined", () => {
+    api.start(0, 0);
+    quiet();
+    const xh = () => document.getElementById("crosshair");
+    const marks = (x = xh()) => ({
+      ticks: [...x.querySelectorAll("i")].filter(shown).length,
+      dot: shown(x.querySelector("b")),
+      ring: shown(x.querySelector("s")),
+    });
+    const seen = {};
+    const want = [
+      { ticks: 4, dot: true, ring: false },
+      { ticks: 4, dot: false, ring: false },
+      { ticks: 0, dot: true, ring: false },
+      { ticks: 0, dot: true, ring: true },
+    ];
+    for (const style of [0, 1, 2, 3]) {
+      options6("crosshairStyle", style);
+      seen[style] = marks();
+      assert(
+        JSON.stringify(seen[style]) === JSON.stringify(want[style]),
+        `style ${style}: ${JSON.stringify(seen[style])}`,
+      );
+      assert(storedOptions().crosshairStyle === style, "style not saved");
+    }
+    const x = xh();
+    for (const el of [
+      x.querySelector("i"),
+      x.querySelector("b"),
+      x.querySelector("s"),
+    ])
+      assert(
+        /0px 0px 0px 1px/.test(getComputedStyle(el).boxShadow),
+        "no outline on " + el.tagName,
+      );
+    options6("crosshairStyle", 0);
+    return seen;
+  });
+  await check("crosshair colour and size reach the HUD and save", () => {
+    const xh = () => document.getElementById("crosshair");
+    options6("crosshairColor", 2);
+    const dot = getComputedStyle(xh().querySelector("b")).backgroundColor;
+    assert(dot === "rgb(255, 225, 77)", "colour " + dot);
+    assert(storedOptions().crosshairColor === 2, "colour not saved");
+    const before = xh().getBoundingClientRect().width;
+    options6("crosshairSize", "150");
+    const after = xh().getBoundingClientRect().width;
+    assert(Math.abs(after / before - 1.5) < 0.01, `width ${before} → ${after}`);
+    assert(storedOptions().crosshairSize === 1.5, "size not saved");
+    const box = xh().getBoundingClientRect();
+    assert(
+      Math.abs(box.left + box.width / 2 - innerWidth / 2) < 1 &&
+        Math.abs(box.top + box.height / 2 - innerHeight / 2) < 1,
+      "the crosshair moved off centre",
+    );
+    options6("crosshair", false);
+    assert(
+      getComputedStyle(xh()).visibility === "hidden",
+      "still visible when off",
+    );
+    options6("crosshair", true);
+    assert(getComputedStyle(xh()).visibility === "visible", "hidden when on");
+    return { dot, width: [before, after] };
+  });
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

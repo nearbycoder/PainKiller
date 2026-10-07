@@ -122,6 +122,19 @@ Combat stays within about 2 dB of the old loop at its peaks; the phrases are den
 
 _Enter Purgatory_ on a save with no progress (no kills, no unlocked level, first sector) and _New game_ after its confirmation open a page with the three difficulties and the same descriptions as Options › Gameplay, the current setting focused. Choosing one saves it as the option and starts Hallowed Ground; for _New game_ the save is reset only then, so backing out keeps the campaign. _Continue_, level select and Options are unchanged, and no difficulty value changed. `tests/round6-checks.js` covers the page, keyboard selection, Back, _Continue_ and _New game_; the desktop smoke test and `tools/media/round4/web-play.js` take the offered difficulty, as a player pressing Enter would.
 
+## Crosshair (round 6)
+
+The crosshair was four 1-pixel bone-white ticks and a dot with a 1-pixel drop shadow, and over pale ground (snow, sand, marble, sky) it thinned out. Every mark now has a 1-pixel dark outline as well, and Options › Gameplay adds _Crosshair style_ (cross and dot as before, cross, dot, circle), _Crosshair colour_ (bone as before, green, yellow, cyan, magenta) and _Crosshair size_ (75–200%). `crosshairStyle`, `crosshairColor` and `crosshairSize` are saved with the options (`parseSettings` clamps and rounds them); `Game.applySettings` sets the `--crosshair-color` and `--crosshair-size` CSS variables and `data-crosshair` on the root element.
+
+Measured on 1280 × 800 PNG captures (`tools/media/round6/crosshair-scenes.js`, `crosshair-contrast.py`), as WCAG contrast ratios of the default crosshair's ticks against the pixels touching them:
+
+| Background                    | Before | After  |
+| ----------------------------- | ------ | ------ |
+| Frostbound Crossing, snow     | 3.4:1  | 13.8:1 |
+| The Ossuary, dark crypt floor | 12.1:1 | 17.4:1 |
+
+Against the background 4 px away nothing changes (2.3:1 → 2.5:1 on snow): the outline is what separates the mark from pale ground. `tests/crosshair.test.ts` covers parsing; `tests/round6-checks.js` sets each style, a colour and a size through the real Options page and checks the marks drawn, the outline, the colour, the size (1.5× wide and still centred), that each saves, and that _Crosshair off_ still hides it. Comparison: `docs/media/improvements/round6/r6-3-crosshair.jpg`.
+
 ## Inspection API and browser checks
 
 `window.__PURGATORY__.state()` exposes read-only state and rendering counters in production. Development builds additionally expose deterministic setup and stepping controls. `tests/browser-checks.js` is a repeatable script for the collaborative preview's JavaScript evaluator: it exercises controls, all firing modes, freeze/shatter, death/retry, pickups, tarot, gates, level unlocks, every environment, each boss, the ending, and console-error checks. `tests/polish-checks.js` additionally checks melee wind-up/dodging, indoor entry/exit routes, and inspection input. Both preserve the campaign save they find. `tests/menu-checks.js` exercises keyboard navigation, rendering options, independent audio channels, confirmations, level selection, and pause/options/resume without resetting the fight. It restores the previous options and campaign save. Development setup and stepping controls are stripped from production builds.

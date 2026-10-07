@@ -1455,12 +1455,15 @@ body[data-mode="dead"] #world {
   top: 50%;
   width: 24px;
   height: 24px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--crosshair-size, 1));
 }
+/* Every mark has a dark outline, so the reticle reads on snow and sky. */
 #crosshair i {
   position: absolute;
-  background: #edf2dfe8;
-  box-shadow: 0 1px 2px #000;
+  background: var(--crosshair-color, #edf2df);
+  box-shadow:
+    0 0 0 1px #000000b8,
+    0 1px 2px #000;
   width: 6px;
   height: 1px;
   top: 12px;
@@ -1490,7 +1493,42 @@ body[data-mode="dead"] #world {
   top: 11px;
   width: 2px;
   height: 2px;
-  background: #fff;
+  background: var(--crosshair-color, #edf2df);
+  box-shadow: 0 0 0 1px #000000b8;
+}
+#crosshair s {
+  display: none;
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--crosshair-color, #edf2df);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px #000000b8,
+    inset 0 0 0 1px #000000b8;
+}
+:root[data-crosshair="1"] #crosshair b,
+:root[data-crosshair="2"] #crosshair i,
+:root[data-crosshair="3"] #crosshair i {
+  display: none;
+}
+:root[data-crosshair="2"] #crosshair b {
+  left: 10px;
+  top: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+:root[data-crosshair="3"] #crosshair s {
+  display: block;
+}
+.option-choices .swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #000;
+  vertical-align: 0;
 }
 #hitmarker {
   position: absolute;
