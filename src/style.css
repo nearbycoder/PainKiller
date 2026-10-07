@@ -1266,6 +1266,33 @@ body[data-mode="dead"] #world {
     animation: none;
   }
 }
+/* A dark halo close around HUD text and icons, so they read over snow, sand and
+   moonlit stone as well as over dark halls. */
+:root {
+  --hud-halo: 0 0 2px #000, 0 0 4px #000b, 0 1px 3px #000;
+  --hud-icon-halo: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #000c);
+}
+/* Soft shade along the top and bottom edges, under the HUD's text: barely visible in
+   dark halls, it keeps the small labels readable over bright ground. */
+#hud-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      0deg,
+      #000a 0,
+      #0007 calc(110px * var(--hud-scale)),
+      #0004 calc(160px * var(--hud-scale)),
+      #0000 calc(230px * var(--hud-scale))
+    ),
+    linear-gradient(
+      180deg,
+      #0007 0,
+      #0004 calc(60px * var(--hud-scale)),
+      #0000 calc(120px * var(--hud-scale))
+    );
+}
 .hud-top {
   position: absolute;
   top: 30px;
@@ -1273,7 +1300,7 @@ body[data-mode="dead"] #world {
   right: 35px;
   display: flex;
   justify-content: space-between;
-  text-shadow: 0 2px 5px #000;
+  text-shadow: var(--hud-halo);
 }
 .hud-top .eyebrow {
   font-size: 10px;
@@ -1333,7 +1360,7 @@ body[data-mode="dead"] #world {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  text-shadow: 0 2px 4px #000;
+  text-shadow: var(--hud-halo);
 }
 .vitals {
   width: 210px;
@@ -1362,7 +1389,7 @@ body[data-mode="dead"] #world {
   right: 2px;
   font-size: 9px;
   letter-spacing: 2px;
-  color: #afbca6;
+  color: #c4cfba;
 }
 .vital-icon {
   color: #cb9e7c;
@@ -1378,6 +1405,7 @@ body[data-mode="dead"] #world {
   height: 3px;
   width: 100%;
   background: #c6cfbb27;
+  box-shadow: 0 0 0 1px #000a;
   margin-top: 16px;
 }
 .soul-bar i {
@@ -1418,6 +1446,7 @@ body[data-mode="dead"] #world {
 .weapon-slots svg {
   height: 45px;
   width: 60px;
+  filter: var(--hud-icon-halo);
 }
 .weapon-slots small {
   position: absolute;
@@ -1442,7 +1471,7 @@ body[data-mode="dead"] #world {
 .ammo > span {
   font-size: 10px;
   letter-spacing: 2px;
-  color: #cbd4be;
+  color: #e0e7d5;
 }
 .ammo > div {
   display: flex;
@@ -1464,12 +1493,14 @@ body[data-mode="dead"] #world {
 .ammo b.low,
 .ammo div span.low {
   color: #e2553f;
-  text-shadow: 0 0 14px #c8321f80;
+  text-shadow:
+    var(--hud-halo),
+    0 0 14px #c8321f80;
 }
 .ammo small {
   font-size: 9px;
   letter-spacing: 1px;
-  color: #b3c0a4;
+  color: #c6d1b8;
 }
 #crosshair {
   position: absolute;
@@ -1687,7 +1718,9 @@ body[data-mode="dead"] #world {
   font-size: 14px;
   letter-spacing: 3px;
   color: #e4cdaa;
-  text-shadow: 0 2px 8px #000;
+  text-shadow:
+    var(--hud-halo),
+    0 2px 8px #000;
   line-height: 1.8;
 }
 #gate-prompt {
@@ -1698,7 +1731,7 @@ body[data-mode="dead"] #world {
   font-size: 17px;
   color: #bdf5cb;
   letter-spacing: 2px;
-  text-shadow: 0 2px 4px #000;
+  text-shadow: var(--hud-halo);
 }
 #mouse-prompt {
   position: absolute;
@@ -1736,7 +1769,7 @@ body[data-mode="dead"] #world {
   font-size: 10px;
   letter-spacing: 1.5px;
   color: #b8c9ad;
-  text-shadow: 0 1px 3px #000;
+  text-shadow: var(--hud-halo);
   font-variant-numeric: tabular-nums;
 }
 #damage-overlay,
@@ -1762,7 +1795,9 @@ body[data-mode="dead"] #world {
 .health.low > b,
 .health.low > .vital-icon {
   color: #ff5a43;
-  text-shadow: 0 0 16px #c8321f99;
+  text-shadow:
+    var(--hud-halo),
+    0 0 16px #c8321f99;
   animation: low-health 0.9s ease-in-out infinite;
 }
 @keyframes low-health {
@@ -1782,8 +1817,8 @@ body[data-mode="dead"] #world {
   transform: translateX(-50%);
   font-size: 9px;
   letter-spacing: 1.1px;
-  color: #d5dec8;
-  text-shadow: 0 2px 4px #000;
+  color: #e6ecdc;
+  text-shadow: var(--hud-halo);
   white-space: nowrap;
   transition: opacity 2s;
 }

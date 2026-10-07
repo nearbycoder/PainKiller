@@ -13,6 +13,8 @@
 // A check can resize the window or turn touch emulation on and off by logging
 // "__RUNNER__ size 860x640" or "__RUNNER__ touch on|off"; the runner answers a touch
 // request by setting window.__RUNNER_TOUCH__ (true when it can emulate touch).
+// "__RUNNER__ capture <file.png|file.jpg>" saves the window at that moment and then sets
+// window.__RUNNER_CAPTURED__ to the file name.
 //
 // --capture saves a JPEG of the window after the last script has run (a script may
 // return a promise; the runner waits for it and then for two rendered frames).
@@ -93,6 +95,19 @@ app.whenReady().then(async () => {
     if (e.level === "error") errors.push(e.message);
     const size = /^__RUNNER__ size (\d+)x(\d+)$/.exec(e.message);
     if (size) win.setContentSize(Number(size[1]), Number(size[2]));
+    const shot = /^__RUNNER__ capture (\S+)$/.exec(e.message);
+    if (shot)
+      void wc.capturePage().then((image) => {
+        const file = path.resolve(shot[1]);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(
+          file,
+          file.endsWith(".png") ? image.toPNG() : image.toJPEG(88),
+        );
+        return wc.executeJavaScript(
+          `window.__RUNNER_CAPTURED__ = ${JSON.stringify(shot[1])}`,
+        );
+      });
     const emulate = /^__RUNNER__ touch (on|off)$/.exec(e.message);
     if (emulate)
       void touch(emulate[1] === "on").then(() =>

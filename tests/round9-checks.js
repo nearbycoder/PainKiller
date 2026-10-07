@@ -245,6 +245,57 @@
     },
   );
 
+  // R9-2: the edge shade and the halo. Their effect on contrast is measured from
+  // captures by tools/media/round9/hud-contrast.mjs; this checks they are in place.
+  await check(
+    "R9-2 the HUD has its edge shade and halo, and the shade takes no clicks",
+    async () => {
+      await resize(1280, 800);
+      fight(0);
+      g.onHUD();
+      const scrim = document.getElementById("hud-scrim");
+      assert(scrim, "no edge shade");
+      const r = scrim.getBoundingClientRect();
+      assert(
+        r.width === innerWidth && r.height === innerHeight,
+        "the shade does not cover the screen",
+      );
+      assert(
+        getComputedStyle(scrim).pointerEvents === "none",
+        "the shade takes clicks",
+      );
+      const slot = document.getElementById("slot-3").getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        slot.left + slot.width / 2,
+        slot.top + slot.height / 2,
+      );
+      assert(
+        hit && hit.closest("#slot-3"),
+        "a weapon slot is covered by " + hit?.id,
+      );
+      for (const selector of [
+        ".hud-bottom",
+        ".hud-top",
+        "#hud-help",
+        "#gate-prompt",
+      ])
+        assert(
+          (getComputedStyle(document.querySelector(selector)).textShadow.match(
+            /rgb\(0, 0, 0\)/g,
+          )?.length ?? 0) >= 2,
+          selector + " has no halo",
+        );
+      // The shade grows with the interface scale, like the panels it sits under.
+      const shade = () => getComputedStyle(scrim).backgroundImage;
+      const normal = shade();
+      g.applySettings({ ...g.settings(), hudScale: 1.5 });
+      const large = shade();
+      g.applySettings({ ...g.settings(), hudScale: 1 });
+      assert(normal !== large, "the shade ignores the interface scale");
+      return "shade under the HUD, halo on its text";
+    },
+  );
+
   await resize(...startSize);
   g.canvas.requestPointerLock = requestLock;
   g.applySettings(options);
