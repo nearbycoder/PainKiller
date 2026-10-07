@@ -106,6 +106,8 @@ interface Enemy {
   animationTime: number;
   /** Seconds spent trying to walk without leaving `anchor`. */
   stuck: number;
+  /** Seconds out of the player's sight since a wall last blocked the enemy. */
+  walled: number;
   anchor: T.Vector3;
 }
 export interface ThreatIndicator {
@@ -1123,6 +1125,7 @@ export class Game {
       stagger: 0,
       animationTime: 0,
       stuck: 0,
+      walled: 0,
       anchor: p.clone(),
     };
     this.enemies.push(e);
@@ -1883,7 +1886,7 @@ export class Game {
     }
     pos.copy(fallback ?? new T.Vector3(0, 0, -20));
     e.anchor.copy(pos);
-    e.stuck = 0;
+    e.stuck = e.walled = 0;
     e.knockback.set(0, 0, 0);
     this.burst(pos.clone().add(new T.Vector3(0, 1, 0)), 0xb8d98a, 5, 3);
   }
@@ -2130,10 +2133,10 @@ export class Game {
         e.radius * 0.65,
         this.arena.colliders,
       );
-      if (
+      const blocked =
         Math.hypot(move.x - pos.x, move.z - pos.z) < Math.hypot(dx, dz) * 0.3 &&
-        Math.abs(moveSpeed) > 0.1
-      ) {
+        Math.abs(moveSpeed) > 0.1;
+      if (blocked) {
         const sign = Math.sin(e.age * 0.2 + pos.z) > 0.0 ? 1 : -1;
         move = slide(
           pos.x,
@@ -2158,7 +2161,18 @@ export class Game {
         e.anchor.copy(pos);
         e.stuck = 0;
       } else if (Math.abs(moveSpeed) > 0.5 && distance > 3) e.stuck += dt;
-      if (e.stuck > 20) this.relocate(e);
+      // Sliding along a long wall after the player (a train car, say) moves far enough to
+      // count as headway, so also time an enemy from when a wall blocks it out of the
+      // player's sight until it next sees the player.
+      if (blocked || e.walled > 0) {
+        const eye = pos.clone().setY(1.2),
+          toPlayer = this.position.clone().sub(eye),
+          range = toPlayer.length();
+        if (this.wallDistance(eye, toPlayer.normalize(), range) < range - 0.5)
+          e.walled += dt;
+        else e.walled = 0;
+      }
+      if (e.stuck > 20 || e.walled > 20) this.relocate(e);
       e.animationTime += dt;
       if (distance < 20 || e.animationTime >= 1 / 30) {
         e.model.animate?.(e.animationTime, actualSpeed, e.frozen > 0);

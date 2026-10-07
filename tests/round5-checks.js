@@ -158,6 +158,69 @@
     },
   );
 
+  // Last Platform, sector 1: six 6 × 13 m train cars stand at x = ±15 with 4 m gaps. An
+  // enemy behind a car slides along it after the player and never finds the gap.
+  // Standing still, and pacing a 5 m circle every 7 s as the autopilot did when it
+  // found this (the enemy then slides freely along the car for part of each lap).
+  for (const [type, pacing] of [
+    ["shambler", false],
+    ["witch", false],
+    ["monk", true],
+  ])
+    await check(
+      `R5-2 a ${type} behind a train car in Last Platform is moved to open ground` +
+        (pacing ? " while the player paces" : ""),
+      () => {
+        api.seed(3);
+        api.start(11, 0);
+        g.waveDelay = 9999;
+        g.invulnerable = 9999;
+        g.position.set(5, 1.75, -17);
+        const relocated = [];
+        g.relocate = function (enemy) {
+          Object.getPrototypeOf(g).relocate.call(this, enemy);
+          const p = enemy.model.root.position;
+          relocated.push(
+            +Math.hypot(p.x - g.position.x, p.z - g.position.z).toFixed(1),
+          );
+        };
+        let frame = 0;
+        const run = (frames) => {
+          for (let i = 0; i < frames; i++, frame++) {
+            if (pacing) {
+              const a = (frame / 420) * Math.PI * 2;
+              g.position.set(-4 + 5 * Math.cos(a), 1.75, -11 + 5 * Math.sin(a));
+            }
+            api.step(1);
+          }
+        };
+        try {
+          const e = g.spawnEnemy(type, g.position.clone().set(21, 0, -17));
+          // A free enemy in the open reaches the player and is never moved.
+          const free = g.spawnEnemy(
+            "shambler",
+            g.position.clone().set(-6, 0, 0),
+          );
+          free.hp = free.maxHp = 1e6;
+          run(60 * 12);
+          const behind = e.model.root.position.x;
+          assert(
+            !relocated.length && behind > 17,
+            `moved too early or got round: ${relocated} x=${behind}`,
+          );
+          run(60 * 18);
+          assert(relocated.length === 1, `relocations: ${relocated}`);
+          assert(
+            relocated[0] >= 12 && relocated[0] <= 25,
+            "relocated to distance " + relocated[0],
+          );
+          return { behindAt12s: +behind.toFixed(1), landed: relocated[0] };
+        } finally {
+          delete g.relocate;
+        }
+      },
+    );
+
   await check("R5-1 the shader warm-up leaves the sequence untouched", () => {
     const old = g.warmSet,
       before = api.randomState();
