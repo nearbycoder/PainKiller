@@ -421,6 +421,85 @@
       return out;
     },
   );
+  // R8-4: Restore all defaults asks first; the confirmations say where Continue resumes.
+  const stored = () =>
+    JSON.parse(localStorage.getItem("purgatory.options") || "{}");
+  const dialog = () => text(".confirm-dialog");
+  await check(
+    "Restore all defaults changes nothing until confirmed",
+    async () => {
+      g.setMode("menu");
+      g.applySettings({
+        ...g.settings(),
+        fov: 100,
+        bindings: { ...g.settings().bindings, jump: ["KeyK"] },
+      });
+      g.saveOptions();
+      click("page", "settings");
+      const changed = () =>
+        g.fov === 100 &&
+        g.bindings.jump.join() === "KeyK" &&
+        stored().fov === 100 &&
+        stored().bindings.jump.join() === "KeyK";
+      click("defaults");
+      assert(/Restore all defaults\?/.test(dialog()), "no dialog: " + dialog());
+      assert(/key and controller bindings/.test(dialog()), dialog());
+      assert(
+        document.activeElement?.dataset.action === "cancel",
+        "focused: " + document.activeElement?.textContent,
+      );
+      assert(changed(), "reset before confirming");
+      click("cancel");
+      assert(!dialog() && changed(), "Cancel reset them");
+      click("defaults");
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "Escape", bubbles: true }),
+      );
+      assert(!dialog() && changed(), "Esc reset them");
+      assert(
+        document.querySelector(".settings-layout"),
+        "Esc left the options page",
+      );
+      click("defaults");
+      click("confirm");
+      assert(!dialog(), "dialog stayed open");
+      assert(
+        g.fov === 80 &&
+          g.bindings.jump.join() === "Space" &&
+          stored().fov === 80,
+        "not reset: " + JSON.stringify([g.fov, g.bindings.jump]),
+      );
+      return "ok";
+    },
+  );
+
+  await check("leaving and quitting say where Continue resumes", async () => {
+    fresh();
+    api.start(1, 2);
+    g.invulnerable = 1e9;
+    // As the third wave of Hall of Vigils' third sector begins.
+    g.save.resume = g.snapshot(3);
+    g.setMode("paused");
+    click("menu");
+    const leave = dialog();
+    assert(/Leave the fight\?/.test(leave), leave);
+    assert(
+      /Continue resumes Hall of Vigils, sector 3, at the start of wave 3\./.test(
+        leave,
+      ),
+      leave,
+    );
+    assert(!/beginning of this sector/.test(leave), leave);
+    click("cancel");
+    finishLevel();
+    click("menu");
+    const after = dialog();
+    assert(/Return to the main menu\?/.test(after), after);
+    assert(/Continue starts The Ossuary, sector 1\./.test(after), after);
+    click("cancel");
+    return { leave, after };
+  });
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

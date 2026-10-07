@@ -198,6 +198,8 @@
       g.setMode("paused");
       click("page", "settings");
       click("defaults");
+      // Since round 8 it asks first.
+      click("confirm");
       assert(
         g.quality === 1 &&
           g.renderScale === 1 &&

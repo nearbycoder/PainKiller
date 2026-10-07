@@ -390,9 +390,14 @@ export class UI {
         g.setMode("menu");
       }
       if (target === "quit") void window.desktop?.quit();
+      if (target === "defaults") {
+        g.applySettings({ ...defaults });
+        g.saveOptions();
+        this.render();
+      }
       return;
     }
-    if (["new", "retry", "menu", "quit"].includes(action)) {
+    if (["new", "retry", "menu", "quit", "defaults"].includes(action)) {
       this.dialog = action;
       this.render();
       return;
@@ -474,11 +479,6 @@ export class UI {
         g.saveOptions();
         this.render();
       }
-    }
-    if (action === "defaults") {
-      g.applySettings({ ...defaults });
-      g.saveOptions();
-      this.render();
     }
     if (action === "fullscreen") {
       if (window.desktop) void window.desktop.fullscreen();
@@ -606,7 +606,17 @@ export class UI {
         : `${name}: ${g.levelSouls} / ${TAROT_SOULS} souls this level, or find the relic`;
     return `<p class="checkpoint-caption tarot-progress">Tarot · ${text}</p>`;
   }
+  /** Where Continue picks up, as the save stands. */
+  continueText() {
+    const g = this.game,
+      r = g.save.resume,
+      level = LEVELS[g.save.level].name;
+    return r && r.level === g.save.level && r.room === g.save.room
+      ? `Continue resumes ${level}, sector ${r.room + 1}, at the start of wave ${r.wave}.`
+      : `Continue starts ${level}, sector ${g.save.room + 1}.`;
+  }
   confirmation() {
+    const g = this.game;
     const copy: Record<string, [string, string, string]> = {
       new: [
         "Begin a new game?",
@@ -619,14 +629,15 @@ export class UI {
         "Restart",
       ],
       menu: [
-        "Leave the fight?",
-        "You will return to the beginning of this sector when you continue.",
+        g.mode === "result" ? "Return to the main menu?" : "Leave the fight?",
+        this.continueText(),
         "Main menu",
       ],
-      quit: [
-        "Quit Purgatory?",
-        "Your campaign is saved at the start of the current sector.",
-        "Quit game",
+      quit: ["Quit Purgatory?", this.continueText(), "Quit game"],
+      defaults: [
+        "Restore all defaults?",
+        "Every option returns to its default, including the difficulty and all key and controller bindings. Your campaign is not affected.",
+        "Restore defaults",
       ],
     };
     const [title, detail, confirm] = copy[this.dialog];

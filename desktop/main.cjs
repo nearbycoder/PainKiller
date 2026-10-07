@@ -156,6 +156,7 @@ app.whenReady().then(() => {
           document.querySelector('[data-action="settings-tab"][data-value="audio"]').click();
           const persisted=document.getElementById('volume').value==='37';
           document.querySelector('[data-action="defaults"]').click();
+          document.querySelector('[data-action="confirm"]').click();
           document.querySelector('[data-action="settings-tab"][data-value="video"]').click();
           return persisted;
         })()`);
