@@ -221,6 +221,14 @@ export class Game {
   physics = new Physics();
   embeddedStakes: { mesh: T.Object3D; life: number }[] = [];
   damageFlash = 0;
+  /** One of everything a fight can draw, rendered once per arena so shaders compile up front. */
+  private warmSet?: T.Group;
+  /** Shadow depth variants, compiled the way the shadow pass draws them. */
+  private depthSet = new T.Group();
+  private arenaId = 0;
+  private warmedLights = new Set<string>();
+  warmPending = false;
+  warmReady = false;
   hitFlash = 0;
   invulnerable = 0;
   sensitivity = 0.002;
@@ -745,6 +753,10 @@ export class Game {
     this.arena = buildArena(this.scene, LEVELS[this.level], this.room);
     this.physics.reset(this.arena.colliders);
     this.renderer.shadowMap.needsUpdate = true;
+    // Each arena's lights change the shader variants; compile them before the fight.
+    this.arenaId++;
+    this.warmPending = true;
+    this.warmReady = false;
     const theme = LEVELS[this.level].theme;
     const indoor = [
       "cathedral",
@@ -2561,6 +2573,8 @@ export class Game {
           Math.sin(this.elapsed * 13 + i) * 0.7),
     );
     this.renderer.info.autoReset = false;
+    if (this.warmPending) this.compileWarmUp();
+    else if (this.warmReady) this.warmUp();
     this.shadowTimer += animDt;
     if (this.shadowTimer >= 1 / 30) {
       this.shadowTimer = 0;
@@ -2589,6 +2603,154 @@ export class Game {
       this.onHUD();
     }
   };
+  /** One of everything a fight can draw: every breed, general, projectile, pickup and effect. */
+  private warmUpSet() {
+    if (!this.warmSet) {
+      // Building models draws random numbers; keep the game's sequence untouched.
+      const random = Math.random;
+      let seed = 1;
+      Math.random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      try {
+        const set = (this.warmSet = new T.Group());
+        for (const type of ENEMY_TYPES) set.add(enemyModel(type).root);
+        for (let chapter = 1; chapter <= 5; chapter++)
+          set.add(enemyModel("boss", chapter).root);
+        for (const kind of [
+          "stake",
+          "grenade",
+          "rocket",
+          "star",
+          "blade",
+          "hellfire",
+          "ice",
+          "storm",
+        ])
+          set.add(projectileModel(kind).clone());
+        for (const kind of ["soul", "health", "armor", "ammo", "secret"])
+          set.add(
+            (art.ready && authoredPickup(kind)) ||
+              new T.Mesh(this.geometry, this.mat(0xffffff)),
+          );
+        set.add(...this.effects.samples());
+        // The shadow pass shares one depth material and picks its shader from the
+        // caster's side, texture and skinning in draw order, so compile every variant.
+        const pixel = new T.DataTexture(
+          new Uint8Array([255, 255, 255, 255]),
+          1,
+          1,
+        );
+        pixel.needsUpdate = true;
+        let skinned: T.SkinnedMesh | undefined;
+        set.traverse((o) => {
+          if (!skinned && o instanceof T.SkinnedMesh) skinned = o;
+        });
+        for (const side of [T.FrontSide, T.BackSide, T.DoubleSide])
+          for (const map of [null, pixel]) {
+            const depth = new T.MeshDepthMaterial({
+              depthPacking: T.RGBADepthPacking,
+              side,
+              map,
+            });
+            this.depthSet.add(new T.Mesh(this.geometry, depth));
+            if (skinned) {
+              const mesh = new T.SkinnedMesh(skinned.geometry, depth);
+              mesh.bind(skinned.skeleton, skinned.bindMatrix);
+              this.depthSet.add(mesh);
+            }
+          }
+        set.traverse((o) => {
+          o.frustumCulled = false;
+          if (o instanceof T.Mesh) o.visible = true;
+        });
+      } finally {
+        Math.random = random;
+      }
+    }
+    return this.warmSet;
+  }
+  /**
+   * Starts compiling the warm-up set's shaders in the background (the driver compiles
+   * in parallel where it can), for both lighting setups the campaign uses: authored
+   * scenes have six lamps and procedural arenas four. Then {@link warmUp} draws it.
+   */
+  compileWarmUp() {
+    this.warmPending = false;
+    const id = this.arenaId,
+      set = this.warmUpSet(),
+      lamps = this.arena.lights,
+      jobs: Promise<unknown>[] = [];
+    // Programs differ between the screen and an offscreen target (tone mapping happens
+    // in the output pass), so compile for the target the composer draws into.
+    const target = this.quality > 0 ? this.composer.readBuffer : null;
+    if (!this.warmedLights.size)
+      jobs.push(
+        this.renderer.compileAsync(this.weaponScene, this.weaponCamera),
+      );
+    for (const count of [lamps.length, 6, 4]) {
+      const key = `${count}:${!!target}`;
+      if (this.warmedLights.has(key)) continue;
+      this.warmedLights.add(key);
+      // Shader variants depend on the number of visible lights, not where they are.
+      const extra = Array.from(
+        { length: Math.max(0, count - lamps.length) },
+        () => new T.PointLight(0, 0),
+      );
+      if (extra.length) this.scene.add(...extra);
+      lamps.forEach((l, i) => (l.visible = i < count));
+      this.renderer.setRenderTarget(target);
+      jobs.push(this.renderer.compileAsync(set, this.camera, this.scene));
+      // The shadow pass draws into its own target, without fog.
+      const fog = this.scene.fog;
+      this.scene.fog = null;
+      this.renderer.setRenderTarget(this.composer.readBuffer);
+      jobs.push(
+        this.renderer.compileAsync(this.depthSet, this.camera, this.scene),
+      );
+      this.scene.fog = fog;
+      lamps.forEach((l) => (l.visible = true));
+      for (const l of extra) l.removeFromParent();
+    }
+    this.renderer.setRenderTarget(null);
+    Promise.all(jobs)
+      .catch(() => {})
+      .then(() => (this.warmReady = id === this.arenaId));
+  }
+  /**
+   * Draws the warm-up set once, unseen, so the variants compileAsync cannot reach
+   * (shadow depth, ambient occlusion normals) compile now instead of mid-fight. The
+   * real frame is rendered over it before anything reaches the screen.
+   */
+  warmUp() {
+    this.warmReady = false;
+    const set = this.warmUpSet();
+    this.camera.updateMatrixWorld(true);
+    set.position
+      .copy(this.camera.position)
+      .addScaledVector(this.camera.getWorldDirection(new T.Vector3()), 4);
+    this.scene.add(set);
+    const shown = this.weaponModels.map((w) => [
+      w.root.visible,
+      w.flash.visible,
+    ]);
+    for (const w of this.weaponModels) w.root.visible = w.flash.visible = true;
+    const pass = this.weaponPass.enabled;
+    this.weaponPass.enabled = true;
+    this.renderer.shadowMap.needsUpdate = true;
+    if (this.quality > 0) this.composer.render(1 / 60);
+    else {
+      this.renderer.setRenderTarget(null);
+      this.renderer.render(this.scene, this.camera);
+      this.renderer.render(this.weaponScene, this.weaponCamera);
+    }
+    this.weaponPass.enabled = pass;
+    this.weaponModels.forEach((w, i) => {
+      w.root.visible = shown[i][0];
+      w.flash.visible = shown[i][1];
+    });
+    set.removeFromParent();
+    // The real frame redraws the shadows without the warm-up set in them.
+    this.renderer.shadowMap.needsUpdate = true;
+  }
   renderWorld(delta = 1 / 60) {
     this.weaponPass.enabled = ["playing", "paused", "dead"].includes(this.mode);
     if (this.quality > 0) this.composer.render(delta);

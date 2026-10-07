@@ -231,6 +231,28 @@ export class CombatEffects {
     }
     this.marks = this.marks.filter((m) => m.life > 0);
   }
+  /** One untracked object per material variant, for shader warm-up. */
+  samples(): T.Object3D[] {
+    const shell = new T.Mesh(this.shellGeometry, this.shellMaterial);
+    const hull = new T.Mesh(this.shellGeometry, this.hullMaterial);
+    hull.add(new T.Mesh(this.capGeometry, this.shellMaterial));
+    const mark = new T.Mesh(this.markGeometry, this.markMaterial);
+    const sprites = [false, true].map((luminous) => {
+      const sprite = new T.Sprite(
+        new T.SpriteMaterial({
+          map: this.smokeTexture,
+          transparent: true,
+          alphaTest: 0.01,
+          depthWrite: false,
+          blending: luminous ? T.AdditiveBlending : T.NormalBlending,
+          toneMapped: !luminous,
+        }),
+      );
+      sprite.layers.set(1);
+      return sprite;
+    });
+    return [shell, hull, mark, ...sprites];
+  }
   clear() {
     for (const s of this.shells) s.mesh.removeFromParent();
     for (const m of this.marks) {
