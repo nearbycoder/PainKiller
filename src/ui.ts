@@ -3,6 +3,7 @@ import { LEVELS, CHAPTERS, WEAPONS, CARDS } from "./data";
 import { formatTime, freshSave } from "./core";
 import { cardConditionMet, levelCard, TAROT_SOULS } from "./tarot";
 import { AMMUNITION, lowAmmo, slotAmmo } from "./ammunition";
+import { FIDELITY } from "./fidelity";
 import {
   CROSSHAIR_COLORS,
   CROSSHAIR_STYLES,
@@ -94,6 +95,19 @@ export class UI {
     game.onChange = () => this.render();
     game.onHUD = () => this.hud();
     this.root.addEventListener("click", (e) => {
+      // A step's name under the fidelity slider picks that step.
+      const step = (e.target as HTMLElement).closest<HTMLElement>(
+        "[data-fidelity-step]",
+      );
+      const slider = this.root.querySelector<HTMLInputElement>("#quality");
+      if (step && slider) {
+        e.preventDefault();
+        slider.value = step.dataset.fidelityStep!;
+        slider.focus();
+        slider.dispatchEvent(new Event("input", { bubbles: true }));
+        game.sound.menu(true);
+        return;
+      }
       const target = (e.target as HTMLElement).closest<HTMLElement>(
         "[data-action]",
       );
@@ -496,7 +510,19 @@ export class UI {
     this.game.applySettings(s);
     this.game.saveOptions();
     const output = t.closest(".option-row")?.querySelector("output");
-    if (output) output.textContent = t.value + (t.dataset.unit || "");
+    const names = t.dataset.names?.split("|");
+    if (output)
+      output.textContent = names
+        ? names[Number(t.value)]
+        : t.value + (t.dataset.unit || "");
+    if (names) {
+      t.setAttribute("aria-valuetext", names[Number(t.value)]);
+      t.closest(".option-row")
+        ?.querySelectorAll("[data-fidelity-step]")
+        .forEach((x, i) => x.classList.toggle("on", i === Number(t.value)));
+      const note = this.root.querySelector("#fidelity-note");
+      if (note) note.textContent = FIDELITY[Number(t.value)].note;
+    }
     t.style.setProperty(
       "--fill",
       `${((Number(t.value) - Number(t.min)) / (Number(t.max) - Number(t.min))) * 100}%`,
@@ -672,6 +698,12 @@ export class UI {
     const value = Math.round(Number(this.game.settings()[key]) * divisor);
     return `<label class="option-row"><span><b>${label}</b><small>${description}</small></span><span class="range-control"><input id="${key}" data-setting="${key}" data-divisor="${divisor}" data-unit="${unit}" type="range" min="${min}" max="${max}" value="${value}" style="--fill:${((value - min) / (max - min)) * 100}%"><output>${value}${unit}</output></span></label>`;
   }
+  /** The Graphics fidelity slider: four named steps, each saying what it changes. */
+  fidelity() {
+    const step = this.game.quality,
+      last = FIDELITY.length - 1;
+    return `<label class="option-row fidelity-row"><span><b>Graphics fidelity</b><small id="fidelity-note">${FIDELITY[step].note}</small></span><span class="range-control fidelity-control"><span class="fidelity-track"><input id="quality" data-setting="quality" data-names="${FIDELITY.map((f) => f.name).join("|")}" type="range" min="0" max="${last}" step="1" value="${step}" aria-valuetext="${FIDELITY[step].name}" style="--fill:${(step / last) * 100}%"><span class="fidelity-steps">${FIDELITY.map((f, i) => `<i class="${i === step ? "on" : ""}" data-fidelity-step="${i}" style="--at:${i / last}">${f.name}</i>`).join("")}</span></span><output>${FIDELITY[step].name}</output></span></label>`;
+  }
   choice(
     key: keyof Settings,
     label: string,
@@ -691,16 +723,7 @@ export class UI {
     let content = "";
     if (this.settingsTab === "video")
       content =
-        this.choice(
-          "quality",
-          "Graphics quality",
-          "Low: no shadows · Medium: shadows · High: shadows + ambient occlusion",
-          [
-            ["Low", 0],
-            ["Medium", 1],
-            ["High", 2],
-          ],
-        ) +
+        this.fidelity() +
         this.range(
           "renderScale",
           "Resolution scale",

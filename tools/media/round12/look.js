@@ -37,7 +37,7 @@
         const p = g.position
           .clone()
           .addScaledVector(d, ahead)
-          .add(new (g.position.constructor)(-d.z * side, 0, d.x * side));
+          .add(new g.position.constructor(-d.z * side, 0, d.x * side));
         p.y = 0;
         g.spawnEnemy(type, p);
       }

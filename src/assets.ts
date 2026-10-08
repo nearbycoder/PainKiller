@@ -1,4 +1,5 @@
 import * as T from "three";
+import { filterTexture } from "./fidelity";
 import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -135,7 +136,7 @@ async function loadModel(
         mat.roughness = mat.name === "Weathered armor" ? 0.63 : 0.9;
       }
       for (const t of [mat.map, mat.normalMap, mat.roughnessMap])
-        if (t) t.anisotropy = 8;
+        if (t) filterTexture(t, 8);
       if (
         (name === "cemetery" || name === "weapon-0") &&
         !art.materials.has(mat.name)

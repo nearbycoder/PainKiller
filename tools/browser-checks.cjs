@@ -14,7 +14,8 @@
 // "__RUNNER__ size 860x640" or "__RUNNER__ touch on|off"; the runner answers a touch
 // request by setting window.__RUNNER_TOUCH__ (true when it can emulate touch).
 // "__RUNNER__ capture <file.png|file.jpg>" saves the window at that moment and then sets
-// window.__RUNNER_CAPTURED__ to the file name.
+// window.__RUNNER_CAPTURED__ to the file name. "__RUNNER__ key ArrowLeft|ArrowRight|Enter"
+// presses a real (trusted) key and then sets window.__RUNNER_KEY__ to its name.
 //
 // --capture saves a JPEG of the window after the last script has run (a script may
 // return a promise; the runner waits for it and then for two rendered frames).
@@ -108,6 +109,23 @@ app.whenReady().then(async () => {
           `window.__RUNNER_CAPTURED__ = ${JSON.stringify(shot[1])}`,
         );
       });
+    // A real key press (trusted, so a focused slider moves), then __RUNNER_KEY__.
+    const key = /^__RUNNER__ key (ArrowLeft|ArrowRight|Enter)$/.exec(e.message);
+    if (key) {
+      const keyCode = {
+        ArrowLeft: "Left",
+        ArrowRight: "Right",
+        Enter: "Return",
+      }[key[1]];
+      wc.focus();
+      wc.sendInputEvent({ type: "keyDown", keyCode });
+      if (key[1] === "Enter")
+        wc.sendInputEvent({ type: "char", keyCode: "\r" });
+      wc.sendInputEvent({ type: "keyUp", keyCode });
+      void wc.executeJavaScript(
+        `window.__RUNNER_KEY__ = ${JSON.stringify(key[1])}`,
+      );
+    }
     const emulate = /^__RUNNER__ touch (on|off)$/.exec(e.message);
     if (emulate)
       void touch(emulate[1] === "on").then(() =>

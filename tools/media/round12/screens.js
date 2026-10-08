@@ -25,7 +25,9 @@
   await capture(`${out}/options-video.jpg`);
   window.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape" }));
   await frames(10);
-  const level = document.querySelector('[data-action="page"][data-value="campaign"]');
+  const level = document.querySelector(
+    '[data-action="page"][data-value="campaign"]',
+  );
   if (level) {
     level.click();
     await frames(20);

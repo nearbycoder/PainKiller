@@ -9,7 +9,8 @@
 // installing. It runs in a throwaway profile under artifacts/ that is deleted afterwards,
 // never your own. A check's "__RUNNER__ size WxH" log resizes the viewport; Firefox has
 // no touch emulation here, so "__RUNNER__ touch on|off" is answered with
-// window.__RUNNER_TOUCH__ = false. Exits non-zero if any check fails, a script throws, or the page logs
+// window.__RUNNER_TOUCH__ = false; "__RUNNER__ key <name>" presses a real key through
+// WebDriver BiDi input actions and then sets window.__RUNNER_KEY__. Exits non-zero if any check fails, a script throws, or the page logs
 // an error.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -171,6 +172,35 @@ async function firefox() {
           context,
           viewport: { width: Number(size[1]), height: Number(size[2]) },
         });
+      const key = /^__RUNNER__ key (ArrowLeft|ArrowRight|Enter)$/.exec(
+        msg.params.text,
+      );
+      if (key) {
+        const value = {
+          ArrowLeft: "\uE012",
+          ArrowRight: "\uE014",
+          Enter: "\uE007",
+        }[key[1]];
+        void send("input.performActions", {
+          context,
+          actions: [
+            {
+              type: "key",
+              id: "keyboard",
+              actions: [
+                { type: "keyDown", value },
+                { type: "keyUp", value },
+              ],
+            },
+          ],
+        }).then(() =>
+          send("script.evaluate", {
+            expression: `window.__RUNNER_KEY__ = ${JSON.stringify(key[1])}`,
+            target: { context },
+            awaitPromise: false,
+          }),
+        );
+      }
       if (/^__RUNNER__ touch (on|off)$/.test(msg.params.text))
         void send("script.evaluate", {
           expression: "window.__RUNNER_TOUCH__ = false",

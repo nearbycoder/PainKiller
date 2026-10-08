@@ -1,4 +1,4 @@
-import { random } from "./random";
+import { generator, random } from "./random";
 import * as T from "three";
 
 /** Shared soft particle mask. Created once, with no texture downloads. */
@@ -22,10 +22,12 @@ export function softParticleTexture() {
   return texture;
 }
 
+/** Airborne particles the highest graphics step draws; Medium draws the first 128. */
+const ATMOSPHERE_MAX = 384;
 /** A single bounded draw call for airborne ash, dust or snow in every arena. */
 export class Atmosphere {
-  private positions = new Float32Array(128 * 3);
-  private seeds = new Float32Array(128);
+  private positions = new Float32Array(ATMOSPHERE_MAX * 3);
+  private seeds = new Float32Array(ATMOSPHERE_MAX);
   private geometry = new T.BufferGeometry();
   private material = new T.PointsMaterial({
     map: softParticleTexture(),
@@ -40,10 +42,14 @@ export class Atmosphere {
   private snow = false;
   private age = 0;
   constructor(scene: T.Scene) {
-    for (let i = 0; i < 128; i++) {
-      this.seeds[i] = random() * 6.28;
+    // The first 128 draw from the game's sequence as they always have; the extra ones
+    // from their own, so the graphics step never moves it.
+    const extra = generator(0x5eed);
+    for (let i = 0; i < ATMOSPHERE_MAX; i++) {
+      const draw = i < 128 ? random : extra;
+      this.seeds[i] = draw() * 6.28;
       this.positions.set(
-        [random() * 44 - 22, random() * 10, random() * 44 - 22],
+        [draw() * 44 - 22, draw() * 10, draw() * 44 - 22],
         i * 3,
       );
     }
@@ -51,6 +57,7 @@ export class Atmosphere {
       "position",
       new T.BufferAttribute(this.positions, 3),
     );
+    this.geometry.setDrawRange(0, 128);
     this.points.frustumCulled = false;
     this.points.layers.set(1);
     scene.add(this.points);
@@ -62,9 +69,16 @@ export class Atmosphere {
     this.material.size = this.snow ? 0.16 : 0.085;
     this.material.opacity = this.snow ? 0.6 : 0.24;
   }
+  /** How many particles are drawn (the graphics step). */
+  setCount(count: number) {
+    this.geometry.setDrawRange(0, Math.min(ATMOSPHERE_MAX, count));
+  }
+  get count() {
+    return this.geometry.drawRange.count;
+  }
   update(dt: number, center: T.Vector3) {
     this.age += dt;
-    for (let i = 0; i < 128; i++) {
+    for (let i = 0; i < ATMOSPHERE_MAX; i++) {
       const j = i * 3;
       this.positions[j] +=
         Math.sin(this.age * 0.25 + this.seeds[i]) * dt * 0.13;

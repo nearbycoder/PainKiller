@@ -25,6 +25,7 @@ export const defaults = {
   musicVolume: 0.65,
   effectsVolume: 1,
   difficulty: 1,
+  /** Graphics fidelity: 0 Low, 1 Medium, 2 High, 3 Ultra (see FIDELITY). */
   quality: 1,
   adaptiveResolution: true,
   renderScale: 1,
@@ -76,7 +77,7 @@ export function parseSettings(raw: string | null): Settings {
     musicVolume: [0, 1],
     effectsVolume: [0, 1],
     difficulty: [0, 2],
-    quality: [0, 2],
+    quality: [0, 3],
     renderScale: [0.5, 1],
     brightness: [0.65, 1.5],
     hudScale: [0.75, 1.5],

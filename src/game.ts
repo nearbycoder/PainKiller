@@ -14,6 +14,7 @@ import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import * as T from "three";
 import { buildArena, type Arena } from "./world";
@@ -46,7 +47,12 @@ import {
 } from "./core";
 import { Sound, type EnemyCue } from "./audio";
 import { layerFor } from "./music";
-import { isolated, random } from "./random";
+import { generator, isolated, random } from "./random";
+import {
+  fidelity as fidelityStep,
+  setAnisotropy,
+  type Fidelity,
+} from "./fidelity";
 import { between, Interpolator } from "./interpolate";
 import { heartbeatInterval, lowHealth } from "./vitals";
 import { FrameStats } from "./frame-stats";
@@ -151,6 +157,8 @@ interface Particle {
   velocity: T.Vector3;
   life: number;
   max: number;
+  /** Not drawn on the Low graphics step (every other spark of a burst). */
+  optional?: boolean;
 }
 interface Ring {
   mesh: T.Mesh;
@@ -247,7 +255,10 @@ export class Game {
   invulnerable = 0;
   sensitivity = 0.002;
   fov = 80;
+  /** The Graphics fidelity step: 0 Low, 1 Medium, 2 High, 3 Ultra. */
   quality = 1;
+  /** What the current step draws. */
+  fidelity: Fidelity = fidelityStep(1);
   adaptiveResolution = true;
   private adaptiveScale = 1;
   private frameAverage = 16.7;
@@ -286,6 +297,12 @@ export class Game {
   projectiles: Projectile[] = [];
   pickups: Pickup[] = [];
   particles: Particle[] = [];
+  /**
+   * Extra sparks the Ultra step adds to each burst. They draw from their own sequence
+   * and never count toward the particle cap, so seeded runs match at every step.
+   */
+  sparks: Particle[] = [];
+  private sparkRandom = generator(0x5ba7c5);
   rings: Ring[] = [];
   corpses: { model: EnemyModel; life: number; ragdoll: Ragdoll }[] = [];
   remaining = 0;
@@ -326,6 +343,7 @@ export class Game {
   composer: EffectComposer;
   ao: SSAOPass;
   aa = new ShaderPass(FXAAShader);
+  smaa = new SMAAPass();
   weaponPass = new RenderPass(this.weaponScene, this.weaponCamera);
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -334,7 +352,7 @@ export class Game {
       antialias: false,
       powerPreference: "high-performance",
     });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.outputColorSpace = T.SRGBColorSpace;
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -381,6 +399,8 @@ export class Game {
     this.composer.addPass(this.weaponPass);
     this.composer.addPass(new OutputPass());
     this.composer.addPass(this.aa);
+    this.smaa.enabled = false;
+    this.composer.addPass(this.smaa);
     this.scene.add(this.worldFill);
     const sun = this.worldSun;
     sun.position.set(-20, 35, -10);
@@ -531,18 +551,49 @@ export class Game {
     this.sound.setVolume(s.volume);
     this.sound.setChannels(s.effectsVolume, s.musicVolume);
     this.renderer.toneMappingExposure = s.brightness;
-    this.renderer.shadowMap.enabled = s.quality > 0;
-    this.renderer.shadowMap.needsUpdate = true;
-    this.ao.enabled = s.quality === 2;
+    this.applyFidelity();
     if (resize || !s.adaptiveResolution) {
       this.adaptiveScale = 1;
-      this.renderer.setPixelRatio(
-        Math.min(devicePixelRatio, 1.5) * s.renderScale,
-      );
+      this.renderer.setPixelRatio(this.pixelRatio());
       this.resize();
     }
     this.camera.fov = s.fov;
     this.camera.updateProjectionMatrix();
+  }
+  /** Device pixels per CSS pixel: the display's, capped by the step, times the scales. */
+  pixelRatio() {
+    return (
+      Math.min(devicePixelRatio, this.fidelity.maxPixelRatio) *
+      this.renderScale *
+      this.adaptiveScale
+    );
+  }
+  /** Set up the renderer for the Graphics fidelity step in `quality`. */
+  private applyFidelity() {
+    const f = (this.fidelity = fidelityStep(this.quality));
+    this.renderer.shadowMap.enabled = f.shadowMap > 0;
+    this.renderer.shadowMap.needsUpdate = true;
+    const shadow = this.worldSun.shadow;
+    if (f.shadowMap && shadow.mapSize.x !== f.shadowMap) {
+      shadow.mapSize.set(f.shadowMap, f.shadowMap);
+      shadow.map?.dispose();
+      shadow.map = null;
+    }
+    this.ao.enabled = f.ao > 0;
+    if (this.ao.kernel.length !== f.aoSamples) {
+      this.ao.kernel.length = 0;
+      (
+        this.ao as unknown as { _generateSampleKernel(n: number): void }
+      )._generateSampleKernel(f.aoSamples);
+      this.ao.ssaoMaterial.defines.KERNEL_SIZE = f.aoSamples;
+      this.ao.ssaoMaterial.needsUpdate = true;
+    }
+    this.aa.enabled = f.antialiasing === "fxaa";
+    this.smaa.enabled = f.antialiasing === "smaa";
+    this.atmosphere.setCount(f.atmosphere);
+    setAnisotropy(
+      f.maxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 0,
+    );
   }
   saveOptions() {
     try {
@@ -581,9 +632,10 @@ export class Game {
     this.composer.setSize(w, h);
     const ratio = this.renderer.getPixelRatio();
     this.aa.uniforms.resolution.value.set(1 / (w * ratio), 1 / (h * ratio));
+    const ao = this.fidelity.ao || 0.5;
     this.ao.setSize(
-      Math.max(1, Math.floor(w * ratio * 0.5)),
-      Math.max(1, Math.floor(h * ratio * 0.5)),
+      Math.max(1, Math.floor(w * ratio * ao)),
+      Math.max(1, Math.floor(h * ratio * ao)),
     );
   }
   setMode(mode: Mode) {
@@ -854,6 +906,7 @@ export class Game {
       ...this.projectiles,
       ...this.pickups,
       ...this.particles,
+      ...this.sparks,
       ...this.rings,
     ].forEach((p) => {
       p.mesh.removeFromParent();
@@ -865,6 +918,7 @@ export class Game {
     this.projectiles = [];
     this.pickups = [];
     this.particles = [];
+    this.sparks = [];
     this.rings = [];
   }
   loadArena() {
@@ -1185,6 +1239,27 @@ export class Game {
           (random() - 0.5) * speed,
           random() * speed,
           (random() - 0.5) * speed,
+        ),
+        life,
+        max: life,
+        optional: i % 2 === 1,
+      });
+    }
+    // Ultra adds as many again, from the sparks' own sequence.
+    const extra = Math.round(count * (this.fidelity.sparks - 1)),
+      r = this.sparkRandom;
+    for (let i = 0; i < extra && this.sparks.length < 200; i++) {
+      const m = new T.Mesh(this.geometry, this.mat(color));
+      m.position.copy(pos);
+      m.scale.setScalar(0.04 + r() * 0.09);
+      this.scene.add(m);
+      const life = 0.3 + r() * 0.7;
+      this.sparks.push({
+        mesh: m,
+        velocity: new T.Vector3(
+          (r() - 0.5) * speed * 1.2,
+          r() * speed * 1.1,
+          (r() - 0.5) * speed * 1.2,
         ),
         life,
         max: life,
@@ -2620,18 +2695,22 @@ export class Game {
       if (s.life <= 0) s.mesh.removeFromParent();
     }
     this.embeddedStakes = this.embeddedStakes.filter((s) => s.life > 0);
-    for (const p of [...this.particles]) {
-      p.life -= dt;
-      p.mesh.position.addScaledVector(p.velocity, dt);
-      p.velocity.y -= dt * 8;
-      p.mesh.scale.multiplyScalar(Math.exp(-dt * 2));
-      p.mesh.visible = p.mesh.position.distanceToSquared(this.position) > 0.64;
-      if (p.life <= 0) {
-        p.mesh.removeFromParent();
-        if (p.mesh.geometry !== this.geometry) p.mesh.geometry.dispose();
-        this.particles.splice(this.particles.indexOf(p), 1);
+    const lean = this.fidelity.sparks < 1;
+    for (const list of [this.particles, this.sparks])
+      for (const p of [...list]) {
+        p.life -= dt;
+        p.mesh.position.addScaledVector(p.velocity, dt);
+        p.velocity.y -= dt * 8;
+        p.mesh.scale.multiplyScalar(Math.exp(-dt * 2));
+        p.mesh.visible =
+          !(lean && p.optional) &&
+          p.mesh.position.distanceToSquared(this.position) > 0.64;
+        if (p.life <= 0) {
+          p.mesh.removeFromParent();
+          if (p.mesh.geometry !== this.geometry) p.mesh.geometry.dispose();
+          list.splice(list.indexOf(p), 1);
+        }
       }
-    }
     for (const c of [...this.corpses]) {
       c.life -= dt;
 
@@ -2715,9 +2794,7 @@ export class Game {
         );
         if (Math.abs(next - this.adaptiveScale) > 0.01) {
           this.adaptiveScale = next;
-          this.renderer.setPixelRatio(
-            Math.min(devicePixelRatio, 1.5) * this.renderScale * next,
-          );
+          this.renderer.setPixelRatio(this.pixelRatio());
           this.resize();
         }
       }
@@ -2788,7 +2865,8 @@ export class Game {
     if (this.warmPending) this.compileWarmUp();
     else if (this.warmReady) this.warmUp();
     this.shadowTimer += animDt;
-    if (this.shadowTimer >= 1 / 30) {
+    const rate = this.fidelity.shadowRate;
+    if (this.shadowTimer >= (rate >= 60 ? 0 : 1 / rate)) {
       this.shadowTimer = 0;
       this.renderer.shadowMap.needsUpdate = true;
     }
@@ -3010,6 +3088,25 @@ export class Game {
       drawCalls: this.renderer.info.render.calls,
       triangles: this.renderer.info.render.triangles,
       fps: Math.round(this.fps),
+      fidelity: {
+        step: this.quality,
+        name: this.fidelity.name,
+        shadowMap: this.renderer.shadowMap.enabled
+          ? this.worldSun.shadow.mapSize.x
+          : 0,
+        ao: this.ao.enabled
+          ? this.ao.width / this.renderer.domElement.width
+          : 0,
+        aoSamples: this.ao.kernel.length,
+        antialiasing: this.smaa.enabled
+          ? "smaa"
+          : this.aa.enabled
+            ? "fxaa"
+            : "none",
+        pixelRatio: this.renderer.getPixelRatio(),
+        atmosphere: this.atmosphere.count,
+        sparks: this.sparks.length,
+      },
     };
   }
 }

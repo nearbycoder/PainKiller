@@ -84,11 +84,12 @@
     return { level, programs: programs(), added };
   };
   await check(
-    "R4-1 procedural and authored fights compile no new shaders on Low, Medium and High",
+    "R4-1 procedural and authored fights compile no new shaders on Low, Medium, High and Ultra",
     async () => {
       const runs = [];
-      // Medium first, then Low (no composer) and High (ambient occlusion).
-      for (const quality of [1, 0, 2]) {
+      // Medium first, then Low (no composer), High (ambient occlusion) and Ultra
+      // (full-resolution occlusion, SMAA, a larger shadow map; round 12).
+      for (const quality of [1, 0, 2, 3]) {
         g.applySettings({ ...g.settings(), quality });
         runs.push(
           { quality, ...(await fight(8)) },

@@ -1,6 +1,7 @@
 import { art, hasArt } from "./assets";
 import { authoredCemetery, authoredThemes } from "./authored-world";
 import * as T from "three";
+import { filterTexture } from "./fidelity";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { type Level, type Theme } from "./data";
 import { archSegments, rng, type Collider } from "./core";
@@ -63,8 +64,7 @@ function texture(seed: number) {
   const t = new T.CanvasTexture(c);
   t.wrapS = t.wrapT = T.RepeatWrapping;
   t.colorSpace = T.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
+  return filterTexture(t, 4);
 }
 /** Ground colour per theme, multiplied over its texture. */
 const GROUND_TINT: Partial<Record<Theme, number>> = {

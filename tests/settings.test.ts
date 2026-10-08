@@ -15,7 +15,7 @@ describe("persistent game options", () => {
     const s = parseSettings(
       '{"quality":99,"renderScale":0,"brightness":-2,"volume":"loud","invertY":"false","fov":null,"difficulty":1.6}',
     );
-    expect(s.quality).toBe(2);
+    expect(s.quality).toBe(3);
     expect(s.renderScale).toBe(0.5);
     expect(s.brightness).toBe(0.65);
     expect(s.volume).toBe(defaults.volume);

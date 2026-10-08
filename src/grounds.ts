@@ -1,5 +1,6 @@
 import * as T from "three";
 import { rng } from "./core";
+import { filterTexture } from "./fidelity";
 import type { Theme } from "./data";
 
 /**
@@ -56,8 +57,7 @@ function texture(c: HTMLCanvasElement, color = true) {
   const t = new T.CanvasTexture(c);
   t.wrapS = t.wrapT = T.RepeatWrapping;
   if (color) t.colorSpace = T.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
+  return filterTexture(t, 8);
 }
 /** Sprinkle fine grain so flat colours do not read as plastic. */
 function grain(

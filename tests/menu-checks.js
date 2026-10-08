@@ -54,12 +54,13 @@
     check("video options update the renderer and save", () => {
       click("page", "settings");
       click("settings-tab", "video");
-      click("option", "quality:0");
+      // Since round 12 the presets are one Graphics fidelity slider.
+      range("quality", 0);
       assert(
         !g.ao.enabled && !g.renderer.shadowMap.enabled,
         "Low preset not applied",
       );
-      click("option", "quality:2");
+      range("quality", 2);
       assert(
         g.ao.enabled && g.renderer.shadowMap.enabled,
         "High preset not applied",

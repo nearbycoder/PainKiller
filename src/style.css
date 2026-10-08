@@ -2274,3 +2274,64 @@ body:not(.touch-layout) #toast-minor {
 body:not(.touch-layout) #gate-prompt {
   font-size: calc(17px * var(--hud-scale));
 }
+/* Graphics fidelity: one slider with its four steps named under the track. */
+.fidelity-control {
+  width: 330px;
+}
+.fidelity-track {
+  position: relative;
+  flex: 1;
+  display: block;
+  padding-bottom: 22px;
+  margin-top: 22px;
+}
+.fidelity-track input {
+  display: block;
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(6px + (100% - 12px) / 3 - 1px),
+      #0009 0 calc(6px + (100% - 12px) / 3 + 1px),
+      transparent 0 calc(6px + (100% - 12px) * 2 / 3 - 1px),
+      #0009 0 calc(6px + (100% - 12px) * 2 / 3 + 1px),
+      transparent 0
+    ),
+    linear-gradient(90deg, #b8965e var(--fill), #241e16 var(--fill));
+}
+.fidelity-steps i {
+  position: absolute;
+  top: 16px;
+  left: calc(6px + (100% - 12px) * var(--at));
+  transform: translateX(-50%);
+  font-style: normal;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #85775f;
+  cursor: pointer;
+  transition: color 0.16s;
+}
+.fidelity-steps i:first-child {
+  transform: translateX(-6px);
+}
+.fidelity-steps i:last-child {
+  transform: translateX(calc(-100% + 6px));
+}
+.fidelity-steps i:hover {
+  color: #ffdeb0;
+}
+.fidelity-steps i.on {
+  color: #ead0a0;
+  text-shadow: 0 0 10px #da6a2a40;
+}
+.fidelity-control output {
+  min-width: 66px;
+}
+.fidelity-row small {
+  max-width: 400px;
+}
+@media (max-width: 1100px) {
+  .fidelity-control {
+    width: 270px;
+  }
+}
