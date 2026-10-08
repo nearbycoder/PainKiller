@@ -19,10 +19,14 @@
     resume() {},
   };
   g.sound.gain = g.sound.effectsGain = g.sound.musicGain = silent;
-  g.sound.tone = (...a) =>
-    events.push({ t: (C.now - shotStart) / 1000, m: "tone", a });
-  g.sound.noise = (...a) =>
-    events.push({ t: (C.now - shotStart) / 1000, m: "noise", a });
+  // A voice scheduled ahead (tone's 8th and noise's 6th argument) carries an absolute
+  // clock time; store it relative to the shot, like the event itself.
+  const record = (m, at) => (...a) => {
+    if (a[at] > 0) a[at] -= shotStart / 1000;
+    events.push({ t: (C.now - shotStart) / 1000, m, a });
+  };
+  g.sound.tone = record("tone", 7);
+  g.sound.noise = record("noise", 5);
 
   // --- Overlays: captions and title cards in the game's own typefaces. ---
   const style = document.createElement("style");
@@ -85,7 +89,7 @@
 
   const settings = {
     ...g.settings(),
-    quality: 2,
+    quality: 3, // Ultra: frames render offline in virtual time, so the frame rate always holds
     renderScale: 1,
     adaptiveResolution: false,
     brightness: 1.08,
@@ -93,6 +97,7 @@
     headBob: true,
     crosshair: true,
     difficulty: 1,
+    hints: false, // the one-time combat hints would cover the captions
   };
 
   // --- Shot API ---------------------------------------------------------------
@@ -245,6 +250,10 @@
       caption.querySelector(".kicker").textContent = kicker;
       caption.querySelector("h2").innerHTML = title;
       caption.querySelector(".body").innerHTML = body;
+    },
+    /** Change the caption's kicker line in place (e.g. to name the step on screen). */
+    kicker(text) {
+      if (!api.quiet) caption.querySelector(".kicker").textContent = text;
     },
     card(html, from = 0, to = Infinity) {
       api.cardSpec = { from, to };

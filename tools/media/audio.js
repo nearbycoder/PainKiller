@@ -1,32 +1,40 @@
 // Offline audio for the trailer, rendered with the game's own synthesizer (src/audio.ts).
-// renderEvents replays the tone()/noise() calls recorded during capture; renderScore
-// arranges the in-game combat ostinato into a continuous music bed.
+// renderEvents replays the tone()/noise() calls recorded during capture, in stereo with the
+// game's own panning; renderScore plays the chapter themes of src/music.ts, layer by layer,
+// as the music bed, with a few stingers (hits, a riser) made from the same voices.
 (() => {
   const RATE = 48000;
+  const CHANNELS = 2;
   const encode = (buffer) => {
-    const data = buffer.getChannelData(0),
-      out = new DataView(new ArrayBuffer(44 + data.length * 2));
+    const left = buffer.getChannelData(0),
+      right = buffer.getChannelData(CHANNELS - 1),
+      frames = left.length,
+      bytes = frames * CHANNELS * 2,
+      out = new DataView(new ArrayBuffer(44 + bytes));
     const text = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
     text(0, "RIFF");
-    out.setUint32(4, 36 + data.length * 2, true);
+    out.setUint32(4, 36 + bytes, true);
     text(8, "WAVEfmt ");
     out.setUint32(16, 16, true);
     out.setUint16(20, 1, true);
-    out.setUint16(22, 1, true);
+    out.setUint16(22, CHANNELS, true);
     out.setUint32(24, RATE, true);
-    out.setUint32(28, RATE * 2, true);
-    out.setUint16(32, 2, true);
+    out.setUint32(28, RATE * CHANNELS * 2, true);
+    out.setUint16(32, CHANNELS * 2, true);
     out.setUint16(34, 16, true);
     text(36, "data");
-    out.setUint32(40, data.length * 2, true);
-    for (let i = 0; i < data.length; i++)
-      out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, data[i])) * 0x7fff, true);
+    out.setUint32(40, bytes, true);
+    const pcm = (x) => Math.max(-1, Math.min(1, x)) * 0x7fff;
+    for (let i = 0; i < frames; i++) {
+      out.setInt16(44 + i * 4, pcm(left[i]), true);
+      out.setInt16(46 + i * 4, pcm(right[i]), true);
+    }
     return new Uint8Array(out.buffer);
   };
 
   async function synth(seconds) {
     const { Sound } = await import("/src/audio.ts");
-    const ctx = new OfflineAudioContext(1, Math.ceil(seconds * RATE), RATE);
+    const ctx = new OfflineAudioContext(CHANNELS, Math.ceil(seconds * RATE), RATE);
     let now = 0;
     // Sound schedules everything at ctx.currentTime; steer that clock per event.
     const clock = new Proxy(ctx, {
@@ -65,35 +73,25 @@
     window.__capture.write(file, encode(await s.ctx.startRendering()));
   }
 
-  // The in-game combat ostinato (src/audio.ts Sound.update), plus trailer layers.
-  const NOTES = [55, 55, 65.4, 55, 49, 55, 73.4, 65.4];
   async function renderScore(plan, file) {
+    const { themeFor, notesFor } = await import("/src/music.ts");
     const s = await synth(plan.seconds + 3);
-    const step = 0.185;
     const tone = (t, ...a) => s.at(t, (x) => x.tone(...a));
     const noise = (t, ...a) => s.at(t, (x) => x.noise(...a));
-    function groove(from, to, { gain = 1, double = false, lift = false, hats = false } = {}) {
-      const len = double ? step / 2 : step;
-      for (let i = 0, t = from; t < to - 0.02; i++, t = from + i * len) {
-        const n = NOTES[i % 8] * (lift && i % 16 >= 8 ? 2 : 1);
-        tone(t, n, 0.16, "sawtooth", 0.045 * gain, n * 0.98, true);
-        if (i % 4 === 0) tone(t, 135, 0.12, "sine", 0.17 * gain, 35, true);
-        if (i % 4 === 2) noise(t, 0.08, 0.065 * gain, 6500, true);
-        if (hats && i % 2 === 1) noise(t, 0.04, 0.03 * gain, 9000, true);
-        if (lift && i % 8 === 0) tone(t, n * 4, 0.5, "triangle", 0.035 * gain, n * 3.96, true);
-      }
+    /** A chapter theme's layer ("calm", "fight" or "general"), voiced as Sound.update does. */
+    function theme(from, to, { chapter = 1, layer = "fight", gain = 1 } = {}) {
+      const th = themeFor(chapter);
+      for (let step = 0, t = from; t < to - 0.02; step++, t = from + step * th.step)
+        for (const n of notesFor(th, step, layer, t)) {
+          if (n.kind === "hat") noise(t, n.duration, n.volume * gain, n.cutoff, true);
+          else tone(t, n.freq, n.duration, n.type, n.volume * gain, n.end, true, 0, 0, n.kind === "drone" ? 0.3 : 0);
+        }
     }
     function hit(t, big = 1) {
       tone(t, 44, 2.6 * big, "sine", 0.6, 26, true);
       tone(t, 88, 1.4 * big, "sawtooth", 0.09, 40, true);
       noise(t, 1.1 * big, 0.32, 1400, true);
       noise(t, 0.25, 0.25, 7000, true);
-    }
-    function drone(from, to, gain = 1) {
-      for (let t = from; t < to - 0.5; t += 1.48) {
-        tone(t, 55, 1.6, "triangle", 0.11 * gain, 54.5, true);
-        tone(t + 0.74, 82.4, 1.6, "triangle", 0.05 * gain, 82, true);
-      }
     }
     function riser(from, to) {
       const n = Math.floor((to - from) / 0.0925);
@@ -105,8 +103,7 @@
     }
     for (const section of plan.sections) {
       const { kind, from, to } = section;
-      if (kind === "groove") groove(from, to, section);
-      if (kind === "drone") drone(from, to, section.gain);
+      if (kind === "theme") theme(from, to, section);
       if (kind === "riser") riser(from, to);
       if (kind === "hit") hit(from, section.big);
     }

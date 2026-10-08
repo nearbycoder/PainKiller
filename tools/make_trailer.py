@@ -9,14 +9,14 @@ Gameplay is rendered offscreen in virtual time by tools/media/capture.cjs, so th
 identical on every run and independent of machine load. Outputs land in docs/media/;
 intermediate captures go to captures/ (git-ignored).
 """
-import argparse, json, os, shutil, socket, subprocess, sys, time
+import argparse, json, os, shutil, signal, socket, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CAP = ROOT / "captures"
 CLIPS = CAP / "clips"
 MEDIA = ROOT / "docs/media"
-PORT = 5199
+PORT = 5199  # --port overrides
 FPS = 30
 NICE = ["nice", "-n", "10"]
 
@@ -28,7 +28,7 @@ EDIT = [
     ("stakes", "smoothleft", 0.45), ("rockets", "smoothleft", 0.45), ("tempest", "fadeblack", 0.5),
     ("roster", "fade", 0.4), ("general", "fade", 0.4), ("wraith", "fade", 0.4), ("supplies", "fade", 0.4),
     ("tarot-menu", "fade", 0.35), ("tarot", "fade", 0.4), ("physics", "fade", 0.4), ("progress", "fadeblack", 0.5),
-    ("levels", "fade", 0.4), ("campaign", "fade", 0.4), ("options", "fadeblack", 0.5),
+    ("levels", "fade", 0.4), ("campaign", "fade", 0.4), ("fidelity", "fade", 0.4), ("options", "fadeblack", 0.5),
     ("m-chaingun", "cut", 0), ("m-storm", "cut", 0), ("m-shatter", "cut", 0), ("m-volley", "cut", 0),
     ("m-rockets", "cut", 0), ("m-wraith", "cut", 0), ("m-lightning", "cut", 0), ("m-finale", "fadewhite", 0.35),
     ("end", None, 0),
@@ -68,16 +68,26 @@ def listening():
 
 
 def dev_server():
+    # Never capture from a server this script did not start: it may be another checkout's.
     if listening():
-        return None
+        sys.exit(f"Port {PORT} is already in use; pass --port with a free one")
     proc = subprocess.Popen(NICE + ["npx", "vite", "--port", str(PORT), "--strictPort"], cwd=ROOT,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     for _ in range(100):
         time.sleep(0.2)
         if listening():
             return proc
-    proc.terminate()
+    stop(proc)
     sys.exit("Vite dev server did not start")
+
+
+def stop(proc):
+    """Stop the dev server and its children (npx -> node -> esbuild): its own process group only."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.wait(timeout=10)
+    except (ProcessLookupError, subprocess.TimeoutExpired):
+        pass
 
 
 def electron(*args):
@@ -98,24 +108,27 @@ def timeline():
 
 
 def score_plan(starts, total):
+    """The music bed: the game's chapter themes (src/music.ts), one layer per section."""
     at = {name: (start, d) for name, start, d in starts}
     title, montage, end = at["title"][0], at["m-chaingun"][0], at["end"][0]
-    weapons, roster = at["sectors"][0], at["roster"][0]
+    weapons, roster, general, wraith = at["sectors"][0], at["roster"][0], at["general"][0], at["wraith"][0]
     ui = at["levels"][0]
     return {
         "seconds": total,
         "sections": [
-            {"kind": "groove", "from": 0.0, "to": title, "gain": 0.9},
+            {"kind": "theme", "from": 0.0, "to": title, "chapter": 1, "layer": "fight", "gain": 0.9},
             {"kind": "hit", "from": title, "big": 1.2},
-            {"kind": "drone", "from": title, "to": weapons, "gain": 1.0},
-            {"kind": "groove", "from": weapons, "to": roster, "gain": 0.85},
-            {"kind": "groove", "from": roster, "to": ui, "gain": 0.9, "lift": True},
-            {"kind": "groove", "from": ui, "to": montage - 2.2, "gain": 0.75, "hats": True},
+            {"kind": "theme", "from": title, "to": weapons, "chapter": 1, "layer": "calm", "gain": 1.6},
+            {"kind": "theme", "from": weapons, "to": roster, "chapter": 1, "layer": "fight", "gain": 0.85},
+            {"kind": "theme", "from": roster, "to": general, "chapter": 2, "layer": "fight", "gain": 0.9},
+            {"kind": "theme", "from": general, "to": wraith, "chapter": 3, "layer": "general", "gain": 0.9},
+            {"kind": "theme", "from": wraith, "to": ui, "chapter": 4, "layer": "fight", "gain": 0.9},
+            {"kind": "theme", "from": ui, "to": montage - 2.2, "chapter": 5, "layer": "fight", "gain": 0.75},
             {"kind": "riser", "from": montage - 2.2, "to": montage},
             {"kind": "hit", "from": montage, "big": 0.8},
-            {"kind": "groove", "from": montage, "to": end, "gain": 1.0, "double": True, "lift": True, "hats": True},
+            {"kind": "theme", "from": montage, "to": end, "chapter": 5, "layer": "general", "gain": 1.0},
             {"kind": "hit", "from": end, "big": 1.6},
-            {"kind": "drone", "from": end + 0.6, "to": total, "gain": 0.8},
+            {"kind": "theme", "from": end + 0.6, "to": total, "chapter": 5, "layer": "calm", "gain": 1.6},
         ],
     }
 
@@ -166,11 +179,12 @@ def loudness(master, target="I=-15:TP=-1.5:LRA=11"):
     m = json.loads(log[log.rindex("{"):log.rindex("}") + 1])
     return (f"loudnorm={target}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:"
             f"measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true,aresample=48000,"
-            # Synthesized noise is bright; trim the top octave so AAC does not overshoot the limiter.
-            "lowpass=f=16000:poles=2,alimiter=limit=0.75:attack=4:release=60:level=disabled")
+            # Synthesized noise is bright; trim the top octave, and leave AAC room to overshoot
+            # the limiter while staying under -1 dBTP.
+            "lowpass=f=16000:poles=2,alimiter=limit=0.6:attack=4:release=60:level=disabled")
 
 
-def encode(master, total, budget_mb=36):
+def encode(master, total, budget_mb=41):
     out = MEDIA / "trailer.mp4"
     audio_filter = loudness(master)
     audio_kbps = 160
@@ -239,10 +253,13 @@ def quality_check(starts, total):
 
 
 def main():
+    global PORT
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--skip-capture", action="store_true", help="reuse captures/clips")
     p.add_argument("--skip-screenshots", action="store_true")
+    p.add_argument("--port", type=int, default=PORT, help=f"port for this run's Vite dev server (default {PORT})")
     a = p.parse_args()
+    PORT = a.port
     for tool in ("ffmpeg", "ffprobe", "magick"):
         if not shutil.which(tool):
             sys.exit(f"{tool} is required")
@@ -264,8 +281,7 @@ def main():
         quality_check(starts, total)
         print(f"trailer {total:.1f}s -> {MEDIA / 'trailer.mp4'}")
     finally:
-        if server:
-            server.terminate()
+        stop(server)
 
 
 if __name__ == "__main__":

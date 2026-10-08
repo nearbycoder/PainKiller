@@ -24,6 +24,8 @@ const W = 1920,
   H = 1080,
   FPS = 30;
 
+// Keep Chromium's profile with the captures, never in a shared ~/.config/Electron.
+app.setPath("userData", path.join(out, "electron-profile"));
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("force-device-scale-factor", "1");
 
@@ -60,6 +62,8 @@ app.whenReady().then(async () => {
       sandbox: false,
       nodeIntegration: false,
       backgroundThrottling: false,
+      // In memory: every run starts from a fresh save and leaves nothing behind.
+      partition: "media-capture",
       preload: path.join(__dirname, "preload.cjs"),
     },
   });

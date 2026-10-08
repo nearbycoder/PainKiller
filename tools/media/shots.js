@@ -357,7 +357,7 @@
       a.level(L.hallowed, 0);
       a.clearPickups();
       const g = a.g;
-      g.health = 46;
+      g.health = 22; // under a quarter: the red readout, edges and heartbeat until the pickup
       g.armor = 12;
       g.ammo[W.shotgun] = 4;
       g.altAmmo[W.shotgun] = 3;
@@ -371,7 +371,7 @@
       g.addPickup("secret", a.v(0.2, 0.9, 3.0));
     },
     start(a) {
-      a.caption("Supplies & secrets", "Scavenge the battlefield", "Health, armor and ammunition drop from the fallen. Hidden relics unlock tarot cards.", 0.5);
+      a.caption("Supplies & secrets", "Scavenge the battlefield", "Health, armor and ammunition drop from the fallen. At low health a heartbeat warns you. Hidden relics earn tarot cards.", 0.5);
     },
     frame(a, i, t) {
       const g = a.g;
@@ -472,7 +472,7 @@
     },
     start(a) {
       this.last = a.spawn("skeleton", 0.5, -15);
-      a.caption("Cleanse the sector", "Push ever deeper", "Clear the final wave, step through the green gate, and the next sector begins from a checkpoint.", 0.5);
+      a.caption("Cleanse the sector", "Push ever deeper", "Clear the final wave and the gate opens. Step through, and the next sector fades in; every wave is a checkpoint.", 0.5);
     },
     frame(a, i, t) {
       const g = a.g;
@@ -509,8 +509,8 @@
   });
   const tour = [L.cells, L.frost, L.court, L.fen, L.platform, L.spire, L.canals, L.abyss];
   D.define("campaign", {
-    seconds: 6.6,
-    stills: [10, 60, 110, 200],
+    seconds: 5.8,
+    stills: [10, 60, 110, 160],
     setup(a) {
       a.level(tour[0], 0);
       a.clearPickups();
@@ -523,21 +523,56 @@
       a.caption("24 levels · 5 chapters", "A pilgrimage through the afterlife", "Cemeteries, cathedrals, foundries, drowned canals and the Abyss itself, across 22 environment themes.", 0.4);
     },
     frame(a, i, t) {
-      const cut = Math.min(tour.length - 1, Math.floor(t / 0.82));
+      const cut = Math.min(tour.length - 1, Math.floor(t / 0.72));
       if (cut !== this.cut) {
         this.cut = cut;
         a.level(tour[cut], cut % 2);
+        // A hard cut between arenas: without the level start's fade from black (round 12),
+        // which would dip every 0.72 s cut to black.
+        document.getElementById("scene-fade").classList.remove("on");
         a.clearPickups();
         a.hud(false);
         a.g.weaponModels.forEach((w) => (w.root.visible = false));
       }
-      const u = (t % 0.82) / 0.82;
+      const u = (t % 0.72) / 0.72;
       a.at(Math.sin(cut * 1.7) * 3, 24 - u * 4);
       a.look(Math.sin(cut * 2.3) * 0.18 - u * 0.05 * Math.sign(Math.sin(cut * 2.3)), 0.06);
     },
   });
+  const STEPS = ["Low", "Medium", "High", "Ultra"];
+  D.define("fidelity", {
+    seconds: 6.6,
+    stills: [30, 75, 120, 165],
+    setup(a) {
+      // Hallowed Ground's start view, between its lamps (the view round 12 compared).
+      a.level(L.hallowed, 0);
+      a.clearPickups();
+      a.arm(W.rocket);
+      a.look(a.g.yaw, 0.02);
+      this.step = -1;
+    },
+    start(a) {
+      a.caption("Graphics fidelity · Low", "From Low to Ultra", "Four steps. High and Ultra add bloom on lamps, fire and blasts, a colour grade and sharper shadows.", 0.3);
+    },
+    frame(a, i, t) {
+      const g = a.g,
+        step = Math.min(3, Math.floor(t / 1.5));
+      if (step !== this.step) {
+        this.step = step;
+        g.applySettings({ ...g.settings(), quality: step });
+        a.kicker("Graphics fidelity · " + STEPS[step]);
+        // A fresh group for every step, so each one shows a blast.
+        const d = g.direction();
+        for (const [type, ahead, side] of [["shambler", 10, -1.6], ["skeleton", 9, 1.8], ["brute", 12, 0.3]]) {
+          const p = g.position.clone().addScaledVector(d, ahead).add(a.v(-d.z * side, 0, d.x * side));
+          a.spawn(type, p.x, p.z, { still: true });
+        }
+      }
+      a.fire(once(t, step * 1.5 + 0.3), false);
+    },
+  });
   D.define("options", {
-    seconds: 3.8,
+    seconds: 4.4,
     stills: [30, 90, 140],
     preroll: 3,
     setup(a) {
@@ -545,8 +580,8 @@
       a.click("page", "settings");
     },
     frame(a, i, t) {
-      if (once(t, 1.2)) a.click("settings-tab", "gameplay");
-      if (once(t, 2.4)) a.click("settings-tab", "controls");
+      if (once(t, 1.5)) a.click("settings-tab", "controls");
+      if (once(t, 2.9)) a.click("settings-tab", "gameplay");
     },
   });
 
@@ -584,7 +619,7 @@
 
   // --- End card ---------------------------------------------------------------------------
   D.define("end", {
-    seconds: 7.5,
+    seconds: 6.6,
     stills: [150],
     preroll: 3,
     setup(a) {
@@ -595,7 +630,7 @@
         0.2,
       );
       a.flash(0);
-      a.fadeOut(6.6, 0.85);
+      a.fadeOut(5.7, 0.85);
     },
   });
 
@@ -622,6 +657,6 @@
   D.order = [
     "open-horde", "open-storm", "open-general", "title", "sectors", "thresher", "freezer", "stakes", "rockets",
     "tempest", "roster", "general", "wraith", "supplies", "tarot-menu", "tarot", "physics", "progress", "levels",
-    "campaign", "options", ...montage.map((m) => m[0]), "end",
+    "campaign", "fidelity", "options", ...montage.map((m) => m[0]), "end",
   ];
 })();
