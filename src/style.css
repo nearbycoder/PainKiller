@@ -1284,6 +1284,17 @@ body[data-mode="dead"] #world {
   --hud-halo: 0 0 2px #000, 0 0 4px #000b, 0 1px 3px #000;
   --hud-icon-halo: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #000c);
 }
+/* The 9–11 px labels in the semi-bold cut: thin strokes washed out over bright snow. */
+.objective p,
+.combat-stats,
+.health > span:last-child,
+.armor > span:last-child,
+#hud-souls,
+.ammo > span,
+.ammo small,
+.weapon-hud > span {
+  font-weight: 600;
+}
 /* Soft shade along the top and bottom edges, under the HUD's text: barely visible in
    dark halls, it keeps the small labels readable over bright ground. */
 #hud-scrim {
@@ -1872,6 +1883,7 @@ body[data-mode="dead"] #world {
   transform: translateX(-50%);
   font-size: 9px;
   letter-spacing: 1.1px;
+  font-weight: 600;
   color: #e6ecdc;
   text-shadow: var(--hud-halo);
   white-space: nowrap;

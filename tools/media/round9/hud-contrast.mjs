@@ -35,8 +35,10 @@ const median = (v) => {
 };
 const rows = [];
 for (const [level, entry] of Object.entries(report)) {
-  const hud = decode(`${folder}/level-${level}-hud.png`),
-    bare = decode(`${folder}/level-${level}-bare.png`),
+  // Round 10's heading frames name their files; round 9's are named by level.
+  const file = entry.file || `level-${level}`,
+    hud = decode(`${folder}/${file}-hud.png`),
+    bare = decode(`${folder}/${file}-bare.png`),
     k = entry.dpr || 1;
   const px = (img, x, y) => {
     const i = (y * img.w + x) * 3;
@@ -92,6 +94,7 @@ for (const [level, entry] of Object.entries(report)) {
       lr = median(ring);
     rows.push({
       level: entry.name,
+      ...(entry.heading !== undefined ? { heading: entry.heading } : {}),
       label: name,
       glyphs: core.length,
       contrast: core.length >= 8 ? +ratio(lc, lr).toFixed(2) : null,

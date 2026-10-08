@@ -232,6 +232,21 @@ The HUD's text is pale on a transparent background, so over Frostbound Crossing'
 
 The one label still under 3:1 is Frostbound Crossing's ammunition name above the counter (2.8), which sits highest in the bottom band where the shade is lightest. The weapon slot numbers sat in buttons dimmed as a whole; the weapon bar change below dims only the icon of a weapon not in hand, which took the numbers to 4.2:1 in Frostbound Crossing, 5.4:1 in Hallowed Ground, 8.7:1 in Dune Sepulchre and 9.9:1 in Hall of Vigils. Over a dark hall the shade is barely visible (`docs/media/improvements/round9/r9-2-hud-contrast.jpg` shows the two bright arenas). The view changes as you turn, so these are the opening views only. `tests/round9-checks.js` checks that the shade and halo are in place and that the shade covers no control.
 
+## HUD at every heading (round 10)
+
+Round 9 measured each level's opening view only. `tools/media/round10/hud-headings.js` takes the same frame pairs at eight headings (every 45°, level gaze) for each level given, and `tools/media/round9/hud-contrast.mjs` reads them unchanged (it now takes the file name from the report). In Frostbound Crossing, Hallowed Ground, Dune Sepulchre and Hall of Vigils at 1280 × 800, 5 of 384 small-label readings were under 3:1, all in Frostbound Crossing: the ammunition name at four headings (2.7–2.8:1, facing the far snow) and the gate line at one (3.0). A wider halo changed nothing measurable, because the ring two pixels out is already inside the halo; what washed out was the glyphs themselves, 9–11 pixel strokes thinner than a pixel and blended with the snow behind. The small labels (health, armor, souls, gate line, kill counts, ammunition names, card and key line) now use the semi-bold cut of the HUD font (`style.css`, beside `--hud-halo`). No colour, size, shade or position changed.
+
+Worst and best reading over the eight headings, before → after:
+
+| Level               | Small labels | Numbers and weapon name | Weapon slot numbers |
+| ------------------- | ------------ | ----------------------- | ------------------- |
+| Frostbound Crossing | 2.7 → 3.9    | 5.2 (unchanged)         | 4.2 (unchanged)     |
+| Hallowed Ground     | 3.9 → 5.3    | 6.4 (unchanged)         | 5.5 (unchanged)     |
+| Dune Sepulchre      | 3.6 → 4.5    | 6.7 (unchanged)         | 8.7 (unchanged)     |
+| Hall of Vigils      | 4.6 → 6.2    | 5.1 (unchanged)         | 8.8 (unchanged)     |
+
+After: 0 of 384 small-label readings under 3:1 (the lowest is Frostbound Crossing's gate line at 3.9), and no number under 4.5:1 at any heading. The ammunition name in Frostbound Crossing reads 6.4:1 at its worst heading (2.7 before). Repeat runs of the same frames move single readings by up to about 0.3 (falling snow). This is still a level gaze from the sector's start with no fight on screen; muzzle flashes, explosions and looking down at the ground are not measured. Capture: `docs/media/improvements/round10/r10-1-hud-headings.jpg`.
+
 ## Weapon bar reserves (round 9)
 
 Each of the five weapon slots shows two thin bars under its icon: the primary and alternate reserves as a share of their maximum (`slotAmmo` in `src/ammunition.ts`; the chaingun holds 500, the shuriken launcher and its charge 250, everything else 100). A bar turns red when its reserve is low by the same rule as the ammunition counter (a fifth of what a level starts with). When neither mode has a whole round left, the slot is marked dry: its icon fades and its number is struck through in red, and its accessible name says "out of ammunition". The Thresher shows two full bars. A weapon not in hand now dims only its icon (to 45%), not its number and bars. No ammunition value changed. Covered by `tests/weapon-bar.test.ts` and `tests/round9-checks.js` (bars following a shot, every slot following its own reserves, dry after the last stake, refilled by a pickup, the weapon bar clear of the other panels at 75–150%). Capture: `docs/media/improvements/round9/r9-3-weapon-bar.jpg`.
