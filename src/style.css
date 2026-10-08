@@ -1075,6 +1075,29 @@ body[data-mode="dead"] #world {
     opacity: 1;
   }
 }
+/* A level clear with a record and a new card is taller than many windows (about 740
+   pixels at full size): compact it below 860 pixels. */
+@media (max-height: 860px) {
+  .result-screen {
+    inset: 3vh 10vw 9vh;
+  }
+  .result-screen .end-seal {
+    height: 44px;
+    margin-bottom: 8px;
+  }
+  .result-screen h1 {
+    font-size: clamp(36px, 9vh, 64px);
+  }
+  .result-screen .result-stats {
+    margin: 8px 0 12px;
+  }
+  .result-screen .result-stats b {
+    font-size: 32px;
+  }
+  .result-screen .card-earned {
+    margin-bottom: 6px;
+  }
+}
 /* Each weapon's page, trick included, fits without scrolling in windows down to 600 px
    tall (a 1280 × 720 window, a laptop's browser, the desktop window's minimum). */
 @media (max-height: 760px) {
@@ -1098,26 +1121,6 @@ body[data-mode="dead"] #world {
 @media (max-height: 700px) {
   .title-screen {
     inset: 5vh 10vw 9vh;
-  }
-  /* A level clear with a record and a new card is taller than a short window. */
-  .result-screen {
-    inset: 3vh 10vw 9vh;
-  }
-  .result-screen .end-seal {
-    height: 44px;
-    margin-bottom: 8px;
-  }
-  .result-screen h1 {
-    font-size: clamp(36px, 9vh, 64px);
-  }
-  .result-screen .result-stats {
-    margin: 8px 0 12px;
-  }
-  .result-screen .result-stats b {
-    font-size: 32px;
-  }
-  .result-screen .card-earned {
-    margin-bottom: 6px;
   }
   .logo h1 {
     font-size: 76px;

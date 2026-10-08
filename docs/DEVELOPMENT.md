@@ -249,18 +249,18 @@ After: 0 of 384 small-label readings under 3:1 (the lowest is Frostbound Crossin
 
 ## Result and ending screens (round 10)
 
-The level-complete and ending screens show the arena you cleared, sharp and undimmed (pause and death blur and darken it). Their text sat on it with no backing, so over Frostbound Crossing's snow the four stat labels measured 1.0:1, invisible, and the numbers and record line 1.4:1. They now have a soft dark backing (`.result-screen::before`, a radial gradient behind the text that fades out before the screen's edges and takes no clicks), a dark halo on their text, and the kicker and stat labels in a lighter, semi-bold gold. In windows under 700 pixels tall the seal, title and stats are smaller: at the desktop window's minimum, 960 × 600, a clear that earned a card used to push _Main menu_ off the bottom of the window and _Continue_ onto the key line, with the seal cut off at the top.
+The level-complete and ending screens show the arena you cleared, sharp and undimmed (pause and death blur and darken it). Their text sat on it with no backing, so over Frostbound Crossing's snow the four stat labels measured 1.0:1, invisible, and the numbers and record line 1.4:1. They now have a soft dark backing (`.result-screen::before`, a radial gradient behind the text that fades out before the screen's edges and takes no clicks), a dark halo on their text, and the kicker and stat labels in a lighter, semi-bold gold. In windows up to 860 pixels tall the seal, title and stats are smaller and the text sits higher, since a clear with a record and a new card is about 740 pixels tall at full size: at the desktop window's minimum, 960 × 600, it used to push _Main menu_ off the bottom of the window and _Continue_ onto the key line, with the seal cut off at the top, and in Firefox at 1280 × 800 the last command touched the key line.
 
 Measured with `tools/media/round10/result-contrast.js` (frame pairs of the screen with and without its text, read by `tools/media/round9/hud-contrast.mjs`), at 1280 × 800, two headings per arena, for a deathless record clear with a relic and a new card. Before → after, worst and best reading:
 
-| Screen                          | Kicker, subtitle, stat labels, card line | Title, stat numbers, record line | Commands  |
-| ------------------------------- | ---------------------------------------- | -------------------------------- | --------- |
-| Hallowed Ground                 | 1.7–5.5 → 6.6–9.4                        | 2.2–6.6 → 6.6–10.4               | 6.3 → 7.1 |
-| Frostbound Crossing             | 1.0–7.0 → 5.7–8.9                        | 1.4–9.3 → 5.8–9.9                | 4.3 → 6.2 |
-| Dune Sepulchre                  | 1.8–6.8 → 7.1–9.2                        | 4.0–9.5 → 5.7–11.0               | 6.9 → 6.8 |
-| The ending (The Abyss; no card) | 3.1–6.8 → 7.4–9.7                        | 4.3–9.6 → 5.8–11.1               | 4.1 → 4.0 |
+| Screen                          | Kicker, subtitle, stat labels, card line | Title, stat numbers, record line | Commands, worst |
+| ------------------------------- | ---------------------------------------- | -------------------------------- | --------------- |
+| Hallowed Ground                 | 1.7–5.5 → 6.7–9.4                        | 2.2–6.6 → 6.2–10.5               | 6.3 → 7.2       |
+| Frostbound Crossing             | 1.0–7.0 → 5.9–9.7                        | 1.4–9.3 → 6.3–11.1               | 4.3 → 5.9       |
+| Dune Sepulchre                  | 1.8–6.8 → 7.0–9.6                        | 4.0–9.5 → 6.9–11.0               | 6.9 → 6.6       |
+| The ending (The Abyss; no card) | 3.1–6.8 → 7.4–9.6                        | 4.3–9.6 → 6.5–11.0               | 4.1 → 3.9       |
 
-The ending's one command, _Main menu_, stays at 4.0:1: it is focused, and the menus' focus style puts an orange glow around the text, which this method counts against it. `tests/round10-checks.js` checks the backing, halo and label colours at 960 × 600, 1280 × 800 and 1920 × 1080, that every part of the screen is inside the window and the commands clear of the key line, that _Continue_ still takes a click and starts the next level, and that the ending has the backing while the death and pause screens do not; all three checks fail on the old code. Capture: `docs/media/improvements/round10/r10-2-result-screen.jpg`.
+The ending's one command, _Main menu_, stays at 3.9:1 (4.1 before): it is focused, and the menus' focus style puts an orange glow around the text, which this method counts against it. `tests/round10-checks.js` checks the backing, halo and label colours at 960 × 600, 1280 × 800, 1366 × 768, 1440 × 900 and 1920 × 1080, that every part of the screen is inside the window and the commands clear of the key line, that _Continue_ still takes a click and starts the next level, and that the ending has the backing while the death and pause screens do not; all three checks fail on the old code. Capture: `docs/media/improvements/round10/r10-2-result-screen.jpg`.
 
 ## Arsenal page in short windows (round 10)
 
