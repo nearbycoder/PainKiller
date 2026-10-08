@@ -247,6 +247,21 @@ Worst and best reading over the eight headings, before → after:
 
 After: 0 of 384 small-label readings under 3:1 (the lowest is Frostbound Crossing's gate line at 3.9), and no number under 4.5:1 at any heading. The ammunition name in Frostbound Crossing reads 6.4:1 at its worst heading (2.7 before). Repeat runs of the same frames move single readings by up to about 0.3 (falling snow). This is still a level gaze from the sector's start with no fight on screen; muzzle flashes, explosions and looking down at the ground are not measured. Capture: `docs/media/improvements/round10/r10-1-hud-headings.jpg`.
 
+## Result and ending screens (round 10)
+
+The level-complete and ending screens show the arena you cleared, sharp and undimmed (pause and death blur and darken it). Their text sat on it with no backing, so over Frostbound Crossing's snow the four stat labels measured 1.0:1, invisible, and the numbers and record line 1.4:1. They now have a soft dark backing (`.result-screen::before`, a radial gradient behind the text that fades out before the screen's edges and takes no clicks), a dark halo on their text, and the kicker and stat labels in a lighter, semi-bold gold. In windows under 700 pixels tall the seal, title and stats are smaller: at the desktop window's minimum, 960 × 600, a clear that earned a card used to push _Main menu_ off the bottom of the window and _Continue_ onto the key line, with the seal cut off at the top.
+
+Measured with `tools/media/round10/result-contrast.js` (frame pairs of the screen with and without its text, read by `tools/media/round9/hud-contrast.mjs`), at 1280 × 800, two headings per arena, for a deathless record clear with a relic and a new card. Before → after, worst and best reading:
+
+| Screen                          | Kicker, subtitle, stat labels, card line | Title, stat numbers, record line | Commands  |
+| ------------------------------- | ---------------------------------------- | -------------------------------- | --------- |
+| Hallowed Ground                 | 1.7–5.5 → 6.6–9.4                        | 2.2–6.6 → 6.6–10.4               | 6.3 → 7.1 |
+| Frostbound Crossing             | 1.0–7.0 → 5.7–8.9                        | 1.4–9.3 → 5.8–9.9                | 4.3 → 6.2 |
+| Dune Sepulchre                  | 1.8–6.8 → 7.1–9.2                        | 4.0–9.5 → 5.7–11.0               | 6.9 → 6.8 |
+| The ending (The Abyss; no card) | 3.1–6.8 → 7.4–9.7                        | 4.3–9.6 → 5.8–11.1               | 4.1 → 4.0 |
+
+The ending's one command, _Main menu_, stays at 4.0:1: it is focused, and the menus' focus style puts an orange glow around the text, which this method counts against it. `tests/round10-checks.js` checks the backing, halo and label colours at 960 × 600, 1280 × 800 and 1920 × 1080, that every part of the screen is inside the window and the commands clear of the key line, that _Continue_ still takes a click and starts the next level, and that the ending has the backing while the death and pause screens do not; all three checks fail on the old code. Capture: `docs/media/improvements/round10/r10-2-result-screen.jpg`.
+
 ## Weapon bar reserves (round 9)
 
 Each of the five weapon slots shows two thin bars under its icon: the primary and alternate reserves as a share of their maximum (`slotAmmo` in `src/ammunition.ts`; the chaingun holds 500, the shuriken launcher and its charge 250, everything else 100). A bar turns red when its reserve is low by the same rule as the ammunition counter (a fifth of what a level starts with). When neither mode has a whole round left, the slot is marked dry: its icon fades and its number is struck through in red, and its accessible name says "out of ammunition". The Thresher shows two full bars. A weapon not in hand now dims only its icon (to 45%), not its number and bars. No ammunition value changed. Covered by `tests/weapon-bar.test.ts` and `tests/round9-checks.js` (bars following a shot, every slot following its own reserves, dry after the last stake, refilled by a pickup, the weapon bar clear of the other panels at 75–150%). Capture: `docs/media/improvements/round9/r9-3-weapon-bar.jpg`.

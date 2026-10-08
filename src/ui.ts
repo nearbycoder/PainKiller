@@ -541,7 +541,7 @@ export class UI {
     else if (g.mode === "dead")
       content = `<main class="end-screen"><p class="menu-kicker">PURGATORY CLAIMS ANOTHER</p><h1 class="blood-title">You died</h1>${this.deathRecap()}<p>${g.levelKills} ${g.levelKills === 1 ? "enemy" : "enemies"} slain. Your work is not finished.</p><nav>${this.button("Rise again", "retry", undefined, "data-default")}${this.button("Main menu", "menu")}</nav></main>`;
     else if (g.mode === "result" || g.mode === "ending")
-      content = `<main class="end-screen"><div class="end-seal">${seal}</div><p class="menu-kicker">${g.mode === "ending" ? "THE LAST SEAL IS BROKEN" : "LEVEL COMPLETE"}</p><h1>${g.mode === "ending" ? "Absolution" : LEVELS[g.level].name}</h1><p>${g.mode === "ending" ? "The gates open. For the first time, nothing follows you." : "The road goes deeper."}</p><div class="result-stats">${[
+      content = `<main class="end-screen result-screen"><div class="end-seal">${seal}</div><p class="menu-kicker">${g.mode === "ending" ? "THE LAST SEAL IS BROKEN" : "LEVEL COMPLETE"}</p><h1>${g.mode === "ending" ? "Absolution" : LEVELS[g.level].name}</h1><p>${g.mode === "ending" ? "The gates open. For the first time, nothing follows you." : "The road goes deeper."}</p><div class="result-stats">${[
         [g.levelKills, "ENEMIES SLAIN"],
         [g.levelSouls, "SOULS TAKEN"],
         [g.secrets, "RELICS FOUND"],
