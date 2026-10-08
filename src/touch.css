@@ -217,9 +217,6 @@
   .touch-layout .menu-hints {
     font-size: 10px;
   }
-  .touch-layout .menu-hints > span:first-child {
-    display: none;
-  }
   .touch-layout .screen-heading h1 {
     font-size: 30px;
   }

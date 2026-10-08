@@ -506,7 +506,9 @@ export class UI {
     return `<button class="menu-command" data-action="${action}" ${value === undefined ? "" : `data-value="${value}"`} ${extra}><span class="command-mark" aria-hidden="true">◆</span>${label}<span class="command-tail" aria-hidden="true">◆</span></button>`;
   }
   footer() {
-    return `<div class="menu-hints"><span><kbd>↑</kbd><kbd>↓</kbd> Select <kbd>Enter</kbd> Confirm <kbd>Esc</kbd> Back</span><span>PURGATORY <i>·</i> ${__APP_VERSION__}</span></div>`;
+    // Both key sets are drawn; the body's input classes show the one in use, so the line
+    // follows a controller connecting without a re-render. Menus keep the D-pad, A and B.
+    return `<div class="menu-hints"><span class="menu-keys"><span class="keyboard-keys"><kbd>↑ ↓</kbd> Select <kbd>Enter</kbd> Confirm <kbd>Esc</kbd> Back</span><span class="pad-keys"><kbd>D-PAD ↑ ↓</kbd> Select <kbd>A</kbd> Confirm <kbd>B</kbd> Back</span></span><span>PURGATORY <i>·</i> ${__APP_VERSION__}</span></div>`;
   }
   render() {
     const g = this.game;

@@ -84,6 +84,7 @@ body[data-mode="dead"] #world {
   filter: saturate(0.35) brightness(0.48) blur(3px);
 }
 .game-menu {
+  --corner: 65px;
   position: absolute;
   inset: 0;
   isolation: isolate;
@@ -119,8 +120,8 @@ body[data-mode="dead"] #world {
 }
 .frame-corner {
   position: absolute;
-  width: 65px;
-  height: 65px;
+  width: var(--corner);
+  height: var(--corner);
   border-color: #8f78545e;
   border-style: solid;
   pointer-events: none;
@@ -286,8 +287,9 @@ body[data-mode="dead"] #world {
 .menu-hints {
   position: absolute;
   bottom: 26px;
-  left: 6vw;
-  right: 6vw;
+  /* Clear of the frame corners (22 px in, --corner wide). */
+  left: max(6vw, calc(38px + var(--corner)));
+  right: max(6vw, calc(38px + var(--corner)));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -304,6 +306,17 @@ body[data-mode="dead"] #world {
 }
 .menu-hints kbd:first-child {
   margin-left: 0;
+}
+.pad-keys,
+.controller-active .keyboard-keys {
+  display: none;
+}
+.controller-active .pad-keys {
+  display: inline;
+}
+/* Touch menus are tapped: no keys to name. */
+.touch-layout:not(.controller-active) .menu-keys {
+  display: none;
 }
 .menu-hints i {
   margin: 0 9px;
@@ -1164,9 +1177,8 @@ body[data-mode="dead"] #world {
   .menu-hints {
     bottom: 20px;
   }
-  .frame-corner {
-    width: 40px;
-    height: 40px;
+  .game-menu {
+    --corner: 40px;
   }
   .result-stats {
     margin: 12px 0 20px;
@@ -1321,9 +1333,8 @@ body[data-mode="dead"] #world {
   .binding-list {
     grid-template-columns: 1fr;
   }
-  .frame-corner {
-    width: 30px;
-    height: 30px;
+  .game-menu {
+    --corner: 30px;
   }
   .confirm-dialog {
     padding: 25px;

@@ -273,6 +273,117 @@
     },
   );
 
+  // R10-4: the menu key line follows the input and keeps clear of the frame.
+  const pointer = (type, pointerType, extra = {}) =>
+    window.dispatchEvent(
+      new PointerEvent(type, {
+        pointerType,
+        bubbles: true,
+        isPrimary: true,
+        ...extra,
+      }),
+    );
+  const gamepad = () => ({
+    connected: true,
+    mapping: "standard",
+    axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
+  });
+  const keyLine = () => {
+    const keys = document.querySelector(".menu-hints .menu-keys");
+    return keys && keys.getBoundingClientRect().width ? keys.innerText : "";
+  };
+  const overlaps = (a, b) =>
+    a.left < b.right &&
+    b.left < a.right &&
+    a.top < b.bottom &&
+    b.top < a.bottom;
+  await check("menu key line keeps clear of the frame corners", async () => {
+    const seen = [];
+    for (const [w, h] of [
+      [960, 600],
+      [1920, 1080],
+      [1280, 800],
+    ]) {
+      await resize(w, h);
+      for (const screen of ["title", "pause", "options"]) {
+        g.setMode("menu");
+        if (screen === "pause") {
+          api.start(0, 0);
+          g.setMode("paused");
+        }
+        if (screen === "options") await openPage("settings", "video");
+        await frames(1);
+        const corners = [...document.querySelectorAll(".frame-corner")].map(
+          (c) => c.getBoundingClientRect(),
+        );
+        assert(corners.length === 4, "corners: " + corners.length);
+        for (const part of document.querySelectorAll(
+          ".menu-hints > span, .menu-hints kbd",
+        )) {
+          const r = part.getBoundingClientRect();
+          if (!r.width) continue;
+          for (const c of corners)
+            assert(
+              !overlaps(r, c),
+              `"${part.textContent.slice(0, 20)}" overlaps a frame corner on ${screen} at ${w}×${h}`,
+            );
+        }
+      }
+      seen.push(`${w}×${h}`);
+    }
+    g.setMode("menu");
+    await frames(1);
+    const text = keyLine().replace(/\s+/g, " ").trim();
+    assert(text === "↑ ↓ Select Enter Confirm Esc Back", text);
+    return `${seen.join(", ")}; "${text}"`;
+  });
+  await check(
+    "menu key line names a controller's buttons while one is connected",
+    async () => {
+      g.setMode("menu");
+      await frames(1);
+      g.controls.poll(1 / 60, [gamepad()]);
+      assert(g.controls.connected, "the controller did not connect");
+      const pad = keyLine().replace(/\s+/g, " ").trim();
+      assert(
+        pad === "D-PAD ↑ ↓ Select A Confirm B Back",
+        "with a controller: " + pad,
+      );
+      // The menus re-render on navigation; the line stays with the controller.
+      await openPage("tarot");
+      await frames(1);
+      g.controls.poll(1 / 60, [gamepad()]);
+      const after = keyLine().replace(/\s+/g, " ").trim();
+      assert(after === pad, "after a re-render: " + after);
+      g.controls.poll(1 / 60, []);
+      assert(!g.controls.connected, "the controller did not disconnect");
+      const keys = keyLine().replace(/\s+/g, " ").trim();
+      assert(
+        keys === "↑ ↓ Select Enter Confirm Esc Back",
+        "unplugged: " + keys,
+      );
+      g.setMode("menu");
+      return { pad, keys };
+    },
+  );
+  await check("menu key line is hidden in the touch layout", async () => {
+    g.setMode("menu");
+    await frames(1);
+    pointer("pointerdown", "touch");
+    pointer("pointerup", "touch");
+    assert(document.body.classList.contains("touch-layout"), "no touch layout");
+    assert(keyLine() === "", "keys shown to touch: " + keyLine());
+    const version = document.querySelector(".menu-hints > span:last-child");
+    pointer("pointermove", "mouse", { movementX: 4 });
+    assert(
+      !document.body.classList.contains("touch-layout"),
+      "mouse kept touch",
+    );
+    assert(keyLine().includes("Enter"), "keys did not return: " + keyLine());
+    return version.textContent;
+  });
+
   await resize(...startSize);
   g.applySettings(options);
   g.saveOptions();
