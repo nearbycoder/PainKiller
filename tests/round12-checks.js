@@ -196,6 +196,8 @@
         low.ao === 0 &&
         low.antialiasing === "none" &&
         low.atmosphere === 64 &&
+        low.bloom === 0 &&
+        !low.grade &&
         low.drawn === 5 &&
         low.sparks === 0 &&
         low.pixelRatio === Math.min(devicePixelRatio, 1),
@@ -206,6 +208,8 @@
         medium.ao === 0 &&
         medium.antialiasing === "fxaa" &&
         medium.atmosphere === 128 &&
+        medium.bloom === 0 &&
+        !medium.grade &&
         medium.drawn === 10 &&
         medium.sparks === 0 &&
         medium.pixelRatio === ratio,
@@ -216,6 +220,8 @@
         Math.abs(high.ao - 0.5) < 0.01 &&
         high.aoSamples === 16 &&
         high.antialiasing === "fxaa" &&
+        high.bloom > 0 &&
+        high.grade &&
         high.drawn === 10,
       "High " + JSON.stringify(high),
     );
@@ -224,6 +230,8 @@
         Math.abs(ultra.ao - 1) < 0.01 &&
         ultra.aoSamples === 32 &&
         ultra.antialiasing === "smaa" &&
+        ultra.bloom > high.bloom &&
+        ultra.grade &&
         ultra.atmosphere === 384 &&
         ultra.drawn === 10 &&
         ultra.sparks === 10 &&
@@ -248,10 +256,30 @@
       filtering().every((a) => a === 4 || a === 8),
       `Medium filtering ${[...new Set(filtering())]}`,
     );
+    // Flames burn brighter than white only while bloom is on (R12-2).
+    const flames = () => {
+      const seen = [];
+      g.arena.root.traverse((o) => {
+        if (o.material?.userData?.glow === 2.6)
+          seen.push(Math.max(o.material.color.r, o.material.color.g));
+      });
+      return seen;
+    };
+    g.applySettings({ ...options, quality: 1 });
+    const plain = flames();
+    g.applySettings({ ...options, quality: 2 });
+    const lit = flames();
+    g.applySettings({ ...options, quality: 1 });
+    assert(plain.length > 0, "no flames in Frostbound Crossing");
+    assert(
+      plain.every((v) => v <= 1) && lit.every((v) => v > 1.5),
+      `flames ${plain[0]} → ${lit[0]}`,
+    );
+    assert(flames()[0] === plain[0], "the flames did not go back after bloom");
     return rows
       .map(
         (r) =>
-          `${r.name}: shadow ${r.shadowMap}, AO ${r.ao.toFixed(2)}×${r.aoSamples}, ${r.antialiasing}, ×${r.pixelRatio}, ${r.atmosphere} motes, ${r.drawn}+${r.sparks} sparks`,
+          `${r.name}: shadow ${r.shadowMap}, AO ${r.ao.toFixed(2)}×${r.aoSamples}, ${r.antialiasing}, bloom ${r.bloom}${r.grade ? " + grade" : ""}, ×${r.pixelRatio}, ${r.atmosphere} motes, ${r.drawn}+${r.sparks} sparks`,
       )
       .join("; ");
   });

@@ -15,6 +15,8 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { FXAAShader } from "three/addons/shaders/FXAAShader.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { GradeShader } from "./grade";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import * as T from "three";
 import { buildArena, type Arena } from "./world";
@@ -344,6 +346,10 @@ export class Game {
   ao: SSAOPass;
   aa = new ShaderPass(FXAAShader);
   smaa = new SMAAPass();
+  /** Bloom over lamps, fire, blasts and flashes (High and Ultra). */
+  bloom = new UnrealBloomPass(new T.Vector2(256, 256), 0, 0, 0.95);
+  /** The colour grade and vignette (High and Ultra). */
+  grade = new ShaderPass(GradeShader);
   weaponPass = new RenderPass(this.weaponScene, this.weaponCamera);
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -397,7 +403,20 @@ export class Game {
     this.weaponPass.clear = false;
     this.weaponPass.clearDepth = true;
     this.composer.addPass(this.weaponPass);
+    // Bloom works on the linear, untone-mapped image; the grade on the displayed one.
+    // A tiny, very hot source (the moon in the sky) must not flood the view: what feeds
+    // the bloom is capped at 2.5 times white, and it fades in over a softer knee.
+    const bright = this.bloom.materialHighPassFilter;
+    bright.fragmentShader = bright.fragmentShader.replace(
+      "float v = luminance( texel.xyz );",
+      "float v = luminance( texel.xyz );\n\t\t\ttexel.rgb *= min( 1.0, 2.5 / max( v, 1e-4 ) );",
+    );
+    bright.uniforms.smoothWidth.value = 0.25;
+    this.bloom.enabled = false;
+    this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    this.grade.enabled = false;
+    this.composer.addPass(this.grade);
     this.composer.addPass(this.aa);
     this.smaa.enabled = false;
     this.composer.addPass(this.smaa);
@@ -588,12 +607,28 @@ export class Game {
       this.ao.ssaoMaterial.defines.KERNEL_SIZE = f.aoSamples;
       this.ao.ssaoMaterial.needsUpdate = true;
     }
+    this.bloom.enabled = f.bloom > 0;
+    this.bloom.strength = f.bloom;
+    this.bloom.radius = f.bloomRadius;
+    this.grade.enabled = f.grade;
+    this.glowArena();
     this.aa.enabled = f.antialiasing === "fxaa";
     this.smaa.enabled = f.antialiasing === "smaa";
     this.atmosphere.setCount(f.atmosphere);
     setAnisotropy(
       f.maxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 0,
     );
+  }
+  /** Flames and lamp glass burn brighter than white while bloom is on, so they glow. */
+  private glowArena() {
+    const boost = this.fidelity.bloom > 0;
+    this.arena?.root.traverse((o) => {
+      const m = (o as T.Mesh).material;
+      if (!(m instanceof T.MeshBasicMaterial) || !m.userData.glow) return;
+      m.userData.base ??= m.color.getHex();
+      m.color.setHex(m.userData.base);
+      if (boost) m.color.multiplyScalar(m.userData.glow);
+    });
   }
   saveOptions() {
     try {
@@ -632,6 +667,7 @@ export class Game {
     this.composer.setSize(w, h);
     const ratio = this.renderer.getPixelRatio();
     this.aa.uniforms.resolution.value.set(1 / (w * ratio), 1 / (h * ratio));
+    this.grade.uniforms.aspect.value = w / h;
     const ao = this.fidelity.ao || 0.5;
     this.ao.setSize(
       Math.max(1, Math.floor(w * ratio * ao)),
@@ -927,6 +963,7 @@ export class Game {
     this.damageLog = {};
     this.arena?.dispose();
     this.arena = buildArena(this.scene, LEVELS[this.level], this.room);
+    this.glowArena();
     this.physics.reset(this.arena.colliders);
     this.renderer.shadowMap.needsUpdate = true;
     // Each arena's lights change the shader variants; compile them before the fight.
@@ -3098,6 +3135,8 @@ export class Game {
           ? this.ao.width / this.renderer.domElement.width
           : 0,
         aoSamples: this.ao.kernel.length,
+        bloom: this.bloom.enabled ? this.bloom.strength : 0,
+        grade: this.grade.enabled,
         antialiasing: this.smaa.enabled
           ? "smaa"
           : this.aa.enabled

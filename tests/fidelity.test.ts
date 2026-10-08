@@ -31,6 +31,16 @@ describe("Graphics fidelity", () => {
     expect(m.atmosphere).toBe(128);
     expect(m.sparks).toBe(1);
     expect(m.maxAnisotropy).toBe(false);
+    expect(m.bloom).toBe(0);
+    expect(m.grade).toBe(false);
+    expect(FIDELITY[0].bloom).toBe(0);
+    expect(FIDELITY[0].grade).toBe(false);
+  });
+  it("adds bloom and the grade on High, and more bloom on Ultra", () => {
+    expect(FIDELITY[2].bloom).toBeGreaterThan(0);
+    expect(FIDELITY[2].grade).toBe(true);
+    expect(FIDELITY[3].bloom).toBeGreaterThan(FIDELITY[2].bloom);
+    expect(FIDELITY[3].grade).toBe(true);
   });
   it("climbs from Low to Ultra in every cost", () => {
     for (let i = 1; i < FIDELITY.length; i++) {

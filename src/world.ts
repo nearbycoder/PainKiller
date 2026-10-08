@@ -516,6 +516,9 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
   });
   const flame = new T.MeshBasicMaterial({ color: 0xffba61 });
   const glow = new T.MeshBasicMaterial({ color: colors[3] });
+  // With bloom on (High and Ultra) these burn brighter than white, so they glow.
+  flame.userData.glow = 2.6;
+  glow.userData.glow = 1.6;
   const red = new T.MeshStandardMaterial({ color: 0x591e24, roughness: 1 });
   if (art.ready) {
     for (const [target, name] of [

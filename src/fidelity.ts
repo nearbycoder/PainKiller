@@ -22,6 +22,12 @@ export interface Fidelity {
   sparks: number;
   /** Raise every texture to the GPU's highest anisotropic filtering. */
   maxAnisotropy: boolean;
+  /** Bloom strength over the brightest parts of the image; 0 is off. */
+  bloom: number;
+  /** How far the bloom spreads (0–1). */
+  bloomRadius: number;
+  /** The colour grade and vignette after tone mapping. */
+  grade: boolean;
 }
 export const FIDELITY: Fidelity[] = [
   {
@@ -36,6 +42,9 @@ export const FIDELITY: Fidelity[] = [
     atmosphere: 64,
     sparks: 0.5,
     maxAnisotropy: false,
+    bloom: 0,
+    bloomRadius: 0,
+    grade: false,
   },
   {
     name: "Medium",
@@ -49,10 +58,13 @@ export const FIDELITY: Fidelity[] = [
     atmosphere: 128,
     sparks: 1,
     maxAnisotropy: false,
+    bloom: 0,
+    bloomRadius: 0,
+    grade: false,
   },
   {
     name: "High",
-    note: "Sharper shadows and half-resolution ambient occlusion.",
+    note: "Bloom on lamps, fire and muzzle flashes, a colour grade, sharper shadows and half-resolution ambient occlusion.",
     shadowMap: 2048,
     shadowRate: 30,
     ao: 0.5,
@@ -62,10 +74,13 @@ export const FIDELITY: Fidelity[] = [
     atmosphere: 128,
     sparks: 1,
     maxAnisotropy: false,
+    bloom: 0.4,
+    bloomRadius: 0.3,
+    grade: true,
   },
   {
     name: "Ultra",
-    note: "4K shadows refreshed every frame, full-resolution ambient occlusion, SMAA, the sharpest texture filtering, denser particles and up to 2× pixel density.",
+    note: "Everything in High with stronger bloom, 4K shadows refreshed every frame, full-resolution ambient occlusion, SMAA, the sharpest texture filtering, denser particles and up to 2× pixel density.",
     shadowMap: 4096,
     shadowRate: 60,
     ao: 1,
@@ -75,6 +90,9 @@ export const FIDELITY: Fidelity[] = [
     atmosphere: 384,
     sparks: 2,
     maxAnisotropy: true,
+    bloom: 0.5,
+    bloomRadius: 0.42,
+    grade: true,
   },
 ];
 export const DEFAULT_FIDELITY = 1;

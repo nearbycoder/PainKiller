@@ -99,6 +99,9 @@ for (const [level, entry] of Object.entries(report)) {
       glyphs: core.length,
       contrast: core.length >= 8 ? +ratio(lc, lr).toFixed(2) : null,
       bare: +ratio(lum(...color), median(backs)).toFixed(2),
+      // The glyphs against the scene behind the label's box, halo and shade left out
+      // (round 12): steadier when the background itself changes.
+      scene: core.length >= 8 ? +ratio(lc, median(backs)).toFixed(2) : null,
     });
   }
 }
