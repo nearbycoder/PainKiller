@@ -187,6 +187,92 @@
     },
   );
 
+  // R10-3: the arsenal fits the smallest window, and scrollbars match the menus.
+  const openPage = async (page, tab) => {
+    g.setMode("playing");
+    g.setMode("menu");
+    document
+      .querySelector(`[data-action="page"][data-value="${page}"]`)
+      .click();
+    if (tab)
+      document
+        .querySelector(`[data-action="settings-tab"][data-value="${tab}"]`)
+        .click();
+    await frames(2);
+  };
+  await check(
+    "no weapon's arsenal page scrolls, down to 960 × 600",
+    async () => {
+      const seen = [];
+      for (const [w, h] of [
+        [960, 600],
+        [1366, 657],
+        [1280, 720],
+        [1024, 768],
+        [1920, 1080],
+        [1280, 800],
+      ]) {
+        await resize(w, h);
+        await openPage("arsenal");
+        for (let i = 0; i < 5; i++) {
+          document
+            .querySelector(`[data-action="weapon"][data-value="${i}"]`)
+            .click();
+          await frames(1);
+          const section = document.querySelector(".weapon-inscription"),
+            box = section.getBoundingClientRect();
+          assert(
+            section.scrollHeight <= section.clientHeight + 1,
+            `weapon ${i + 1} scrolls at ${w}×${h}: ${section.scrollHeight} > ${section.clientHeight}`,
+          );
+          for (const part of section.querySelectorAll(
+            ".fire-modes p, .weapon-trick",
+          )) {
+            const r = part.getBoundingClientRect();
+            assert(
+              r.top >= box.top - 1 &&
+                r.bottom <= box.bottom + 1 &&
+                r.bottom <= innerHeight,
+              `${part.className || "fire mode"} of weapon ${i + 1} hidden at ${w}×${h}`,
+            );
+          }
+        }
+        seen.push(`${w}×${h}`);
+      }
+      g.setMode("menu");
+      return seen.join(", ");
+    },
+  );
+  await check(
+    "every scrolling menu panel has the menus' scrollbar",
+    async () => {
+      await resize(960, 600);
+      const found = [];
+      for (const [page, tab] of [
+        ["settings", "video"],
+        ["settings", "controls"],
+        ["settings", "gameplay"],
+        ["campaign"],
+        ["arsenal"],
+        ["tarot"],
+      ]) {
+        await openPage(page, tab);
+        for (const el of document.querySelectorAll(".game-menu *")) {
+          const s = getComputedStyle(el);
+          if (!/auto|scroll/.test(s.overflowY)) continue;
+          assert(
+            s.scrollbarColor !== "auto" && s.scrollbarWidth === "thin",
+            `${el.className} on ${tab || page}: ${s.scrollbarColor} / ${s.scrollbarWidth}`,
+          );
+          if (el.scrollHeight > el.clientHeight)
+            found.push(`${el.className} (${tab || page})`);
+        }
+      }
+      g.setMode("menu");
+      return "scrolling: " + found.join(", ");
+    },
+  );
+
   await resize(...startSize);
   g.applySettings(options);
   g.saveOptions();

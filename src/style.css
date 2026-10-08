@@ -90,6 +90,8 @@ body[data-mode="dead"] #world {
   pointer-events: auto;
   background: radial-gradient(ellipse at 50% 48%, #130a0560, transparent 65%);
   user-select: none;
+  /* Inherited: any panel that scrolls gets the menus' bronze bar, not the default. */
+  scrollbar-color: #785232 transparent;
 }
 .menu-vignette {
   position: absolute;
@@ -842,6 +844,7 @@ body[data-mode="dead"] #world {
     inset 0 0 0 6px #79654045;
   background: radial-gradient(ellipse, #34231250, #080806);
   overflow: auto;
+  scrollbar-width: thin;
 }
 .tarot-card.selected {
   border-color: #b0874c;
@@ -1057,6 +1060,26 @@ body[data-mode="dead"] #world {
   }
   to {
     opacity: 1;
+  }
+}
+/* Each weapon's page, trick included, fits without scrolling in windows down to 600 px
+   tall (a 1280 × 720 window, a laptop's browser, the desktop window's minimum). */
+@media (max-height: 760px) {
+  .weapon-etching {
+    height: clamp(56px, 10vh, 120px);
+  }
+  .weapon-inscription h2 {
+    font-size: 26px;
+  }
+  .arsenal-layout {
+    margin-top: 10px;
+  }
+  .weapon-inscription > p,
+  .fire-modes p {
+    margin: 8px 0;
+  }
+  .weapon-inscription > p.weapon-trick {
+    font-size: 14px;
   }
 }
 @media (max-height: 700px) {
