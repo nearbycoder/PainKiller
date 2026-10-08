@@ -21,9 +21,9 @@
 
 ## Trailer
 
-<a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" alt="Play the Purgatory feature trailer (1:57)" width="100%"></a>
+<a href="docs/media/trailer.mp4"><img src="docs/media/trailer-poster.jpg" alt="Play the Purgatory feature trailer (2:02)" width="100%"></a>
 
-_Feature trailer · 1:57 · 1080p · the game's own synthesized music and sound effects. Click the poster to open the [37 MB MP4](docs/media/trailer.mp4); GitHub serves it as a download. All footage is captured from the running game: scripted, rendered in virtual time and edited by [`tools/make_trailer.py`](tools/make_trailer.py)._
+_Feature trailer · 2:02 · 1080p · recorded on the **Ultra** graphics step · the game's own synthesized sound effects and chapter themes, no narration. Click the poster to open the [42 MB MP4](docs/media/trailer.mp4); GitHub serves it as a download. Every frame is the running game, scripted and rendered offscreen in virtual time by [`tools/make_trailer.py`](tools/make_trailer.py); only the captions and title cards are laid over it, in the game's own typefaces._
 
 ## About
 
@@ -32,6 +32,27 @@ You are a soul with a shotgun and nowhere left to go. Purgatory throws you into 
 It is built around **momentum**: there is no reload key, every weapon has two fire modes, and the best tools are combinations: freeze an enemy then shatter it, shoot your own grenade with a stake to launch it, or fire both barrels of the Tempest to call down a storm. Every kill leaves a soul; gather 66 and you become the Wraith, invulnerable and four times as deadly for fifteen seconds.
 
 It runs as an offline Linux desktop game, or in any WebGL 2 browser. No account, server, or internet connection is needed.
+
+## Play it
+
+Grab a build from [**Releases**](https://github.com/nearbycoder/PainKiller/releases/latest):
+
+> **The published release is older than this page.** v0.1.0 (October 4, 2026, commit `4672978`) was built before the twelve rounds of improvements recorded in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md). It has three graphics quality buttons instead of the four-step Graphics fidelity slider, no bloom or colour grade, no key or controller rebinding, one music loop instead of five chapter themes, and no low-health warning, death recap, difficulty choice at the start of a campaign or mid-sector resume, among other things. The trailer and screenshots here show the current code. Until a new release is published, [build from source](#build-from-source) to play the game described on this page.
+
+| Download                               | How to run                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Purgatory-<version>-x86_64.AppImage`  | `chmod +x` it and run it. Without FUSE 2, run it with `--appimage-extract-and-run`.                                                                                                                                                                                                                                                                                                                                                                |
+| `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed.                                                                                                                                                                                                                                                                                                                                                                                |
+| `purgatory-<version>-web.zip`          | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models, with a progress bar counted in megabytes and a _Try again_ button if a download fails; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
+
+### System requirements
+
+- **Desktop:** Linux x86-64 with a graphical desktop and WebGL 2 capable graphics drivers. The v0.1.0 downloads are 169 MB (AppImage) and 182 MB (tar.gz).
+- **Browser:** any browser with WebGL 2. About 50 MB downloads before the menu (the v0.1.0 web zip is 45 MB).
+- **Graphics:** aimed at mid-range desktop GPUs on the default Medium step, with Low for weak and integrated graphics. All four steps have been timed on one machine only, an AMD Radeon 8060S integrated GPU, where even Ultra draws a 1920 × 1080 frame in about 3 ms; no weak or older GPU has been tried.
+- **Input:** keyboard and mouse, a standard-mapping controller, or touch.
+
+The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`) and in Firefox 157 on Linux (headless, on the GPU); Safari has not been tried. Desktop saves go to `~/.config/Purgatory/`, and the desktop window reopens at the size (and, where the desktop allows it, the position) it closed at, maximized or fullscreen if you left it so.
 
 ## How to play
 
@@ -71,7 +92,7 @@ These are the defaults. Every keyboard and mouse action can be rebound to any ke
 
 Shamblers, skeletons and **hounds** rush you; **monks** and floating **witches** throw hellfire from range; **knights** carry swords; **brutes** soak up punishment. Every melee attack winds up with an audible growl, panned toward the attacker, before it lands, so you can dodge it. Each chapter ends with a **general**: projectile volleys, rage phases at 70% and 35% health that summon reinforcements, and expanding shockwaves you have to jump.
 
-![A chapter general's boss bar, shockwave and hellfire in Dune Sepulchre](docs/media/screenshots/05-general.jpg)
+![A chapter general, its boss bar and an expanding shockwave ring in Dune Sepulchre](docs/media/screenshots/05-general.jpg)
 
 ### Souls and the Wraith
 
@@ -87,9 +108,39 @@ Find a level's hidden relic or collect 25 souls there to earn that chapter's car
 
 Health, armor and ammunition sit in every arena and drop from the fallen. Every sector hides a relic. Corpses are articulated **Rapier** ragdolls. Explosions throw them, stakes carry them and can pin them to walls, and grenades bounce with real restitution.
 
+### Graphics fidelity
+
+One slider under **Options › Video** with four steps. Medium is the default; every step plays the same fight, only the picture changes.
+
+| Step       | What it draws                                                                                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Low**    | No shadows, ambient occlusion or antialiasing; half the sparks and drifting motes; at most one rendered pixel per screen pixel. For weak and integrated graphics.                    |
+| **Medium** | 1024-pixel sun shadows refreshed 30 times a second and FXAA antialiasing; up to 1.5× pixel density on HiDPI displays.                                                                     |
+| **High**   | Bloom on lamps, fire, blasts and muzzle flashes, a colour grade and vignette, 2048-pixel shadows and half-resolution ambient occlusion.                                                     |
+| **Ultra**  | Stronger bloom, 4096-pixel shadows refreshed every frame, full-resolution ambient occlusion, SMAA antialiasing, the sharpest texture filtering, denser particles and up to 2× pixel density. |
+
+![The same frame of Hallowed Ground, Frostbound Crossing and Cathedral of Ash on Low, Medium, High and Ultra](docs/media/improvements/round12/r12-1-fidelity.jpg)
+
+Render times for each step are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#graphics-fidelity-round-12).
+
 ### Options
 
-A **Graphics fidelity** slider with four steps: Low (no shadows or post-processing, fewer particles, one rendered pixel per screen pixel, for weak and integrated graphics), Medium (sun shadows and FXAA; the default), High (bloom on lamps, fire and muzzle flashes, a colour grade and vignette, sharper shadows, ambient occlusion) and Ultra (stronger bloom, 4K shadows refreshed every frame, full-resolution ambient occlusion, SMAA, the sharpest texture filtering, denser particles and up to 2× pixel density). Also resolution scale with optional adaptive resolution, an optional frame-rate readout (frames per second and the slowest frame of each second), brightness, field of view, an interface scale (75–150%) for the in-game HUD (reduced as far as a small window needs), a crosshair in four styles, five colours and 75–200% size (each outlined so it reads on snow; the rest of the HUD sits on a soft edge shade with a dark halo for the same reason), and independent master, effects and music volume. Look sensitivity (mouse and touch) and stick look speed are set separately, the stick dead zone (5–30%) and a precise look response (slower near the centre, the same at full tilt) can be set for worn or twitchy controllers, inverted look applies to every input, and controller vibration (when hit, near explosions, and as the Wraith wakes) can be turned off. Firing a mode with no ammunition clicks and switches to the highest weapon that can still fire from that button (the Thresher never runs dry), the ammunition counter turns red when a reserve is low, and the weapon bar shows every weapon's two reserves and marks one with nothing left; the switch can be turned off under Gameplay. At a quarter of your health or less the health readout turns red, the screen edges darken red and a heartbeat plays, quickening as health falls; it can be turned off under Gameplay. One-time combat hints explain the weapon combos, souls and the tarot the first time each comes up, worded for keyboard, controller or touch, and can be turned off under Gameplay. Three difficulties are available: **Reverie**, **Purgatory** and **Torment**; a new campaign asks which one you want, and it can be changed at any time under Gameplay. Settings and campaign progress save locally.
+- **Video:** Graphics fidelity, resolution scale with optional adaptive resolution, brightness, field of view, interface scale (75–150%) for the in-game HUD (reduced as far as a small window needs), an optional frame-rate readout (frames per second and the slowest frame of each second), and fullscreen (F11 on the desktop).
+- **Audio:** master, sound effects and music volume, and the combat music on or off.
+- **Controls:** look sensitivity (mouse and touch) and stick look speed set separately, stick dead zone (5–30%), a precise look response (slower near the centre, the same at full tilt), swapped sticks, hold or toggle sprint, controller vibration (when hit, near explosions, and as the Wraith wakes), inverted look on every input, and rebinding of every keyboard, mouse and controller action.
+- **Gameplay:** difficulty (**Reverie**, **Purgatory** or **Torment**; a new campaign asks which one you want), camera bob, the crosshair in four styles, five colours and 75–200% size, switching weapons when one runs dry, the low-health warning and the one-time combat hints.
+
+Firing a mode with no ammunition clicks and switches to the highest weapon that can still fire from that button (the Thresher never runs dry); the ammunition counter turns red when a reserve is low, and the weapon bar shows every weapon's two reserves and marks one with nothing left. One-time combat hints explain the weapon combos, souls and the tarot the first time each comes up, worded for keyboard, controller or touch. Arenas, gates and retries fade in from black, menus fade in, and buttons light up when pressed. Settings and campaign progress save locally, and _Restore all defaults_ asks before it resets anything.
+
+### Accessibility
+
+- Every keyboard, mouse and controller action can be rebound, two keys per action; the sticks can be swapped for left-handed play and sprint can be toggled instead of held.
+- Danger is shown as well as heard: red arcs around the crosshair point to whatever hurt you, a dashed arc warns of hellfire from off-screen, and chevrons point to the last hidden enemies and to the open gate. Melee wind-ups and hellfire casts are stereo-panned toward the attacker.
+- At a quarter of your health or less the health readout turns red and pulses, the screen edges darken red and a heartbeat plays, quickening as health falls; it can be turned off.
+- The HUD sits on a soft edge shade with a dark halo, and its contrast against bright snow and sand was measured: small labels at least 3:1 and numbers and messages at least 4.5:1 in the views measured (see [Status](#status-and-known-issues)). The HUD scales from 75% to 150%, and the crosshair can change style, colour and size; each style is outlined so it reads on snow.
+- Camera bob can be turned off (_Camera movement: Reduced_). With the system's reduced-motion setting on, menus fade in over 0.12 s instead of animating in, arena fades shorten to 0.3 s, and the pulsing of the incoming-fire arc and the low health readout stops.
+- Menus work with the mouse, arrow keys + Enter + Esc, or the D-pad + A/B, and the key line at the bottom of each menu names the buttons for the input in use.
+- The death screen names what killed you, lists what hurt you most in that attempt and says how that attack is avoided.
 
 ## Content
 
@@ -108,20 +159,8 @@ That makes **24 levels, 104 sectors and 22 environment themes**, ending in a fin
 |                                                                                                                |                                                                                                      |
 | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | ![Title screen over the moonlit cemetery](docs/media/screenshots/01-title.jpg)                                 | ![A rocket bursting inside a horde in Hallowed Ground](docs/media/screenshots/02-cemetery-horde.jpg) |
-| ![Chain lightning arcing through skeletons on The Silent Stage](docs/media/screenshots/04-chain-lightning.jpg) | ![Late game: a rocket volley in The Abyss](docs/media/screenshots/07-the-abyss.jpg)                  |
+| ![Chain lightning arcing through skeletons on The Silent Stage](docs/media/screenshots/04-chain-lightning.jpg) | ![Late game: a rocket blast in The Abyss](docs/media/screenshots/07-the-abyss.jpg)                  |
 | ![Level select with chapter tabs and environment previews](docs/media/screenshots/08-level-select.jpg)         | ![The Grave Tarot card screen](docs/media/screenshots/09-grave-tarot.jpg)                            |
-
-## Play it
-
-Grab the latest build from [**Releases**](https://github.com/nearbycoder/PainKiller/releases/latest):
-
-| Download                               | How to run                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Purgatory-<version>-x86_64.AppImage`  | `chmod +x` it and run it. Without FUSE 2, run it with `--appimage-extract-and-run`.                                                                                                                                                                                                                                                                                                                                                                |
-| `purgatory-<version>-linux-x64.tar.gz` | Extract it and run `./purgatory` inside. No installation is needed.                                                                                                                                                                                                                                                                                                                                                                                |
-| `purgatory-<version>-web.zip`          | Serve the folder with any static file server (for example `npx serve` or `python3 -m http.server`) and open it in a WebGL 2 browser. Saves use local storage. The menu appears after about 50 MB of models, with a progress bar counted in megabytes and a _Try again_ button if a download fails; the cathedral, crypt and foundry scenes download in the background, and a level that needs one still in flight waits on a short loading screen. |
-
-The tested target is Linux x86-64 with a graphical desktop and WebGL 2 capable drivers. Windows and macOS builds have not been made or tested. The web build has been tested in Chromium (Electron and `chrome-headless-shell`) and in Firefox 157 on Linux (headless, on the GPU); Safari has not been tried. Desktop saves go to `~/.config/Purgatory/`, and the desktop window reopens at the size (and, where the desktop allows it, the position) it closed at, maximized or fullscreen if you left it so.
 
 ## Build from source
 
@@ -167,7 +206,7 @@ See [art/README.md](art/README.md) for what each script builds and the art that 
 
 **Level-select previews.** `npx electron tools/make-previews.cjs` renders `public/assets/previews/level-N.jpg` from the game: each level's first-sector start view, without HUD or weapon.
 
-**Trailer, screenshots and teaser.** `python3 tools/make_trailer.py` renders scripted gameplay offscreen in virtual time, so every frame is identical on every run. It then mixes the game's own synthesized audio (with music ducking under effects) and writes everything in `docs/media/`.
+**Trailer, screenshots and teaser.** `python3 tools/make_trailer.py` starts its own dev server (`--port`, default 5199) and renders the scripted shots in [`tools/media/shots.js`](tools/media/shots.js) offscreen at 1920 × 1080 on the Ultra step, in virtual time and a throwaway browser profile, so every frame is identical on every run whatever the machine's load. It then replays the game's own synthesized sound effects in stereo, scores the cut with the chapter themes from `src/music.ts` (ducking under the effects), and writes the trailer, poster, teaser and README screenshots to `docs/media/`. Intermediate files and a quality-check contact sheet go to `captures/` (git-ignored).
 
 ## Project structure
 
@@ -180,15 +219,17 @@ src/
   physics.ts         Rapier ragdolls, grenades and stake pinning
   combat-effects.ts  muzzle flashes, smoke, impacts, explosions, shell casings
   audio.ts           synthesized sound effects; music.ts: chapter themes and their scheduling
+  fidelity.ts        the four Graphics fidelity steps; grade.ts: colour grade and vignette
   ui.ts, style.css   menus, options, level select, tarot, HUD; controls.ts: gamepad + touch
-  hints.ts           one-time combat hints
+  settings.ts        saved options; bindings.ts: keyboard, mouse and controller rebinding
+  hints.ts           one-time combat hints; messages.ts: the HUD's message queue; recap.ts: death recap
   data.ts            campaign, chapters, weapons and tarot definitions; core.ts: pure combat/save logic
 desktop/             Electron main process and narrow preload bridge (saves, fullscreen, quit)
 public/assets/       runtime GLB models, HDR sky, level-select previews
 tools/               Blender build scripts, asset fetcher, packaging, trailer pipeline (tools/media/)
 tests/               Vitest suites and in-browser scenario checks
 art/                 art pipeline notes and the CC0 asset manifest
-docs/                development notes and README media
+docs/                development notes, the improvement log and README media
 ```
 
 ## Tech highlights
@@ -213,7 +254,7 @@ Painkiller is a trademark of its respective owners and is mentioned here only to
 
 ## Status and known issues
 
-Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played start to finish, but it is not a finished commercial-quality game:
+Purgatory is a **playable prototype**. The whole campaign can be played start to finish, but it is not a finished commercial-quality game. The only published release is v0.1.0 from launch day, older than everything below (see [Play it](#play-it)); since then twelve rounds of fixes and features have landed on `main`, each with its plan, checks and results in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md).
 
 - Four themes (cemetery, cathedral, crypt, foundry) use Blender-authored scenes. The other 18 are compact procedural arenas. Each has its own ground (snow, sand, tile, marble, planks, cobbles, lava-cracked basalt and more) and some dressing, but they are much plainer than the authored scenes, and sectors reuse each theme's layout with varied cover.
 - The five generals share one rig and differ in attack patterns. Each has its own crown, antlers, horns, halo or wings, glowing eyes and colours, but these are pieces fixed to the shared skeleton, not bespoke models, and the colour differences are subtle under torchlight. The hound is procedural, and the humanoid enemies reuse two base rigs with costume variants.
@@ -224,7 +265,7 @@ Purgatory is a **playable prototype** (v0.1.0). The whole campaign can be played
 - The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run. It passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in Firefox, and Safari has not been tried.
 - Two round 8 behaviours are checked against simulated platform responses only. Holding the fight when the browser refuses the mouse is tested with a simulated pointer lock, since the offscreen test windows never get one and the shared desktop's mouse must not be grabbed. Reopening the desktop window maximized, fullscreen or at its old position is covered by unit tests only, because this Wayland desktop reports no window position and test windows must not cover the shared desktop; reopening at the old size was checked by launching the build twice.
 - The HUD's contrast over bright ground was measured at 1280 × 800 from each level's opening view (round 9), at eight headings in the three brightest arenas and a dark hall (round 10), and looking down at the ground, beside a rocket blast and in the chaingun's muzzle flash, with the mid-screen messages on screen (round 11): every small label at least 3:1, every number and message at least 4.5:1 there. Round 12 measured a crowded fight (a dozen enemies in front, firing), Wraith form and the low-health vignette in Frostbound Crossing and Hallowed Ground: everything held those targets except the health readout at low health, which faded to 1.6:1 at the low point of its pulse and now brightens instead (4.7:1 or more). Bloom and the vignette on High and Ultra left no small label under 3:1. These are still frozen frames; nobody has judged them in play.
-- Keyboard, mouse and controller buttons can be rebound and the sticks swapped; the touch layout is fixed. Saves resume the start of the current wave, not the exact moment you quit.
+- Keyboard, mouse and controller buttons can be rebound and the sticks swapped; the touch layout is fixed. Saves resume the start of the current wave, not the exact moment you quit. After the campaign's ending the title screen still offers _Continue · The Abyss · Sector 1_, which replays the last level; nothing marks the campaign as finished there yet.
 - The rendering quality and performance target is mid-range desktop GPUs. There is no published benchmark, though an optional readout (Options › Video) shows the frame rate. The Graphics fidelity steps were timed on one machine only (an AMD Radeon 8060S integrated GPU, where every step renders the measured scenes in a few milliseconds even at 1920 × 1080 and at 2× pixel density; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#graphics-fidelity-round-12)); no weak or older GPU has been tried, so whether Low is smooth on one is untested. High's and Ultra's bloom, colour grade and vignette (round 12) were tuned from still screenshots of three arenas; nobody has played with them on, and they may wash out or darken arenas that were not looked at. Motion between simulation steps is checked with synthetic frame timing at 60–144 Hz; nobody has looked at it on a real 120 or 144 Hz display. Shaders are compiled ahead of the fight, so the first title screen after launch holds one frame for about half a second, and starting a level holds about half a second.
 
 No open-source license has been chosen yet, so the code is all rights reserved by default for now. The third-party components keep their own licenses as listed above.
