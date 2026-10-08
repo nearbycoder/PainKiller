@@ -217,6 +217,44 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves (the existing _SHOCKWAVE / JUMP_ toast is now readable over snow and can no longer be hidden by another message, but its wording and timing are unchanged), and whether dying to a general should keep restarting the sector from wave 1; weapon progression; whether the chapter themes, the dry click and the heartbeat sound right once someone has listened; whether toggle sprint should be the default on controllers; whether the HUD's edge shade needs an off switch (it was not changed); whether the title should mark a finished campaign; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Not measured: HUD contrast in a crowded fight, in the Wraith's tint or under the low-health vignette. Human checks still needed: how the new message bands look in play, the menu key line with a physical controller and on a touchscreen, and from earlier rounds switching between touch and mouse on a real touchscreen, pausing and resuming with a real mouse, window position and maximized restore on X11, a 120/144 Hz display, a physical controller, phones, a person playing in Firefox, Safari, and the three listening clips.
 
+## Round 12 scope (2026-10-08)
+
+This round's focus, set by the owner, is AAA polish: graphics, UI and the feel of the menus, and a **Graphics Fidelity** slider of at least four steps. A fresh look at the running game (Hallowed Ground and Frostbound Crossing with a brute, a skeleton and a witch in view and a rocket in flight, at Low, Medium and High; the title, Options › Video, the pause and death screens; `tools/media/round12/look.js` and `screens.js`) found:
+
+- **The presets barely differ.** Low, Medium and High differ only in the sun's shadow and, on High, half-resolution ambient occlusion; at 1280 × 800 Low and High look almost the same. Nothing glows: lamps, braziers, the rocket's blast and the muzzle flash are flat bright shapes. There is no colour grading, and the snow and cobbles smear at grazing angles.
+- **Every cut is hard.** Starting a level, walking through a gate, _Rise again_ and every menu page change swap the whole picture in one frame. The menus have a `menu-reveal` animation in the style sheet that nothing uses, and buttons show no press.
+- **Round 11 left the HUD unmeasured** in a crowded fight, in the Wraith's tint and under the low-health vignette.
+
+Out of scope as before: difficulty and balance values, weapon progression, the controller toggle-sprint default, an off switch for the edge shade, meshopt, hosting, licensing, releases. Nothing here may change a seeded run: the default autopilot must match `main` in 60 of 60 runs.
+
+### R12-1. Graphics Fidelity: Low, Medium, High, Ultra
+
+_Graphics quality_ (Low / Medium / High buttons) becomes one **Graphics fidelity** slider with four steps, saved as the same `quality` option (old saves keep their step). The row names the step and says what it changes, and works with the mouse, the arrow keys and the D-pad. **Medium stays the default and draws exactly what it draws today.** Low gets lighter for weak hardware: at most one rendered pixel per screen pixel on HiDPI displays, half the airborne dust, ash and snow, and half the spark particles drawn. Ultra goes past today's High: full-resolution ambient occlusion with twice the samples, a 4096-pixel sun shadow refreshed every frame instead of at 30 Hz (High: 2048), SMAA in place of FXAA, the most anisotropic filtering the GPU offers on every texture, up to 2× pixel density on HiDPI displays, three times the airborne particles and denser sparks. Extra or hidden particles never touch the game's random sequence.
+
+**Accept / verify:** `tests/settings.test.ts` (the step range, old saves). A browser check that the slider is a four-step range named Low–Ultra, moves with the arrow keys and a synthetic D-pad, saves, and sets what each step should (shadow map size and refresh, AO on and its resolution, the AA pass, particle counts, the pixel ratio); that a seeded rocket fight ends in exactly the same state at all four steps; and round 4's no-mid-fight-shader-compile check extended to Ultra. **Same-frame screenshots** of three scenes (Hallowed Ground, Frostbound Crossing, Cathedral of Ash; a frozen frame with enemies and a blast) at every step, and **frame times** for each (median and 95th percentile of the frozen frame rendered 60 times with `gl.finish()`, at 1280 × 800 and 1920 × 1080, with the load noted), in a table in the results. Low must be the fastest step and Medium within noise of `main`'s Medium.
+
+### R12-2. Light that glows and a colour grade (High and Ultra)
+
+High and Ultra add bloom over the bright parts of the image (lamps, braziers, souls, hellfire, blasts and muzzle flashes, which already render above white) and a restrained colour grade after tone mapping: a little contrast, cool shadows and warm highlights, and a soft vignette. The game's palette and the brightness option keep working; Low and Medium are unchanged.
+
+**Accept / verify:** the same frozen frames before and after at High and Ultra, judged side by side, with the mean luminance of each frame reported (the grade must not darken a scene by more than about 10%). The frame-time table includes the cost. The HUD contrast check from round 11 (`tools/media/round11/hud-fight.js`) at High shows no reading lower than at Medium by more than the noise.
+
+### R12-3. Transitions and button feedback
+
+Every arena load (level start, a gate, _Rise again_, _Restart sector_, the title backdrop) fades in from black over about 0.7 s instead of cutting, and a new menu screen or page fades and rises in over about 0.25 s, only when the screen changes (not on every option click). Buttons show a press (a brief inset and brighter text) for the mouse, Enter and the controller's A alike. _prefers-reduced-motion_ keeps only short fades. The fade takes no clicks and changes no timing in the simulation.
+
+**Accept / verify:** a browser check that the fade starts opaque on each kind of load and is gone within a second, takes no clicks, and is shorter under reduced motion; that a screen change animates and a re-render of the same page does not; that the press class appears for a click, Enter and a synthetic A; and that a seeded fight through a gate matches with and without the fade. A capture sequence of a sector change and a page change.
+
+### R12-4. The HUD in a crowded fight, the Wraith's tint and the low-health vignette
+
+Round 9's frame-pair method (`tools/media/round9/hud-contrast.mjs`) in the three views round 11 left out: a crowded fight (a dozen enemies close in front, hellfire in flight), Wraith form and the low-health vignette at its strongest, in Frostbound Crossing and Hallowed Ground at Medium. Anything under round 10's targets (small labels 3:1, numbers and messages 4.5:1) gets fixed without changing the overlays' meaning.
+
+**Accept / verify:** the readings before and after in a table; rounds 9–11's HUD checks stay green. If nothing falls under the targets, that is reported as the result and nothing is changed.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run test:desktop-window`, `npm run build`, `npm run package:web` (the zip must not grow by more than a few kilobytes: everything here is code), `npm run format:check`, and the default autopilot run compared run by run with `main` (60 of 60). `~/.config/Purgatory` is checked before and after.
+
 ## Round 11 scope (2026-10-08)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round again comes from a fresh look at the running game: live fights in Frostbound Crossing and Dune Sepulchre with a scripted player, looking down at the ground, a rocket blast five metres ahead, the chaingun's muzzle flash, a general's sector, the gate, pause, death and every menu page at 1280 × 800. Round 10 left the HUD unmeasured looking down and mid-fight, so `tools/media/round11/hud-fight.js` takes round 9's frame pairs in 32 views (Frostbound Crossing, Hallowed Ground, Dune Sepulchre and Hall of Vigils; four level headings, two looking down, a blast and a muzzle flash), with a wave toast, the gate prompt and a general's name on screen. Four things stood out:
