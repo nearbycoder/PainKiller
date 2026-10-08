@@ -198,6 +198,45 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves; weapon progression; whether the chapter themes, the dry click and the heartbeat sound right once someone has listened; whether toggle sprint should be the default on controllers; whether the HUD's edge shade needs an off switch; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. Not measured: HUD contrast mid-fight (muzzle flashes, explosions) or looking down at the ground. Human checks still needed: the new key line with a physical controller and on a touchscreen, and from earlier rounds switching between touch and mouse on a real touchscreen, pausing and resuming with a real mouse, window position and maximized restore on X11, a 120/144 Hz display, a physical controller, phones, a person playing in Firefox, Safari, and the three listening clips.
 
+## Round 11 scope (2026-10-08)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round again comes from a fresh look at the running game: live fights in Frostbound Crossing and Dune Sepulchre with a scripted player, looking down at the ground, a rocket blast five metres ahead, the chaingun's muzzle flash, a general's sector, the gate, pause, death and every menu page at 1280 × 800. Round 10 left the HUD unmeasured looking down and mid-fight, so `tools/media/round11/hud-fight.js` takes round 9's frame pairs in 32 views (Frostbound Crossing, Hallowed Ground, Dune Sepulchre and Hall of Vigils; four level headings, two looking down, a blast and a muzzle flash), with a wave toast, the gate prompt and a general's name on screen. Four things stood out:
+
+- **The messages in the middle of the view vanish over snow.** The toast (wave announcements, _SHOCKWAVE / JUMP_, relics, the Wraith), the gate prompt and the general's name are thin pale text with a halo and nothing behind them, and the edge shade does not reach them. Worst readings: the toast 1.6:1 looking down at Frostbound Crossing's snow, the gate prompt 2.3:1, the general's name 1.5:1. The bottom HUD holds up in every view: no label under 4.4:1, and the blast and the muzzle flash lowered no reading.
+- **The top of the HUD fades when you look down at snow.** The top shade is lighter than the bottom one, and looking down at Frostbound Crossing the objective (_WAVE 1 / 3_) reads 2.7:1, the gate line (_GATES SEALED_) 2.9:1 and the chapter line 3.2:1.
+- **Messages cut each other off.** There is one toast, and every message replaces the one showing. In ten autopilot sectors (one seed, Purgatory) 95 messages were shown; _WRAITH FORM / UNCHAINED FOR 15 SECONDS_ and _THE GENERAL ENRAGES_ were replaced by _AMMUNITION REPLENISHED_ within a second, _25 SOULS / TAROT CONDITION MET_ by a shockwave warning and by _SECTOR CLEANSED_, and a general's name by the first shockwave, never to return.
+- **The ending's focused command stays at 3.9:1** (round 10): the menus' focus style puts an orange glow around the text of the focused command.
+
+Out of scope as before: difficulty and balance values (including a warning before the generals' shockwaves; the existing _SHOCKWAVE / JUMP_ toast keeps its wording and timing and only becomes readable), weapon progression, an off switch for the HUD edge shade, the controller toggle-sprint default, meshopt, hosting, licensing, releases.
+
+### R11-1. Messages in the middle of the view read over any ground
+
+The toast, the gate prompt and the general's name get a soft dark band behind them that fades out at its ends (like the hints' backing, lighter), so they read over snow, sand and sky without a box over the view. The text, its size, position and timing do not change, and the band takes no clicks.
+
+**Accept / verify:** the 32-view measurement before and after: the toast, the gate prompt and the general's name at least 4.5:1 in every view (1.5–2.3:1 at worst today), and no reading in Hall of Vigils lower than before by more than the noise (about 0.3). A browser check that the bands are in place, take no clicks and stay inside the window at 75–150% interface scale. A capture.
+
+### R11-2. The top of the HUD reads looking down
+
+Looking down at snow, the top labels (chapter line, gate line, objective and the kill counts) reach the targets round 10 set for level views: small labels at least 3:1 and numbers at least 4.5:1, without darkening a dark hall noticeably.
+
+**Accept / verify:** the same 32 views: no small label under 3:1 and no number under 4.5:1 anywhere, including the two looking-down views per arena; Hall of Vigils' readings and the background luminance in its top band compared before and after. Rounds 4, 7, 9 and 10's HUD checks stay green.
+
+### R11-3. Messages do not cut each other off
+
+Messages get a rank: urgent (_SHOCKWAVE / JUMP_), major (wave and sector announcements, level and general names, relics, tarot, the Wraith, the general enraging and falling, saving) and minor (feedback on the player's own action: _AMMUNITION REPLENISHED_, _OUT OF ROCKETS_, the storm orb's cost, the stake-propelled grenade, tarot not ready). A minor message shows on a smaller line under the main one instead of replacing it. A major message shows for at least two seconds (or its full time if shorter) before another major one takes its place; one that arrives sooner waits. An urgent message shows at once, and the message it interrupted comes back for the rest of its time. No message's wording or length changes, and nothing in the simulation reads the toast, so seeded runs are unchanged.
+
+**Accept / verify:** unit tests for the queue (ranks, the two-second minimum, waiting, resuming after an urgent message, a minor line that never hides a major one, expiry). Browser checks that replay the collisions the autopilot found: the Wraith then an ammunition pickup (both shown), 25 souls then the sector cleared (the tarot line keeps two seconds), a general's name then a shockwave (the name comes back), and a level's title then wave 1. The autopilot's message log on this branch: no major message replaced within two seconds. The default autopilot run matches `main` in 60 of 60 runs.
+
+### R11-4. The focused menu command reads at 4.5:1
+
+The focus style keeps the orange glow and the diamonds but no longer lights the pixels right around the letters, so the focused command reads as well as the others on every screen.
+
+**Accept / verify:** round 10's frame-pair measurement of the result and ending screens (`tools/media/round10/result-contrast.js`) and the same for the title, pause and death screens: every focused command at least 4.5:1 (3.9:1 on the ending today), with the focused command still distinguishable from the others (its colour, glow and diamonds). Round 10's result-screen checks stay green. A capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run test:desktop-window`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run compared run by run with `main` (nothing here changes combat; all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 10 scope (2026-10-07)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round again comes from a fresh look at the running game: a fight in Frostbound Crossing turned through four headings, a general's sector, pause, death, the result and ending screens, and every menu page at 960 × 600 (the desktop window's minimum), 1366 × 657 (a small laptop's browser) and 1280 × 800. Three things stood out, plus round 9's open HUD measurement:
