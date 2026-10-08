@@ -179,6 +179,45 @@ No run timed out. Run 1 looked much easier on the generals, but the next three r
 
 **Still open / owner decisions:** the difficulty direction, including a warning before the generals' shockwaves; weapon progression; whether the chapter themes, the dry click and the heartbeat sound right once someone has listened; whether toggle sprint should be the default on controllers; meshopt compression (needs a tool install); hosting the web build; Windows and macOS builds; bespoke general models; licensing and releases. New: whether the HUD's edge shade suits the look (it is always on; an option could turn it off). Human checks still needed: switching between touch and mouse on a real touchscreen laptop or tablet (R9-1), the HUD over bright ground while actually playing rather than on opening views (R9-2), and from earlier rounds pausing and resuming with a real mouse, window position and maximized restore on X11, a 120/144 Hz display, a physical controller, phones, a person playing in Firefox, Safari, and the three listening clips.
 
+## Round 10 scope (2026-10-07)
+
+The ranked list is done apart from owner decisions and work that cannot be tested here, so this round again comes from a fresh look at the running game: a fight in Frostbound Crossing turned through four headings, a general's sector, pause, death, the result and ending screens, and every menu page at 960 × 600 (the desktop window's minimum), 1366 × 657 (a small laptop's browser) and 1280 × 800. Three things stood out, plus round 9's open HUD measurement:
+
+- **The result screen vanishes over a bright arena.** It shows the level you just cleared, sharp and undimmed, behind small dark-gold text. Over Frostbound Crossing's snow the four stat labels (_Enemies slain_, _Souls taken_, _Relics found_, _Time_) cannot be read at all and _The road goes deeper._ barely; over Hallowed Ground's lamp-lit path the labels are lost too.
+- **The arsenal scrolls at the smallest window, with a white scrollbar.** At 960 × 600 every weapon's page scrolls (324 of 382 pixels shown) and the _Trick_ line is out of sight; the scrollbar is the browser's bright default, the only one in the menus that is not styled. At 1366 × 657 it still scrolls by 14 pixels.
+- **The menu key line is split across the frame and names only the keyboard.** On every menu the ↑ sits inside the bottom-left frame corner, apart from ↓ _Select_, and with a controller (or in the touch layout) it still reads ↑ ↓ _Enter_ _Esc_.
+- **Round 9 measured the HUD on opening views only.** Frostbound Crossing's ammunition name was 2.8:1, and turning toward brighter snow or sky was not measured.
+
+Out of scope as before: difficulty and balance values (including a shockwave warning), weapon progression, whether the edge shade needs an off switch, the controller toggle-sprint default, meshopt, hosting, licensing, releases.
+
+### R10-1. The HUD reads at every heading
+
+Measure the HUD's labels at eight headings (every 45°) in the three brightest arenas (Frostbound Crossing, Hallowed Ground, Dune Sepulchre) and fix what falls short, without making a dark hall heavier.
+
+**Accept / verify:** the round 9 frame-pair method (`tools/media/round9/hud-contrast.*`), extended to headings: every small label at least 3:1 against the pixels around it, numbers at least 4.5:1, at all 24 views, including Frostbound Crossing's ammunition name; Hall of Vigils measured too and not darker than round 9 by more than the noise. Table before and after in DEVELOPMENT.md; round 9's HUD checks stay green. A capture.
+
+### R10-2. The result and ending screens read over any arena
+
+The level-complete and ending screens keep the cleared arena visible behind them but gain a soft dark backing under their text and the menus' halo on the small labels, so the kicker, title, subtitle, stats and their labels, the record line and the card line read over snow, sand and lamp-lit stone.
+
+**Accept / verify:** the same frame-pair measurement on the result screen over Frostbound Crossing, Hallowed Ground and Dune Sepulchre and on the ending over The Abyss: small text (kicker, subtitle, stat labels) at least 4.5:1 and everything else higher; before and after. A browser check that the backing is in place and the commands still work. A capture.
+
+### R10-3. The arsenal fits the smallest window
+
+Every weapon's page fits without scrolling at 960 × 600 and 1366 × 657, and any menu panel that does scroll uses the menus' styled scrollbar, not the browser's default.
+
+**Accept / verify:** browser checks at 960 × 600, 1366 × 657 and 1280 × 800: no weapon's page scrolls, the _Trick_ line and both fire modes are on screen, and every scrolling panel in the menus has the styled scrollbar. Round 9's arsenal checks stay green. Captures before and after.
+
+### R10-4. A menu key line that follows the input
+
+The ↑ ↓ arrows sit together with _Select_, and the line keeps clear of the frame corners at every window size. With a controller connected it names the controller's menu buttons (D-pad, A, B), as the in-game hints already do; in the touch layout, where menus are tapped, it is hidden.
+
+**Accept / verify:** browser checks at 960 × 600, 1280 × 800 and 1920 × 1080: the arrows' gap matches the other keys' and the line does not overlap a frame corner; a synthetic controller switches the line to the controller's buttons and disconnecting it switches back; a synthetic touch hides it and a mouse move brings it back. A capture.
+
+### Regression
+
+`npm test`, `npm run test:browser`, `npm run test:firefox`, `npm run test:desktop`, `npm run test:desktop-window`, `npm run build`, `npm run package:web`, `npm run format:check`, and the default autopilot run compared run by run with `main` (nothing here changes combat; all 60 runs should match). `~/.config/Purgatory` is checked before and after (it does not exist at the start of the round).
+
 ## Round 9 scope (2026-10-07)
 
 The ranked list is done apart from owner decisions and work that cannot be tested here, so this round's items again come from a fresh look at the running game (fights in Frostbound Crossing and Dune Sepulchre, the arsenal, pause, death and result screens, and an 860 px window) and from reading the input and HUD code. Four things stood out:
