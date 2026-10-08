@@ -351,8 +351,13 @@ export class Game {
   /** The colour grade and vignette (High and Ultra). */
   grade = new ShaderPass(GradeShader);
   weaponPass = new RenderPass(this.weaponScene, this.weaponCamera);
+  /** Black over the world (under the HUD and menus) that fades out as an arena loads. */
+  sceneFade = document.createElement("div");
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.sceneFade.id = "scene-fade";
+    this.sceneFade.setAttribute("aria-hidden", "true");
+    canvas.after(this.sceneFade);
     this.renderer = new T.WebGLRenderer({
       canvas,
       antialias: false,
@@ -618,6 +623,16 @@ export class Game {
     setAnisotropy(
       f.maxAnisotropy ? this.renderer.capabilities.getMaxAnisotropy() : 0,
     );
+  }
+  /**
+   * Start the world from black and fade it in (level start, a gate, a retry, the title's
+   * backdrop): a cut, softened. Only the picture: the simulation is not held.
+   */
+  fadeIn() {
+    const fade = this.sceneFade;
+    fade.classList.remove("on");
+    void fade.offsetWidth; // restart the animation
+    fade.classList.add("on");
   }
   /** Flames and lamp glass burn brighter than white while bloom is on, so they glow. */
   private glowArena() {
@@ -964,6 +979,7 @@ export class Game {
     this.arena?.dispose();
     this.arena = buildArena(this.scene, LEVELS[this.level], this.room);
     this.glowArena();
+    this.fadeIn();
     this.physics.reset(this.arena.colliders);
     this.renderer.shadowMap.needsUpdate = true;
     // Each arena's lights change the shader variants; compile them before the fight.

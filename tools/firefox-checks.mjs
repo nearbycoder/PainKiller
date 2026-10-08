@@ -10,8 +10,8 @@
 // never your own. A check's "__RUNNER__ size WxH" log resizes the viewport; Firefox has
 // no touch emulation here, so "__RUNNER__ touch on|off" is answered with
 // window.__RUNNER_TOUCH__ = false; "__RUNNER__ key <name>" presses a real key through
-// WebDriver BiDi input actions and then sets window.__RUNNER_KEY__. Exits non-zero if any check fails, a script throws, or the page logs
-// an error.
+// WebDriver BiDi input actions and then sets window.__RUNNER_KEY__. Exits non-zero if
+// any check fails, a script throws, or the page logs an error.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";

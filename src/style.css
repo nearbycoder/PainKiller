@@ -2335,3 +2335,79 @@ body:not(.touch-layout) #gate-prompt {
     width: 270px;
   }
 }
+/* Transitions (round 12): the world fades in from black as an arena loads, and a new
+   menu screen fades in. Neither moves anything, so layouts measure the same. */
+#scene-fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+#scene-fade.on {
+  animation: scene-fade 0.75s cubic-bezier(0.3, 0, 0.4, 1) both;
+}
+@keyframes scene-fade {
+  0%,
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.game-menu.entering {
+  animation: menu-reveal 0.2s ease-out both;
+}
+.game-menu main.entering,
+.confirm-dialog.entering {
+  animation: screen-in 0.26s ease-out both;
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+/* A press: the mouse button held, or the brief flash after Enter or the controller's A. */
+.menu-command:active,
+.menu-command.pressed {
+  color: #fff1d6;
+  text-shadow:
+    0 0 2px #000,
+    0 0 4px #000b,
+    0 0 24px #ff7a3cc0,
+    0 2px 2px #170700;
+  background: radial-gradient(ellipse, #c2491f70, transparent 70%);
+  transition: none;
+}
+.option-choices button:active,
+.option-choices button.pressed,
+.option-button:active,
+.option-button.pressed,
+.settings-categories button.pressed,
+.level-list button.pressed,
+.chapter-select button.pressed,
+.tarot-card.pressed,
+.back-command.pressed {
+  background: #b0603038;
+  border-color: #e0a86b90;
+  color: #fff1d6;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  #scene-fade.on {
+    animation-duration: 0.3s;
+  }
+  .game-menu main.entering,
+  .confirm-dialog.entering {
+    animation: menu-reveal 0.12s ease-out both;
+  }
+  .game-menu.entering {
+    animation: none;
+  }
+}

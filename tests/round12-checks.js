@@ -353,6 +353,206 @@
     },
   );
 
+  // R12-3: transitions and button feedback.
+  const fading = () => {
+    const [a] = g.sceneFade.getAnimations();
+    if (!a) return null;
+    const t = a.currentTime;
+    a.pause();
+    a.currentTime = 0;
+    const start = Number(getComputedStyle(g.sceneFade).opacity);
+    a.currentTime = t;
+    a.play();
+    return { start, duration: a.effect.getComputedTiming().endTime };
+  };
+  await check(
+    "R12-3 the world fades in from black on a level start, a gate and a retry, takes no clicks and is gone within a second",
+    async () => {
+      const seen = [];
+      const expectFade = async (what) => {
+        const f = fading();
+        assert(f, what + ": no fade");
+        assert(f.start > 0.99, `${what}: starts at ${f.start}`);
+        assert(f.duration <= 1000, `${what}: lasts ${f.duration} ms`);
+        assert(
+          getComputedStyle(g.sceneFade).pointerEvents === "none",
+          what + ": takes clicks",
+        );
+        seen.push(`${what} ${Math.round(f.duration)} ms`);
+      };
+      g.applySettings({ ...options, quality: 1 });
+      api.seed(3);
+      api.start(0, 0);
+      g.invulnerable = 1e9;
+      g.waveDelay = 1e9;
+      await expectFade("level start");
+      const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+      assert(hit !== g.sceneFade, "the fade is hit by the pointer");
+      await new Promise((r) => setTimeout(r, 1000));
+      await frames(2);
+      assert(
+        Number(getComputedStyle(g.sceneFade).opacity) === 0,
+        "still dark after a second",
+      );
+      g.enemies = [];
+      g.remaining = 0;
+      g.arenaCleared = true;
+      g.nextArena();
+      await expectFade("gate");
+      g.retry();
+      await expectFade("retry");
+      // Reduced motion keeps a short fade.
+      const reduced = [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((r) => r.media?.mediaText.includes("prefers-reduced-motion"))
+        .flatMap((r) => [...r.cssRules])
+        .find((r) => r.selectorText === "#scene-fade.on");
+      assert(
+        reduced && parseFloat(reduced.style.animationDuration) <= 0.3,
+        "no shorter fade under reduced motion",
+      );
+      seen.push(`reduced motion ${reduced.style.animationDuration}`);
+      return seen.join(", ");
+    },
+  );
+
+  await check(
+    "R12-3 a new menu screen fades in; a re-render of the same page does not",
+    async () => {
+      g.setMode("playing");
+      g.setMode("menu");
+      await frames(1);
+      click("page", "settings");
+      let main = document.querySelector("#app main");
+      assert(main.classList.contains("entering"), "Options did not fade in");
+      assert(main.getAnimations().length > 0, "no animation on Options");
+      click("settings-tab", "video");
+      click("option", "adaptiveResolution:false");
+      main = document.querySelector("#app main");
+      assert(
+        !main.classList.contains("entering"),
+        "an option change replayed the page's fade",
+      );
+      click("option", "adaptiveResolution:true");
+      // A confirmation dialog rises in too.
+      click("defaults");
+      assert(
+        document
+          .querySelector(".confirm-dialog")
+          ?.classList.contains("entering"),
+        "the dialog did not fade in",
+      );
+      click("cancel");
+      // The whole menu fades in when it appears over a fight (pause).
+      api.start(0, 0);
+      g.setMode("paused");
+      assert(
+        document.querySelector(".game-menu").classList.contains("entering"),
+        "the pause menu did not fade in",
+      );
+      return "Options, a dialog and the pause menu fade in; option changes do not";
+    },
+  );
+
+  await check(
+    "R12-3 a press shows for the mouse, a real Enter and the controller's A",
+    async () => {
+      const seen = [];
+      g.setMode("playing");
+      g.setMode("menu");
+      click("page", "settings");
+      click("settings-tab", "video");
+      // Mouse: a click on a choice lights the (re-rendered) choice.
+      click("option", "adaptiveResolution:false");
+      const choice = () =>
+        document.querySelector(
+          '[data-action="option"][data-value="adaptiveResolution:false"]',
+        );
+      assert(choice().classList.contains("pressed"), "click: no press");
+      await new Promise((r) => setTimeout(r, 250));
+      assert(!choice().classList.contains("pressed"), "the press stayed on");
+      seen.push("click");
+      // Enter, as a real key press.
+      const on = () =>
+        document.querySelector(
+          '[data-action="option"][data-value="adaptiveResolution:true"]',
+        );
+      on().focus();
+      if (await press("Enter")) {
+        assert(g.adaptiveResolution, "Enter did not choose");
+        assert(on().classList.contains("pressed"), "Enter: no press");
+        seen.push("Enter");
+      } else seen.push("(this runner cannot press real keys)");
+      await new Promise((r) => setTimeout(r, 250));
+      // The controller's A on the focused choice.
+      choice().focus();
+      g.controls.poll(0.016, [pad()]);
+      g.controls.poll(0.016, [pad([0])]);
+      g.controls.poll(0.016, [pad()]);
+      assert(!g.adaptiveResolution, "A did not choose");
+      assert(choice().classList.contains("pressed"), "A: no press");
+      seen.push("A");
+      g.applySettings({ ...g.settings(), adaptiveResolution: true });
+      // The focused command keeps round 11's dark halo while pressed.
+      g.setMode("playing");
+      g.setMode("menu");
+      const command = document.querySelector(".menu-command");
+      command.classList.add("pressed");
+      const shadow = getComputedStyle(command).textShadow;
+      command.classList.remove("pressed");
+      assert(
+        /^rgb\(0, 0, 0\) 0px 0px 2px/.test(shadow),
+        "pressed halo " + shadow,
+      );
+      return seen.join(", ");
+    },
+  );
+
+  await check(
+    "R12-3 the fade changes nothing in a seeded fight through a gate",
+    async () => {
+      const run = (fade) => {
+        const original = g.fadeIn;
+        if (!fade) g.fadeIn = () => {};
+        try {
+          api.seed(21);
+          api.start(0, 0);
+          g.invulnerable = 0;
+          for (let i = 0; i < 400; i++) {
+            g.mouse = [i % 50 < 30, false];
+            api.step(1);
+          }
+          g.enemies.forEach((e) => (e.hp = 0));
+          g.enemies = [];
+          g.remaining = 0;
+          g.arenaCleared = true;
+          g.nextArena();
+          for (let i = 0; i < 400; i++) {
+            g.mouse = [i % 50 < 30, false];
+            api.step(1);
+          }
+          g.mouse = [false, false];
+          const s = api.state();
+          delete s.fidelity;
+          return JSON.stringify({
+            ...s,
+            fps: 0,
+            drawCalls: 0,
+            triangles: 0,
+            tick: g.tick,
+            random: api.randomState(),
+          });
+        } finally {
+          g.fadeIn = original;
+        }
+      };
+      const a = run(true),
+        b = run(false);
+      assert(a === b, "the fight differed with the fade");
+      return `room ${JSON.parse(a).room}, identical`;
+    },
+  );
+
   g.applySettings(options);
   g.saveOptions();
   g.sound.setVolume(volume);

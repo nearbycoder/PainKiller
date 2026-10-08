@@ -59,6 +59,11 @@ export class UI {
   dialog = "";
   lastMode = "";
   lastHover = 0;
+  /** The screen last drawn (mode and page), so only a new one animates in. */
+  private lastScreen = "";
+  private lastDialog = "";
+  /** The control pressed last, to show the press across a re-render. */
+  private pressed = { at: -1e9, selector: "" };
   /** The binding slot waiting for a key or mouse button, if any. */
   rebinding: { action: Action; slot: number } | null = null;
   rebindNote = "";
@@ -113,6 +118,7 @@ export class UI {
       );
       if (target && !target.hasAttribute("disabled")) {
         game.sound.menu(true);
+        this.press(target);
         this.action(target.dataset.action!, target.dataset.value);
       }
     });
@@ -553,6 +559,7 @@ export class UI {
     document.body.dataset.mode = g.mode;
     document.body.dataset.menu = this.page;
     if (g.mode === "playing") {
+      this.lastScreen = "playing";
       this.renderHUD();
       return;
     }
@@ -594,6 +601,38 @@ export class UI {
     focus?.focus({ preventScroll: true });
     if (focus?.classList.contains("menu-command"))
       focus.classList.add("nav-current");
+    // A new screen fades in; a re-render of the same one (an option changed) does not.
+    const screen = `${g.mode}:${this.page}`;
+    if (screen !== this.lastScreen) {
+      this.root.querySelector("main")?.classList.add("entering");
+      if (this.lastScreen.split(":")[0] !== g.mode)
+        this.root.querySelector(".game-menu")?.classList.add("entering");
+    }
+    if (this.dialog && this.dialog !== this.lastDialog)
+      this.root.querySelector(".confirm-dialog")?.classList.add("entering");
+    this.lastScreen = screen;
+    this.lastDialog = this.dialog;
+    this.showPress();
+  }
+  /**
+   * Show a press on a control: the mouse, Enter and the controller's A all click, so all
+   * three light it the same way. A re-render keeps the press on the same control.
+   */
+  press(target: HTMLElement) {
+    const { action, value } = target.dataset;
+    this.pressed = {
+      at: performance.now(),
+      selector: `[data-action="${action}"]${value === undefined ? "" : `[data-value="${value}"]`}`,
+    };
+    this.showPress();
+  }
+  private showPress() {
+    const left = 170 - (performance.now() - this.pressed.at);
+    if (left <= 0 || !this.pressed.selector) return;
+    const el = this.root.querySelector<HTMLElement>(this.pressed.selector);
+    if (!el) return;
+    el.classList.add("pressed");
+    setTimeout(() => el.classList.remove("pressed"), left);
   }
   hasProgress() {
     const save = this.game.save;
