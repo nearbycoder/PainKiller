@@ -133,7 +133,7 @@
       const scrim = document.getElementById("hud-scrim"),
         shades = document.createElement("style");
       shades.textContent =
-        "#toast::before, #gate-prompt::before, #boss-hud::before { visibility: visible !important; }";
+        "#toast::before, #gate-prompt::before, #boss-name::before { visibility: visible !important; }";
       document.head.append(shades);
       document.getElementById("app").style.visibility = "hidden";
       if (scrim) scrim.style.visibility = "visible";

@@ -1864,6 +1864,8 @@ body[data-mode="dead"] #world {
   left: 10%;
   right: 10%;
   top: 25%;
+  width: fit-content;
+  margin: 0 auto;
   text-align: center;
   font-size: 14px;
   letter-spacing: 3px;
@@ -1882,6 +1884,33 @@ body[data-mode="dead"] #world {
   color: #bdf5cb;
   letter-spacing: 2px;
   text-shadow: var(--hud-halo);
+}
+/* Messages in the middle of the view sit where the edge shade does not reach, so each
+   has its own soft band behind it: it fades out at its ends and edges, with no box. */
+#toast,
+#gate-prompt,
+#boss-name {
+  isolation: isolate;
+}
+#toast::before,
+#gate-prompt::before,
+#boss-name::before {
+  content: "";
+  position: absolute;
+  inset: -0.9em -4.5em;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    closest-side,
+    #000000b8,
+    #00000094 45%,
+    #00000030 80%,
+    #0000
+  );
+}
+#toast:empty::before,
+#gate-prompt:empty::before {
+  display: none;
 }
 #mouse-prompt {
   position: absolute;
@@ -1986,9 +2015,12 @@ body[data-mode="dead"] #world {
   text-align: center;
 }
 #boss-hud > span {
+  position: relative;
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 3px;
-  color: #efb49a;
+  color: #f4c3ab;
+  text-shadow: var(--hud-halo);
 }
 #boss-hud > div {
   height: 5px;
