@@ -247,7 +247,11 @@ body[data-mode="dead"] #world {
 .menu-command:focus,
 .menu-command.nav-current {
   color: #f2d6a4;
+  /* A tight dark halo keeps the pixels right around the letters dark; the orange glow
+     shows beyond it. */
   text-shadow:
+    0 0 2px #000,
+    0 0 4px #000b,
     0 0 18px #e0552980,
     0 2px 2px #170700;
   background: radial-gradient(ellipse, #982b1440, transparent 68%);

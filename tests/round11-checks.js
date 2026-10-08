@@ -273,6 +273,59 @@
     return { titleSeconds: +(steps / 60).toFixed(2) };
   });
 
+  // R11-4: the focused command keeps its glow and diamonds over a tight dark halo.
+  await check(
+    "the focused menu command has a dark halo under its glow and stays distinct",
+    async () => {
+      const seen = [];
+      const look = async () => {
+        // Let the commands' colour and shadow transitions finish.
+        await new Promise((r) => setTimeout(r, 500));
+        const focused = document.querySelector(".menu-command.nav-current"),
+          other = document.querySelector(".menu-command:not(.nav-current)");
+        assert(focused, "no focused command");
+        const f = getComputedStyle(focused),
+          shadows = f.textShadow.split(/,(?![^(]*\))/).map((x) => x.trim());
+        // The first shadow is a tight black halo; the orange glow is still there.
+        assert(
+          /^rgb\(0, 0, 0\) 0px 0px 2px$/.test(shadows[0]),
+          "first shadow: " + shadows[0],
+        );
+        assert(
+          shadows.some((x) => /rgba\(224, 85, 41/.test(x) && /18px$/.test(x)),
+          "no orange glow: " + f.textShadow,
+        );
+        const mark = getComputedStyle(focused.querySelector(".command-mark"));
+        assert(mark.opacity === "1", "diamonds hidden: " + mark.opacity);
+        if (other) {
+          const o = getComputedStyle(other);
+          assert(o.color !== f.color, "same colour as the others: " + f.color);
+          assert(
+            getComputedStyle(other.querySelector(".command-mark")).opacity ===
+              "0",
+            "an unfocused command shows diamonds",
+          );
+        }
+        return focused.textContent.replace(/◆/g, "").trim();
+      };
+      g.setMode("menu");
+      await frames(2);
+      seen.push(await look());
+      api.start(0, 0);
+      g.setMode("paused");
+      await frames(2);
+      seen.push(await look());
+      api.start(23, api.campaign[23].rooms - 1);
+      g.invulnerable = 1e9;
+      g.arenaCleared = true;
+      g.completeLevel();
+      await frames(2);
+      assert(g.mode === "ending", "mode " + g.mode);
+      seen.push(await look());
+      return seen.join(", ");
+    },
+  );
+
   await resize(...startSize);
   g.applySettings(options);
   g.saveOptions();

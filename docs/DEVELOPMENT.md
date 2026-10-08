@@ -260,7 +260,7 @@ Measured with `tools/media/round10/result-contrast.js` (frame pairs of the scree
 | Dune Sepulchre                  | 1.8–6.8 → 7.0–9.6                        | 4.0–9.5 → 6.9–11.0               | 6.9 → 6.6       |
 | The ending (The Abyss; no card) | 3.1–6.8 → 7.4–9.6                        | 4.3–9.6 → 6.5–11.0               | 4.1 → 3.9       |
 
-The ending's one command, _Main menu_, stays at 3.9:1 (4.1 before): it is focused, and the menus' focus style puts an orange glow around the text, which this method counts against it. `tests/round10-checks.js` checks the backing, halo and label colours at 960 × 600, 1280 × 800, 1366 × 768, 1440 × 900 and 1920 × 1080, that every part of the screen is inside the window and the commands clear of the key line, that _Continue_ still takes a click and starts the next level, and that the ending has the backing while the death and pause screens do not; all three checks fail on the old code. Capture: `docs/media/improvements/round10/r10-2-result-screen.jpg`.
+The ending's one command, _Main menu_, stays at 3.9:1 (4.1 before): it is focused, and the menus' focus style puts an orange glow around the text, which this method counts against it. (Round 11 found that the low figure came from the method, not the screen: see [The focused menu command](#the-focused-menu-command-round-11).) `tests/round10-checks.js` checks the backing, halo and label colours at 960 × 600, 1280 × 800, 1366 × 768, 1440 × 900 and 1920 × 1080, that every part of the screen is inside the window and the commands clear of the key line, that _Continue_ still takes a click and starts the next level, and that the ending has the backing while the death and pause screens do not; all three checks fail on the old code. Capture: `docs/media/improvements/round10/r10-2-result-screen.jpg`.
 
 ## Arsenal page in short windows (round 10)
 
@@ -307,6 +307,25 @@ There used to be one toast, and every message replaced the one showing. A log of
 `Messages` in `src/messages.ts` ranks them. **Urgent** (_SHOCKWAVE / JUMP_) shows at once, and the message it interrupted comes back for the rest of its time if at least half a second was left. **Major** (waves, sectors, level and general names, relics, the tarot condition, the Wraith, the general enraging and falling, resuming, saving and mouse-capture notices) shows for at least two seconds, or its whole time if shorter, before another major one takes its place; one that arrives sooner waits (at most three wait; a repeat is not queued twice). **Minor** (feedback on the player's own action: _AMMUNITION REPLENISHED_, _OUT OF …_, the storm orb's cost, _STAKE-PROPELLED GRENADE_, and the tarot key's answers) never replaces anything: it shows on a smaller line under a major or urgent message (`#toast-minor`, with its own soft band), or on the main line when nothing else is showing. No wording or duration changed. Starting a level or sector attempt clears the queue, as the old single toast was overwritten. The queue is advanced by the fixed simulation step, reads no clock and draws no random numbers. `Game.toast` and `Game.toastTimer` remain as accessors for the main line (setting the timer to 0 clears every message), so the capture scripts that hide the toast still work.
 
 With the queue, the same ten sectors showed no major message replaced by another major or minor one within two seconds. Five were cut short by a shockwave warning, as intended; the three with more than half a second left came back after it. `tests/messages.test.ts` covers the ranks, the two-second minimum, waiting, resuming, expiry and clearing. `tests/round11-checks.js` replays the collisions with the game's own events: the Wraith then an ammunition pickup (both shown, the ammunition line under the Wraith's on screen and gone after its second), 25 souls then the sector's clear (the tarot line keeps 2.0 s and the clear then gets its full five), a general's name then a shockwave (the warning shows 1.2 s and the name comes back with about four seconds) and a level's title then wave 1 (unchanged); the first three fail on the old code. Round 4's and round 8's checks read `g.toast` straight after a level start, where these messages now sit under or behind the level's title, so they now ask `g.messages.has(…)`. Capture: `docs/media/improvements/round11/r11-3-messages-queue.jpg` (`tools/media/round11/messages.js`).
+
+## The focused menu command (round 11)
+
+Round 10 left the ending's focused _Main menu_ at 3.9:1. Measured again with `tools/media/round11/menu-focus.js` (frame pairs of the title, pause, death, level-complete and ending screens over Frostbound Crossing, Hallowed Ground and The Abyss), that figure turned out to come from the method. Round 10's bare frame hides each command whole, so the focused command's own background (a dark-red ellipse, `#982b1440`) counts as changed pixels next to its letters, and over the ending's near-black abyss the ellipse made up much of the "glyph" sample (1,057 pixels for two words; 170–200 when only the letters are hidden). The new script hides only the screen's text (commands' colour and shadow made transparent, their diamonds hidden), so the command's background counts as background, as round 10 already did for the result screen's backing. With that method the focused command read 8.0–12.0:1 before this round (the ending 12.0) and the unfocused ones 7.4–8.8:1; nothing on these screens was under 4.5:1.
+
+The focused style did lose the dark halo every other command has, though: its orange glow lit the pixels right around the letters. It now has a tight black halo (`0 0 2px #000, 0 0 4px #000b`) under the same glow, background and diamonds. Focused command, before → after:
+
+| Screen                      | Before | After |
+| --------------------------- | ------ | ----- |
+| Title                       | 10.0   | 11.5  |
+| Pause, Frostbound Crossing  | 10.0   | 11.6  |
+| Pause, Hallowed Ground      | 10.3   | 11.8  |
+| Death, Frostbound Crossing  | 8.6    | 10.3  |
+| Death, Hallowed Ground      | 9.4    | 11.1  |
+| Result, Frostbound Crossing | 8.0    | 9.9   |
+| Result, Hallowed Ground     | 9.4    | 11.2  |
+| Ending, The Abyss           | 12.0   | 13.0  |
+
+The unfocused commands are unchanged (7.4–8.8:1). By round 10's whole-command method the ending reads 4.0 before and 3.8 after: that method cannot separate the letters from the command's background there. `tests/round11-checks.js` checks on the title, pause and ending screens that the focused command's first shadow is the black halo, the orange glow is still there, its diamonds show, and its colour differs from an unfocused command's (whose diamonds stay hidden); it fails on the old code. Capture (pause screen): `docs/media/improvements/round11/r11-4-focused-command.jpg`.
 
 ## Weapon bar reserves (round 9)
 
