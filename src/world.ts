@@ -1181,6 +1181,8 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
     root.add(sprite);
   });
   if (!["crypt", "prison", "asylum"].includes(theme)) {
+    // The tone mapping and colour space chunks do nothing when the composer draws into
+    // its linear target, and match it on Low, which draws straight to the screen.
     const skyMat = new T.ShaderMaterial({
       side: T.BackSide,
       depthWrite: false,
@@ -1190,7 +1192,10 @@ export function buildArena(scene: T.Scene, level: Level, room: number): Arena {
       fragmentShader: `varying vec3 direction; uniform vec3 base;
  float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
  float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
- void main(){vec3 d=normalize(direction);vec2 uv=d.xz/(max(d.y,.04)+.3)*1.7;float n=noise(uv*2.)*.5+noise(uv*4.1)*.25+noise(uv*8.3)*.125;float cloud=smoothstep(.3,.68,n);vec3 col=mix(base*.45,base,1.-max(d.y,0.));col+=cloud*vec3(.075,.092,.085)*smoothstep(0.,.2,d.y);float stars=step(.998,hash(floor(d.xz/max(d.y,.02)*280.)))*smoothstep(.15,.7,d.y)*(1.-cloud);col+=stars*.25;gl_FragColor=vec4(col,1.);}`,
+ void main(){vec3 d=normalize(direction);vec2 uv=d.xz/(max(d.y,.04)+.3)*1.7;float n=noise(uv*2.)*.5+noise(uv*4.1)*.25+noise(uv*8.3)*.125;float cloud=smoothstep(.3,.68,n);vec3 col=mix(base*.45,base,1.-max(d.y,0.));col+=cloud*vec3(.075,.092,.085)*smoothstep(0.,.2,d.y);float stars=step(.998,hash(floor(d.xz/max(d.y,.02)*280.)))*smoothstep(.15,.7,d.y)*(1.-cloud);col+=stars*.25;gl_FragColor=vec4(col,1.);
+ #include <tonemapping_fragment>
+ #include <colorspace_fragment>
+ }`,
     });
     const sky = new T.Mesh(new T.SphereGeometry(150, 32, 16), skyMat);
     root.add(sky);

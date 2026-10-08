@@ -59,6 +59,15 @@
   const loop = (n) => {
     for (let i = 0; i < n; i++) g.loop((clock += 1000 / 60));
   };
+  /** Let the shader warm-up finish compiling in the background, as it does in play. */
+  const warm = async () => {
+    const t0 = performance.now();
+    while (!g.warmReady && performance.now() - t0 < 5000) {
+      await new Promise((r) => setTimeout(r, 50));
+      loop(1);
+    }
+    loop(2);
+  };
   for (const level of levels) {
     g.applySettings({ ...options, quality: 1, adaptiveResolution: false });
     api.seed(5);
@@ -68,6 +77,7 @@
     g.waveDelay = 1e9;
     g.equip(3);
     loop(40);
+    await warm();
     const d = g.direction();
     for (const [type, ahead, side] of [
       ["brute", 9, -2],
