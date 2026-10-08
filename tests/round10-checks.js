@@ -390,6 +390,10 @@
   g.sound.setVolume(volume);
   g.save = saved;
   g.persist();
+  // Back to the title screen (a fight in between resets the menu page), as later
+  // suites expect.
+  g.setMode("playing");
   g.setMode("menu");
+  await frames(2);
   return results;
 })();
