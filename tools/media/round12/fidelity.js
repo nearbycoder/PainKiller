@@ -1,6 +1,7 @@
 // Measurement: the same frozen frame at every Graphics fidelity step, as a screenshot
 // and as render times. Each scene starts seeded, puts a brute, a skeleton and a witch in
-// view, fires a rocket and freezes the frame loop just after the blast; then, for each
+// view, fires a rocket and stops just after the blast (the frame loop driven at a steady
+// 60 Hz, so every run and build reaches the same frame); then, for each
 // step, the frame is drawn again exactly as the loop draws it (world, composer and
 // weapon), captured, and drawn 60 more times with gl.finish() to time it.
 //   npm run test:browser -- --before 'window.__FIDELITY_OUT__="artifacts/r12/fidelity/1280"' --checks tools/media/round12/fidelity.js --out artifacts/r12/fidelity/1280.json
@@ -51,16 +52,22 @@
       renderer.render(g.weaponScene, g.weaponCamera);
     }
   };
+  // The frame loop is driven with synthetic 60 Hz timestamps, so every run (and every
+  // build) reaches exactly the same frame.
+  window.requestAnimationFrame = (cb) => (cb === g.loop ? 0 : raf(cb));
+  let clock = performance.now();
+  const loop = (n) => {
+    for (let i = 0; i < n; i++) g.loop((clock += 1000 / 60));
+  };
   for (const level of levels) {
-    window.requestAnimationFrame = raf;
-    raf(g.loop);
     g.applySettings({ ...options, quality: 1, adaptiveResolution: false });
     api.seed(5);
     api.start(level, 0);
+    g.lastTime = clock;
     g.invulnerable = 1e9;
     g.waveDelay = 1e9;
     g.equip(3);
-    await frames(40);
+    loop(40);
     const d = g.direction();
     for (const [type, ahead, side] of [
       ["brute", 9, -2],
@@ -75,16 +82,16 @@
       g.spawnEnemy(type, p);
     }
     g.enemies.forEach((e) => (e.speed = 0));
-    await frames(50);
+    loop(50);
     g.mouse = [true, false];
-    await frames(12);
+    loop(12);
     g.mouse = [false, false];
-    await frames(14);
-    // Freeze: the frame loop stops rescheduling and nothing moves from here on.
-    window.requestAnimationFrame = (cb) => (cb === g.loop ? 0 : raf(cb));
-    await frames(3);
+    loop(14);
     g.messages.clear();
     g.onHUD();
+    // The arena's fade-in (round 12) is over by now in real play.
+    for (const a of document.getAnimations()) a.finish();
+    await frames(2);
     const scene = (report.scenes[api.campaign[level].name] = {});
     for (const step of steps) {
       g.applySettings({ ...options, quality: step, adaptiveResolution: false });
@@ -117,6 +124,7 @@
     }
   }
   window.requestAnimationFrame = raf;
+  g.lastTime = performance.now();
   raf(g.loop);
   g.applySettings(options);
   g.setMode("menu");

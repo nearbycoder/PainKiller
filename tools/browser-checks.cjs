@@ -9,6 +9,7 @@
 //   npm run test:browser -- --checks round4 --size 1920x1080   # another window size
 //   npm run test:browser -- --url http://localhost:5190/ --no-boot --checks tools/media/round5/web-start.js
 //   npm run test:browser -- --touch --checks tools/media/round9/touch-start.js   # emulate a touchscreen
+//   npm run test:browser -- --scale 2 --checks round12   # a HiDPI display
 //
 // A check can resize the window or turn touch emulation on and off by logging
 // "__RUNNER__ size 860x640" or "__RUNNER__ touch on|off"; the runner answers a touch
@@ -151,6 +152,18 @@ app.whenReady().then(async () => {
       if (Date.now() - started > 60000)
         throw new Error("No dev server at " + server.url);
       await new Promise((r) => setTimeout(r, 300));
+    }
+    if (option("scale")) {
+      // --scale 2: a HiDPI display (device pixels per CSS pixel), through DevTools
+      // emulation; it needs a page to attach to and carries over to the game's page.
+      await win.loadURL("about:blank");
+      if (!wc.debugger.isAttached()) wc.debugger.attach("1.3");
+      await wc.debugger.sendCommand("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: Number(option("scale")),
+        mobile: false,
+      });
     }
     if (args.includes("--touch")) {
       // Emulation needs a page to attach to; it carries over to the game's page.
