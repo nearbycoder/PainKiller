@@ -162,7 +162,8 @@
       assert(g.weapon === 4, "switched to " + g.weapon);
       assert(g.ammo[4] < shurikens, "the new weapon did not fire");
       assert(dry.length === 1 && dry[0] === 3, "dry clicks: " + dry);
-      assert(g.toast === "OUT OF ROCKETS", "toast: " + g.toast);
+      // Since round 11 this is a minor message, under the level's title.
+      assert(g.messages.has("OUT OF ROCKETS"), "toast: " + g.toast);
       return { weapon: g.weapon, fired: shurikens - g.ammo[4] };
     },
   );
@@ -176,7 +177,7 @@
     assert(g.weapon === 2, "switched to " + g.weapon);
     const thrown = grenades - g.altAmmo[2];
     assert(thrown > 0, "no grenade was thrown");
-    assert(g.toast === "OUT OF ROUNDS", "toast: " + g.toast);
+    assert(g.messages.has("OUT OF ROUNDS"), "toast: " + g.toast);
     setup();
     g.equip(1);
     g.ammo = g.ammo.map((n, i) => (i ? 0 : n));
@@ -191,7 +192,10 @@
     hold(false, 40);
     assert(g.weapon === 3, "switched to " + g.weapon);
     assert(dry.length >= 2 && dry.every((w) => w === 3), "dry clicks: " + dry);
-    assert(g.toast === "OUT OF ROCKETS  /  SWITCH WEAPON", "toast: " + g.toast);
+    assert(
+      g.messages.has("OUT OF ROCKETS  /  SWITCH WEAPON"),
+      "toast: " + g.toast,
+    );
     return { clicks: dry.length };
   });
   await check(

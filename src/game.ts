@@ -6,6 +6,7 @@ import type { RigidBody } from "@dimforge/rapier3d-compat";
 import { projectileModel } from "./projectile-models";
 import { Controls, toggleSprint } from "./controls";
 import { AMMUNITION, fallbackWeapon, refillAmmo } from "./ammunition";
+import { Messages, type MessageRank } from "./messages";
 import { authoredPickup } from "./authored-models";
 import { art, DEFERRED_ART, ensureArt, hasArt } from "./assets";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -292,8 +293,8 @@ export class Game {
   waveDelay = 2;
   arenaCleared = false;
   bossSpawned = false;
-  toast = "";
-  toastTimer = 0;
+  /** Messages in the middle of the view, ranked so one cannot cut off another. */
+  messages = new Messages();
   /** Displayed frames; for rendering only. */
   frame = 0;
   /** Simulation steps since the arena loaded; timing inside update() uses this, not `frame`. */
@@ -642,6 +643,7 @@ export class Game {
     this.setMode("playing");
     this.sound.start();
     this.checkpoint();
+    this.messages.clear();
     this.notify(
       LEVELS[this.level].name.toUpperCase() +
         "  /  " +
@@ -794,9 +796,25 @@ export class Game {
       (a) => (this.controls.connected ? this.padFor(a) : this.keyFor(a)),
     );
   }
-  notify(text: string, time = 3) {
-    this.toast = text;
-    this.toastTimer = time;
+  notify(text: string, time = 3, rank: MessageRank = "major") {
+    this.messages.push(text, time, rank);
+  }
+  /** The main message line. Scripts may set it directly, with {@link toastTimer}. */
+  get toast() {
+    return this.messages.line;
+  }
+  set toast(text: string) {
+    this.messages.clear();
+    this.messages.push(text, 0);
+  }
+  /** Seconds left on the main line; setting 0 clears every message. */
+  get toastTimer() {
+    return this.messages.left;
+  }
+  set toastTimer(time: number) {
+    const shown = this.messages.main ?? this.messages.minor;
+    if (time <= 0) this.messages.clear();
+    else if (shown) shown.left = time;
   }
   /** Play an enemy cue panned and attenuated from the player's point of view. */
   enemyCue(name: EnemyCue, at: T.Vector3) {
@@ -969,17 +987,19 @@ export class Game {
     if (!this.save.cards.includes(this.save.selectedCard)) {
       this.notify(
         `Earn a tarot card by finding a relic or collecting ${TAROT_SOULS} souls in a level.`,
+        3,
+        "minor",
       );
       return;
     }
     if (this.cardUsed) {
-      this.notify("Tarot recharges at the next checkpoint.");
+      this.notify("Tarot recharges at the next checkpoint.", 3, "minor");
       return;
     }
     this.cardUsed = true;
     this.cardTime = 30;
     this.sound.pickup();
-    this.notify("TAROT AWAKENED", 3);
+    this.notify("TAROT AWAKENED", 3, "minor");
   }
   bindInput() {
     window.addEventListener("keydown", (e) => {
@@ -1568,14 +1588,14 @@ export class Game {
         // Keep the fight going with the best weapon that can fire from this button.
         this.equip(fallbackWeapon(id, this.ammo, this.altAmmo, alt));
         this.cooldown = 0.25;
-        this.notify(`OUT OF ${label}`, 1);
-      } else this.notify(`OUT OF ${label}  /  SWITCH WEAPON`, 1);
+        this.notify(`OUT OF ${label}`, 1, "minor");
+      } else this.notify(`OUT OF ${label}  /  SWITCH WEAPON`, 1, "minor");
       return;
     }
     const storm = id === 4 && alt && this.firing(false);
     if (storm && (this.ammo[4] < 1 || this.altAmmo[4] < 16)) {
       this.cooldown = 0.2;
-      this.notify("STORM REQUIRES 1 SHURIKEN + 16 CHARGE", 1);
+      this.notify("STORM REQUIRES 1 SHURIKEN + 16 CHARGE", 1, "minor");
       return;
     }
     if (id !== 0) ammo[id] = Math.max(0, Math.floor(ammo[id]) - 1);
@@ -1816,7 +1836,7 @@ export class Game {
     this.invulnerable -= dt;
     this.demon = Math.max(0, this.demon - dt);
     this.cardTime = Math.max(0, this.cardTime - dt);
-    this.toastTimer -= dt;
+    this.messages.update(dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.damageFlash = Math.max(0, this.damageFlash - dt);
     const haste = this.cardTime > 0 && this.save.selectedCard === 1;
@@ -1926,7 +1946,7 @@ export class Game {
     const boss = LEVELS[this.level].boss;
     const shown = this.hints.update(
       dt,
-      !!boss && this.toastTimer > 0 && this.toast === boss.toUpperCase(),
+      !!boss && this.messages.has(boss.toUpperCase()),
     );
     if (shown) writeSeenHints(this.hints.seen);
     for (const m of this.damageMarks) m.life -= dt;
@@ -2194,7 +2214,7 @@ export class Game {
             this.scene.add(m);
             this.rings.push({ mesh: m, radius: 0.5, hit: false });
             this.enemyCue("shockwave", pos);
-            this.notify("SHOCKWAVE  /  JUMP", 1.2);
+            this.notify("SHOCKWAVE  /  JUMP", 1.2, "urgent");
           }
           const count = chapter === 2 ? 5 : chapter === 4 ? 9 : 3;
           const origin = pos.clone().add(new T.Vector3(0, 3, 0));
@@ -2425,7 +2445,7 @@ export class Game {
             grenade.damage = 300;
             grenade.life = 2.5;
             remove = true;
-            this.notify("STAKE-PROPELLED GRENADE", 1);
+            this.notify("STAKE-PROPELLED GRENADE", 1, "minor");
           }
         }
         for (const e of [...this.enemies]) {
@@ -2578,7 +2598,7 @@ export class Game {
         else if (p.kind === "ammo") {
           this.ammo = this.ammo.map((v, i) => refillAmmo(v, i));
           this.altAmmo = this.altAmmo.map((v, i) => refillAmmo(v, i, true));
-          this.notify("AMMUNITION REPLENISHED", 1);
+          this.notify("AMMUNITION REPLENISHED", 1, "minor");
         } else {
           this.secrets++;
           this.armor = Math.min(100, this.armor + 40);

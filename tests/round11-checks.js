@@ -120,13 +120,158 @@
         const el = document.getElementById(id);
         assert(el.textContent === "", `${id} not empty`);
         assert(
-          getComputedStyle(el, "::before").display === "none",
+          getComputedStyle(el).display === "none" ||
+            getComputedStyle(el, "::before").display === "none",
           `empty ${id} still draws its band`,
         );
       }
       return seen.join(", ");
     },
   );
+
+  // R11-3: messages do not cut each other off. Each check replays a collision the
+  // autopilot's message log found, with the game's own events.
+  const shown = async () => {
+    await frames(6);
+    const box = (id) => {
+      const el = document.getElementById(id);
+      return { text: el.textContent, rect: el.getBoundingClientRect() };
+    };
+    return { main: box("toast"), minor: box("toast-minor") };
+  };
+  const quiet = (level, room = 0) => {
+    api.start(level, room);
+    g.invulnerable = 1e9;
+    g.waveDelay = 60;
+    g.toastTimer = 0; // the level's title
+  };
+  const pickUp = (kind) => {
+    g.addPickup(kind, g.position.clone().setY(1));
+    api.step(2);
+  };
+  await check(
+    "an ammunition pickup shows under the Wraith instead of replacing it",
+    async () => {
+      await resize(1280, 800);
+      quiet(0);
+      g.souls = 65;
+      pickUp("soul");
+      assert(g.demon > 0, "not the Wraith");
+      const wraith = "WRAITH FORM  /  UNCHAINED FOR 15 SECONDS";
+      assert(g.toast === wraith, "toast: " + g.toast);
+      api.step(30);
+      pickUp("ammo");
+      assert(g.toast === wraith, "the Wraith was replaced by " + g.toast);
+      assert(
+        g.messages.under === "AMMUNITION REPLENISHED",
+        "under: " + g.messages.under,
+      );
+      const { main, minor } = await shown();
+      assert(main.text === wraith, "on screen: " + main.text);
+      assert(
+        minor.text === "AMMUNITION REPLENISHED" && minor.rect.height > 0,
+        "minor line: " + minor.text,
+      );
+      assert(
+        minor.rect.top >= main.rect.bottom - 1,
+        `minor line not under the main one: ${minor.rect.top} < ${main.rect.bottom}`,
+      );
+      // The minor line ends after its second; the Wraith stays for its four.
+      api.step(70);
+      assert(g.messages.under === "", "minor line stayed: " + g.messages.under);
+      assert(g.toast === wraith, "the Wraith ended early: " + g.toast);
+      api.step(150);
+      assert(g.toast === "", "the Wraith message outstayed: " + g.toast);
+      return { main: main.text, minor: minor.text };
+    },
+  );
+  await check(
+    "a sector clear waits until the tarot line has had two seconds",
+    async () => {
+      g.save.cards = [];
+      quiet(5);
+      g.levelSouls = 24;
+      pickUp("soul");
+      const tarot = "25 SOULS  /  TAROT CONDITION MET";
+      assert(g.toast === tarot, "toast: " + g.toast);
+      api.step(28); // half a second in all
+      // The last enemy of wave 3 is gone: the game opens the gate.
+      g.wave = 3;
+      g.remaining = 0;
+      g.waveDelay = 0;
+      api.step(1);
+      assert(g.arenaCleared, "the sector did not clear");
+      const cleared = "SECTOR CLEANSED  /  ENTER THE GREEN GATE";
+      assert(g.toast === tarot, "the tarot line was replaced: " + g.toast);
+      assert(g.messages.has(cleared), "the clear was dropped");
+      let steps = 0;
+      while (g.toast === tarot && steps < 600) {
+        api.step(1);
+        steps++;
+      }
+      const tarotFor = (31 + steps) / 60;
+      assert(g.toast === cleared, "then showed " + g.toast);
+      assert(
+        tarotFor >= 2 && tarotFor < 2.1,
+        `the tarot line showed ${tarotFor.toFixed(2)} s`,
+      );
+      assert(g.toastTimer > 4.9, "the clear lost time: " + g.toastTimer);
+      return { tarotSeconds: +tarotFor.toFixed(2) };
+    },
+  );
+  await check(
+    "a shockwave interrupts a general's name, which then comes back",
+    async () => {
+      const level = api.campaign.findIndex(
+        (l, i) => l.boss && [1, 3, 5].includes(l.chapter) && i > 0,
+      );
+      quiet(level, api.campaign[level].rooms - 1);
+      g.wave = 2;
+      g.remaining = 0;
+      g.beginWave();
+      const name = api.campaign[level].boss.toUpperCase();
+      assert(g.toast === name, "toast: " + g.toast);
+      const boss = g.enemies.find((e) => e.type === "boss");
+      boss.cooldown = 99;
+      api.step(60);
+      boss.cooldown = 0;
+      api.step(1);
+      assert(g.toast === "SHOCKWAVE  /  JUMP", "no warning: " + g.toast);
+      boss.cooldown = 99;
+      let steps = 0;
+      while (g.toast === "SHOCKWAVE  /  JUMP" && steps < 600) {
+        api.step(1);
+        steps++;
+      }
+      assert(g.toast === name, "after the warning: " + g.toast);
+      assert(
+        Math.abs(steps / 60 - 1.2) < 0.05,
+        `the warning showed ${(steps / 60).toFixed(2)} s`,
+      );
+      // Five seconds in all, less the second before the shockwave.
+      assert(
+        g.toastTimer > 3.8 && g.toastTimer <= 4,
+        "the name came back with " + g.toastTimer.toFixed(2) + " s",
+      );
+      return { general: name, warningSeconds: +(steps / 60).toFixed(2) };
+    },
+  );
+  await check("a level's title gives way to wave 1 as before", async () => {
+    api.start(0, 0);
+    g.invulnerable = 1e9;
+    const title = g.toast;
+    assert(/^HALLOWED GROUND {2}\//.test(title), "title: " + title);
+    let steps = 0;
+    while (g.wave === 0 && steps < 600) {
+      api.step(1);
+      steps++;
+    }
+    assert(
+      g.toast === "WAVE 1  /  THE GATES ARE SEALED",
+      "wave 1 waited: " + g.toast,
+    );
+    return { titleSeconds: +(steps / 60).toFixed(2) };
+  });
 
   await resize(...startSize);
   g.applySettings(options);

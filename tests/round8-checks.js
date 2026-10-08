@@ -318,10 +318,8 @@
       g.addPickup("soul", g.position.clone().setY(1));
       api.step(10);
       assert(g.levelSouls === 25, "souls " + g.levelSouls);
-      assert(
-        /25 SOULS \/ TAROT CONDITION MET/.test(g.toast.replace(/\s+/g, " ")),
-        g.toast,
-      );
+      // Round 11: it waits its turn behind the level's title.
+      assert(g.messages.has("25 SOULS  /  TAROT CONDITION MET"), g.toast);
       finishLevel();
       assert(g.mode === "result", "mode " + g.mode);
       const line = text(".card-earned");

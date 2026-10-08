@@ -1860,13 +1860,22 @@ body[data-mode="dead"] #world {
     border-top-color: #ffe0b0;
   }
 }
-#toast {
+/* The main message line, and under it a smaller line for feedback on the player's own
+   action (ammunition, an empty weapon) while a major message is showing. */
+#messages {
   position: absolute;
   left: 10%;
   right: 10%;
   top: 25%;
-  width: fit-content;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  pointer-events: none;
+}
+#toast {
+  position: relative;
+  max-width: 100%;
   text-align: center;
   font-size: 14px;
   letter-spacing: 3px;
@@ -1875,6 +1884,17 @@ body[data-mode="dead"] #world {
     var(--hud-halo),
     0 2px 8px #000;
   line-height: 1.8;
+}
+#toast-minor {
+  position: relative;
+  max-width: 100%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  color: #dccbb0;
+  text-shadow: var(--hud-halo);
+  line-height: 1.6;
 }
 #gate-prompt {
   position: absolute;
@@ -1889,11 +1909,13 @@ body[data-mode="dead"] #world {
 /* Messages in the middle of the view sit where the edge shade does not reach, so each
    has its own soft band behind it: it fades out at its ends and edges, with no box. */
 #toast,
+#toast-minor,
 #gate-prompt,
 #boss-name {
   isolation: isolate;
 }
 #toast::before,
+#toast-minor::before,
 #gate-prompt::before,
 #boss-name::before {
   content: "";
@@ -1909,7 +1931,10 @@ body[data-mode="dead"] #world {
     #0000
   );
 }
-#toast:empty::before,
+#toast:empty,
+#toast-minor:empty {
+  display: none;
+}
 #gate-prompt:empty::before {
   display: none;
 }
@@ -2238,6 +2263,9 @@ body:not(.touch-layout) #hint {
 }
 body:not(.touch-layout) #toast {
   font-size: calc(14px * var(--hud-scale));
+}
+body:not(.touch-layout) #toast-minor {
+  font-size: calc(12px * var(--hud-scale));
 }
 body:not(.touch-layout) #gate-prompt {
   font-size: calc(17px * var(--hud-scale));
