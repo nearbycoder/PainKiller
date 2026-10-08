@@ -287,6 +287,19 @@ Worst and best reading over the eight views per arena, before → after:
 
 Of the other 672 readings, 2 fell by more than 0.3 (Hall of Vigils' ammunition counter, 9.7 → 9.2, which this change does not touch: noise). `tests/round11-checks.js` checks that the three bands are in place, are gradients, take no clicks and stay inside the window with the longest level title at 960 × 600, 1280 × 800 and 1920 × 1080 and 75–150% interface scale, and that an empty toast or gate prompt draws none; it fails on the old code. Capture (looking down at Frostbound Crossing's snow): `docs/media/improvements/round11/r11-1-messages.jpg`.
 
+## The top of the HUD looking down (round 11)
+
+The same 32 views found the top of the HUD short when looking down at Frostbound Crossing's snow, where the top edge shade (lighter than the bottom one) sits over bright ground: the objective (_WAVE 1 / 3_) read 2.7:1 and the gate line (_GATES SEALED_) 2.9:1, under round 10's 3:1 target for small labels; the chapter line read 3.2:1. The objective now uses the semi-bold cut, like round 10's small labels, and the gate line's orange is a little lighter (`#df9876` → `#eeac8a`). The shade is unchanged. Worst reading over the two looking-down views per arena, before → after:
+
+| Arena               | Objective  | Gate line  |
+| ------------------- | ---------- | ---------- |
+| Frostbound Crossing | 2.7 → 4.5  | 2.9 → 3.5  |
+| Hallowed Ground     | 4.4 → 7.2  | 4.2 → 5.1  |
+| Dune Sepulchre      | 6.3 → 9.8  | 7.1 → 8.4  |
+| Hall of Vigils      | 8.9 → 11.6 | 8.4 → 10.3 |
+
+Over all 32 views, small labels under 3:1 went from 4 of 352 readings to none, and no number was under 4.5:1 before or after. The chapter line (3.2:1) and the kill count's label (3.6:1) were already over the target and are unchanged; they are the lowest small labels left. Against R11-1's frame set, 2 of 672 readings fell by more than 0.3, both labels this change does not touch: Hallowed Ground's health number at one heading moves between 7.1 and 7.9 from run to run of the same code. Rounds 4, 7, 9 and 10's HUD checks pass. Capture (looking down at Frostbound Crossing): `docs/media/improvements/round11/r11-2-top-hud.jpg`.
+
 ## Weapon bar reserves (round 9)
 
 Each of the five weapon slots shows two thin bars under its icon: the primary and alternate reserves as a share of their maximum (`slotAmmo` in `src/ammunition.ts`; the chaingun holds 500, the shuriken launcher and its charge 250, everything else 100). A bar turns red when its reserve is low by the same rule as the ammunition counter (a fifth of what a level starts with). When neither mode has a whole round left, the slot is marked dry: its icon fades and its number is struck through in red, and its accessible name says "out of ammunition". The Thresher shows two full bars. A weapon not in hand now dims only its icon (to 45%), not its number and bars. No ammunition value changed. Covered by `tests/weapon-bar.test.ts` and `tests/round9-checks.js` (bars following a shot, every slot following its own reserves, dry after the last stake, refilled by a pickup, the weapon bar clear of the other panels at 75–150%). Capture: `docs/media/improvements/round9/r9-3-weapon-bar.jpg`.

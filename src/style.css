@@ -1370,6 +1370,7 @@ body[data-mode="dead"] #world {
 }
 /* The 9–11 px labels in the semi-bold cut: thin strokes washed out over bright snow. */
 .objective p,
+.objective span,
 .combat-stats,
 .health > span:last-child,
 .armor > span:last-child,
@@ -1430,7 +1431,7 @@ body[data-mode="dead"] #world {
 .objective p {
   font-size: 11px;
   letter-spacing: 3px;
-  color: #df9876;
+  color: #eeac8a;
   margin: 0 0 6px;
 }
 .objective span {
