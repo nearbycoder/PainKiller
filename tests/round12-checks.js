@@ -161,6 +161,7 @@
       g.controls.poll(0.016, [pad()]);
       await frames(1);
       at(start, "D-pad →");
+      g.controls.poll(0.016, []);
       document.querySelector('[data-fidelity-step="0"]').click();
       await frames(1);
       at(0, "click Low");
@@ -491,6 +492,8 @@
       g.controls.poll(0.016, [pad()]);
       assert(!g.adaptiveResolution, "A did not choose");
       assert(choice().classList.contains("pressed"), "A: no press");
+      // Unplug it here, in the menu: unplugging during a fight pauses it.
+      g.controls.poll(0.016, []);
       seen.push("A");
       g.applySettings({ ...g.settings(), adaptiveResolution: true });
       // The focused command keeps round 11's dark halo while pressed.
@@ -550,6 +553,48 @@
         b = run(false);
       assert(a === b, "the fight differed with the fade");
       return `room ${JSON.parse(a).room}, identical`;
+    },
+  );
+
+  // R12-4: the low-health readout pulses brighter, never fainter.
+  await check(
+    "R12-4 the low-health readout pulses brighter, never fainter, and stays red",
+    async () => {
+      api.start(0, 0);
+      g.invulnerable = 1e9;
+      g.waveDelay = 1e9;
+      g.health = 5;
+      g.armor = 0;
+      await frames(10);
+      g.onHUD();
+      const number = document.getElementById("hud-health");
+      assert(number, `no health readout (mode ${g.mode})`);
+      assert(number.closest(".health").classList.contains("low"), "not low");
+      const [pulse] = number
+        .getAnimations()
+        .filter((a) => a.animationName === "low-health");
+      assert(pulse, "no pulse");
+      const at = (ms) => {
+        pulse.pause();
+        pulse.currentTime = ms;
+        const style = getComputedStyle(number),
+          [r, gr, b] = style.color.match(/\d+/g).map(Number);
+        return { opacity: Number(style.opacity), r, g: gr, b };
+      };
+      const samples = [0, 150, 300, 450, 600, 750].map(at);
+      pulse.play();
+      assert(
+        samples.every((s) => s.opacity === 1),
+        "the readout fades: " + samples.map((s) => s.opacity),
+      );
+      assert(
+        samples.every((s) => s.r === 255 && s.g < s.r - 40 && s.b < s.r - 50),
+        "not red at every moment",
+      );
+      const lum = (s) => 0.2126 * s.r + 0.7152 * s.g + 0.0722 * s.b;
+      assert(lum(samples[3]) > lum(samples[0]), "the pulse does not brighten");
+      g.health = 100;
+      return samples.map((s) => `rgb(${s.r}, ${s.g}, ${s.b})`).join(" → ");
     },
   );
 

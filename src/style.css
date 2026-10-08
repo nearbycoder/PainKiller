@@ -2001,9 +2001,11 @@ body[data-mode="dead"] #world {
   );
   transition: opacity 0.3s;
 }
+/* Low health: the readout turns red and pulses brighter, never fainter, so it reads
+   over the red vignette at every moment of the pulse (round 12; it used to fade to 55%). */
 .health.low > b,
 .health.low > .vital-icon {
-  color: #ff5a43;
+  color: #ff8a74;
   text-shadow:
     var(--hud-halo),
     0 0 16px #c8321f99;
@@ -2011,7 +2013,10 @@ body[data-mode="dead"] #world {
 }
 @keyframes low-health {
   50% {
-    opacity: 0.55;
+    color: #ffc2b4;
+    text-shadow:
+      var(--hud-halo),
+      0 0 18px #ff4a2acc;
   }
 }
 #demon-overlay {
