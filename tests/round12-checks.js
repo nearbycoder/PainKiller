@@ -479,7 +479,11 @@
           '[data-action="option"][data-value="adaptiveResolution:true"]',
         );
       on().focus();
-      if (await press("Enter")) {
+      // Headless Firefox delivers a real Enter to the focused button but, with its page
+      // unfocused (document.hasFocus() is false), performs no click; Electron's does.
+      if (!document.hasFocus())
+        seen.push("(Enter skipped: this runner's page has no focus)");
+      else if (await press("Enter")) {
         assert(g.adaptiveResolution, "Enter did not choose");
         assert(on().classList.contains("pressed"), "Enter: no press");
         seen.push("Enter");
