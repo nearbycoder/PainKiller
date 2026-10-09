@@ -11,14 +11,26 @@
 .touch-layout[data-mode="playing"] #touch-controls {
   display: block;
 }
-.controller-active #touch-controls {
-  opacity: 0.4;
+/* A controller in use takes over until the next touch (see Controls.poll). */
+.touch-layout.pad-in-use #touch-controls {
+  display: none;
+}
+/* No text selection, magnifier, link callout or grey tap flash under a thumb. */
+.touch-layout,
+#touch-controls {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.touch-layout #world {
+  touch-action: none;
 }
 #touch-controls button {
   touch-action: none;
   pointer-events: auto;
-  min-width: 46px;
-  min-height: 46px;
+  min-width: 48px;
+  min-height: 48px;
   border: 1px solid #c6af8266;
   border-radius: 50%;
   background: #14150fd0;
@@ -34,8 +46,8 @@
 }
 #touch-move {
   position: absolute;
-  left: max(20px, env(safe-area-inset-left));
-  bottom: max(30px, env(safe-area-inset-bottom));
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   width: 130px;
   height: 130px;
   border: 1px solid #d1c2a955;
@@ -43,6 +55,17 @@
   background: #111a;
   pointer-events: auto;
   touch-action: none;
+}
+/* A thumb that lands just outside the ring still takes the stick. */
+#touch-move::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border-radius: 50%;
+}
+#touch-move i,
+#touch-move span {
+  pointer-events: none;
 }
 #touch-move i {
   position: absolute;
@@ -76,8 +99,8 @@
 }
 .touch-actions {
   position: absolute;
-  right: max(18px, env(safe-area-inset-right));
-  bottom: max(30px, env(safe-area-inset-bottom));
+  right: calc(18px + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: 58px 70px;
   gap: 10px;
@@ -91,21 +114,22 @@
 .touch-tools {
   position: absolute;
   left: 50%;
-  top: max(12px, env(safe-area-inset-top));
+  top: max(10px, env(safe-area-inset-top));
   transform: translateX(-50%);
   display: flex;
-  gap: 7px;
+  gap: 8px;
 }
 #touch-controls .touch-tools button {
-  min-width: 40px;
-  min-height: 36px;
+  min-width: 46px;
+  min-height: 44px;
+  padding: 0 8px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: 11px;
 }
 #touch-rotate {
   display: none;
   position: absolute;
-  top: 56px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px);
   left: 0;
   right: 0;
   text-align: center;
@@ -113,13 +137,14 @@
   letter-spacing: 1px;
   color: #ded5be99;
 }
-.touch-layout #hud-help {
+.touch-layout #hud-help,
+.touch-layout .hud-pause {
   display: none;
 }
 .touch-layout .hud-top {
   top: max(58px, calc(env(safe-area-inset-top) + 50px));
-  left: 14px;
-  right: 14px;
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
 }
 .touch-layout .hud-top h2 {
   font-size: 16px;
@@ -141,8 +166,8 @@
 }
 .touch-layout .hud-bottom {
   bottom: max(12px, env(safe-area-inset-bottom));
-  left: 170px;
-  right: 178px;
+  left: calc(170px + env(safe-area-inset-left));
+  right: calc(178px + env(safe-area-inset-right));
 }
 .touch-layout .health > b,
 .touch-layout .armor > b {
@@ -203,15 +228,16 @@
     top: 84px;
   }
   .touch-tools {
-    gap: 4px;
+    gap: 5px;
   }
   #touch-controls .touch-tools button {
-    min-width: 39px;
+    min-width: 44px;
+    padding: 0 5px;
   }
   .touch-layout .hud-bottom {
     left: 18px;
     right: 18px;
-    bottom: 192px;
+    bottom: calc(192px + env(safe-area-inset-bottom));
   }
   .touch-layout .game-menu {
     padding: 24px 18px;
@@ -253,17 +279,164 @@
   #touch-move {
     width: 110px;
     height: 110px;
-    bottom: 20px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
   }
   #touch-move i {
     left: 30px;
     top: 30px;
   }
   .touch-actions {
-    bottom: 20px;
-    gap: 5px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    gap: 6px;
   }
   .touch-layout .game-menu {
     padding: 12px 24px;
+  }
+}
+
+/* Phones held sideways: under 500 px of height the menus go two columns wide, and every
+   command stays at least 44 px tall for a thumb. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .game-menu {
+    --corner: 24px;
+  }
+  .title-screen {
+    inset: max(8px, env(safe-area-inset-top))
+      max(6vw, calc(env(safe-area-inset-right) + 12px))
+      max(10px, env(safe-area-inset-bottom))
+      max(6vw, calc(env(safe-area-inset-left) + 12px));
+  }
+  .title-crest {
+    display: none;
+  }
+  .logo {
+    margin-bottom: 10px;
+  }
+  .logo h1 {
+    font-size: clamp(36px, 14vh, 64px);
+  }
+  .logo-rule {
+    margin-top: 6px;
+    font-size: 11px;
+  }
+  .title-commands,
+  .pause-screen nav,
+  .end-screen nav {
+    width: min(620px, 86vw);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+  }
+  .title-commands > :first-child,
+  .pause-screen nav > :first-child {
+    grid-column: 1 / -1;
+  }
+  .menu-command,
+  .pause-screen .menu-command {
+    min-height: 44px;
+    font-size: 17px;
+    padding: 4px 16px;
+  }
+  .checkpoint-caption {
+    margin-top: 6px;
+    font-size: 10px;
+  }
+  .menu-hints {
+    display: none;
+  }
+  .game-panel {
+    inset: max(8px, env(safe-area-inset-top))
+      calc(env(safe-area-inset-right) + 16px)
+      max(8px, env(safe-area-inset-bottom))
+      calc(env(safe-area-inset-left) + 16px);
+    padding: 12px 18px;
+    overflow: auto;
+  }
+  .screen-heading {
+    margin-bottom: 8px;
+    gap: 12px;
+  }
+  .screen-heading h1 {
+    font-size: 22px;
+  }
+  .back-command {
+    width: 44px;
+    height: 44px;
+  }
+  .pause-screen,
+  .end-screen {
+    inset: max(8px, env(safe-area-inset-top)) 6vw
+      max(8px, env(safe-area-inset-bottom));
+    justify-content: safe center;
+    overflow: auto;
+  }
+  .pause-screen h1,
+  .end-screen h1 {
+    font-size: 34px;
+  }
+  .small-ornament {
+    margin: 2px 0 8px;
+  }
+  .tarot-grid {
+    padding: 4px 0;
+    gap: 12px;
+    min-height: 0;
+  }
+  .tarot-card {
+    padding: 8px 10px;
+  }
+  .tarot-card .menu-kicker {
+    margin: 0;
+  }
+  .tarot-symbol {
+    font-size: 26px;
+    line-height: 1.3;
+  }
+  .tarot-card h2 {
+    font-size: 16px;
+    margin: 2px 0 4px;
+  }
+  .tarot-card p {
+    font-size: 13px;
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .settings-categories button {
+    min-height: 44px;
+  }
+  .option-row {
+    min-height: 52px;
+    padding: 4px 0;
+  }
+}
+/* Phones held upright: cards stack instead of running off the sides. */
+@media (max-width: 600px) and (orientation: portrait) {
+  .tarot-grid {
+    flex-direction: column;
+    flex: none;
+    min-height: 0;
+    gap: 10px;
+    padding-top: 6px;
+  }
+  .tarot-card {
+    max-width: none;
+    min-width: 0;
+    flex: none;
+    padding: 10px 14px;
+  }
+  .tarot-symbol {
+    font-size: 30px;
+    line-height: 1.3;
+  }
+  .tarot-card h2 {
+    margin: 2px 0 4px;
+  }
+  .tarot-card p {
+    max-width: none;
+    margin-bottom: 6px;
+  }
+  .settings-categories button,
+  .back-command {
+    min-height: 44px;
   }
 }

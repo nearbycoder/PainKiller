@@ -3132,6 +3132,8 @@ export class Game {
         Number.isFinite(n) ? Math.floor(n) : "infinite",
       ),
       position: this.position.toArray(),
+      yaw: this.yaw,
+      pitch: this.pitch,
       kills: this.kills,
       souls: this.souls,
       demon: this.demon,

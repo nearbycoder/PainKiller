@@ -1,6 +1,7 @@
 import type { Game } from "./game";
 import { clamp } from "./core";
 import { PAD_ACTIONS, PAD_START, type PadAction } from "./bindings";
+import { touchFirst } from "./device";
 
 /** Controller actions that fire once when their button goes down. */
 const PAD_PRESSES = PAD_ACTIONS.map(([a]) => a).filter(
@@ -28,6 +29,11 @@ export function toggleSprint(
   if (pressed) running = !running;
   return running && moving;
 }
+/**
+ * Radians of turn per CSS pixel of touch drag, per unit of mouse sensitivity: at the
+ * default sensitivity a drag across a landscape phone's look area turns about 130°.
+ */
+export const TOUCH_LOOK = 2.2;
 /** The look exponent for each _Look response_ choice. */
 export const LOOK_CURVES = [1, 2];
 export type RumbleKind = "hurt" | "shockwave" | "explosion" | "wraith";
@@ -61,6 +67,13 @@ export class Controls {
   private touchX = 0;
   private touchY = 0;
   private held = new Set<string>();
+  /**
+   * Seconds each touch action still counts as held after its press, so a tap shorter than
+   * a simulation step (or a frame at 120 Hz, which may run none) is never lost.
+   */
+  private tapped = new Map<string, number>();
+  /** A controller has been used since the last touch: the touch buttons step aside. */
+  private padInUse = false;
   private previous: boolean[] = [];
   private wasConnected = false;
   private repeat = 0;
@@ -78,23 +91,45 @@ export class Controls {
     this.element.innerHTML = `<div id="touch-move" role="group" aria-label="Movement joystick"><i></i><span>MOVE</span></div><div id="touch-look" aria-label="Drag to look"></div><div class="touch-actions"><button data-touch="secondary" aria-label="Alternate fire">ALT</button><button data-touch="primary" class="touch-fire" aria-label="Fire">FIRE</button><button data-touch="jump" aria-label="Jump">JUMP</button><button data-touch="sprint" aria-label="Sprint">RUN</button></div><div class="touch-tools"><button data-touch="previous" aria-label="Previous weapon">◀</button><button data-touch="next" aria-label="Next weapon">▶</button><button data-touch="use" aria-label="Use gate">USE</button><button data-touch="tarot" aria-label="Activate tarot">TAROT</button><button data-touch="inspect" aria-label="Inspect weapon">INSPECT</button><button data-touch="pause" aria-label="Pause">Ⅱ</button></div><span id="touch-rotate">Landscape gives you a wider view</span>`;
     document.body.append(this.element);
     // The touch layout follows the input, not the window's width: a mouse in a narrow
-    // window still aims with the mouse. A touch on a touchscreen laptop switches to it,
-    // and the mouse moving or clicking switches back.
-    const coarse = matchMedia("(pointer: coarse)");
+    // window still aims with the mouse. A phone or tablet starts with it; a touch on a
+    // touchscreen laptop switches to it, and the mouse moving or clicking or a key
+    // switches back.
     const layout = (touch: boolean) => {
       this.mobile = touch;
       document.body.classList.toggle("touch-layout", touch);
     };
-    layout(coarse.matches);
-    coarse.addEventListener?.("change", () => layout(coarse.matches));
+    layout(touchFirst());
+    for (const query of ["(pointer: coarse)", "(any-pointer: fine)"])
+      matchMedia(query).addEventListener?.("change", () =>
+        layout(touchFirst()),
+      );
     window.addEventListener(
       "pointerdown",
       (e) => {
-        if (e.pointerType === "touch") layout(true);
-        else if (e.pointerType === "mouse") layout(false);
+        if (e.pointerType === "touch") {
+          layout(true);
+          this.padInUse = false;
+          document.body.classList.remove("pad-in-use");
+        } else if (e.pointerType === "mouse") layout(false);
       },
       true,
     );
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        // Only a real keyboard: controller navigation sends synthetic keys.
+        if (this.mobile && e.isTrusted) layout(false);
+      },
+      true,
+    );
+    // Every touch may unlock sound (iOS starts it only inside a touch or click, and
+    // suspends it again after a call or a trip to another app).
+    window.addEventListener("touchend", () => this.game.sound.start(), {
+      passive: true,
+    });
+    // Safari ignores the viewport's zoom limits; a pinch would zoom the whole game.
+    for (const gesture of ["gesturestart", "gesturechange"])
+      document.addEventListener(gesture, (e) => e.preventDefault());
     window.addEventListener("pointermove", (e) => {
       if (
         this.mobile &&
@@ -108,6 +143,9 @@ export class Controls {
       startX = 0,
       startY = 0;
     move.addEventListener("pointerdown", (e) => {
+      // A repeated press from the same finger (WebKit can send one when another finger
+      // lands) keeps the stick's capture rather than handing the finger to the knob.
+      if (e.pointerId === moving) return move.setPointerCapture(e.pointerId);
       if (this.game.mode !== "playing" || moving !== undefined) return;
       e.preventDefault();
       moving = e.pointerId;
@@ -119,9 +157,12 @@ export class Controls {
       if (e.pointerId !== moving) return;
       const dx = e.clientX - startX,
         dy = e.clientY - startY,
-        len = Math.max(48, Math.hypot(dx, dy));
-      this.touchX = dx / len;
-      this.touchY = dy / len;
+        distance = Math.hypot(dx, dy),
+        len = Math.max(48, distance);
+      // A thumb resting on the stick wobbles a few pixels; that is not a step.
+      const live = distance < 6 ? 0 : 1;
+      this.touchX = (live * dx) / len;
+      this.touchY = (live * dy) / len;
       move.style.setProperty("--jx", `${this.touchX * 34}px`);
       move.style.setProperty("--jy", `${this.touchY * 34}px`);
     });
@@ -139,6 +180,7 @@ export class Controls {
       lx = 0,
       ly = 0;
     look.addEventListener("pointerdown", (e) => {
+      if (e.pointerId === looking) return look.setPointerCapture(e.pointerId);
       if (this.game.mode !== "playing" || looking !== undefined) return;
       e.preventDefault();
       looking = e.pointerId;
@@ -149,8 +191,8 @@ export class Controls {
     look.addEventListener("pointermove", (e) => {
       if (e.pointerId !== looking || this.game.mode !== "playing") return;
       this.look(
-        (e.clientX - lx) * this.game.sensitivity * 1.25,
-        (e.clientY - ly) * this.game.sensitivity * 1.25,
+        (e.clientX - lx) * this.game.sensitivity * TOUCH_LOOK,
+        (e.clientY - ly) * this.game.sensitivity * TOUCH_LOOK,
       );
       lx = e.clientX;
       ly = e.clientY;
@@ -178,11 +220,12 @@ export class Controls {
       const pointers = new Set<number>();
       const action = button.dataset.touch!;
       button.addEventListener("pointerdown", (e) => {
-        if (this.game.mode !== "playing") return;
+        if (this.game.mode !== "playing" || pointers.has(e.pointerId)) return;
         e.preventDefault();
         pointers.add(e.pointerId);
         button.setPointerCapture(e.pointerId);
         this.held.add(action);
+        this.tapped.set(action, 0.05);
         button.classList.add("held");
         this.action(action);
         this.game.sound.start();
@@ -229,6 +272,7 @@ export class Controls {
     this.moveX = this.moveY = this.touchX = this.touchY = 0;
     this.primary = this.secondary = this.jump = this.sprint = false;
     this.held.clear();
+    this.tapped.clear();
     this.element
       .querySelectorAll(".held")
       .forEach((b) => b.classList.remove("held"));
@@ -251,6 +295,15 @@ export class Controls {
     this.connected = !!pad;
     this.pad = pad ?? null;
     document.body.classList.toggle("controller-active", this.connected);
+    if (
+      pad &&
+      !this.padInUse &&
+      (pad.buttons.some((b) => b.pressed) ||
+        pad.axes.some((a) => Math.abs(a) > 0.5))
+    ) {
+      this.padInUse = true;
+      document.body.classList.add("pad-in-use");
+    }
     if (this.wasConnected && !pad && this.game.mode === "playing")
       this.game.setMode("paused");
     this.wasConnected = !!pad;
@@ -290,10 +343,14 @@ export class Controls {
         -1,
         1,
       );
-      this.primary = this.held.has("primary") || padHeld("primary");
-      this.secondary = this.held.has("secondary") || padHeld("alternate");
-      this.jump = this.held.has("jump") || padHeld("jump");
-      this.sprint = this.held.has("sprint") || padHeld("sprint");
+      const touched = (a: string) => this.held.has(a) || this.tapped.has(a);
+      this.primary = touched("primary") || padHeld("primary");
+      this.secondary = touched("secondary") || padHeld("alternate");
+      this.jump = touched("jump") || padHeld("jump");
+      this.sprint = touched("sprint") || padHeld("sprint");
+      for (const [a, left] of this.tapped)
+        if (left > dt) this.tapped.set(a, left - dt);
+        else this.tapped.delete(a);
       if (pad)
         this.look(
           stickAxis(pad.axes[lx] || 0, zone, curve) *
