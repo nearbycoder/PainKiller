@@ -44,9 +44,23 @@ async function download(app: Element) {
     }
   }
 }
+/** Says so before the 50 MB download when the browser cannot draw the game at all. */
+function webgl2() {
+  try {
+    return !!document.createElement("canvas").getContext("webgl2");
+  } catch {
+    return false;
+  }
+}
 async function boot() {
   try {
     const app = document.querySelector("#app")!;
+    if (!webgl2()) {
+      app.innerHTML =
+        '<main class="fatal"><h1>WebGL 2 is not available.</h1><p>Purgatory draws with WebGL 2, which this browser has turned off or does not support. Turn on hardware acceleration (or graphics acceleration) in the browser\'s settings, update the browser or graphics driver, or try a current Chrome, Edge or Firefox, then reload the page.</p></main>';
+      console.warn("WebGL 2 is not available; the game cannot start");
+      return;
+    }
     app.innerHTML = LOADING;
     await initPhysics();
     await download(app);
@@ -77,7 +91,7 @@ async function boot() {
   } catch (error) {
     console.error(error);
     document.querySelector("#app")!.innerHTML =
-      '<main class="fatal"><h1>The gate could not open.</h1><p>A model, texture, or graphics device could not be loaded. Restart the game to retry. The error below identifies the failed resource.</p><pre></pre></main>';
+      `<main class="fatal"><h1>The gate could not open.</h1><p>A model, texture, or graphics device could not be loaded. ${window.desktop ? "Restart the game" : "Reload the page"} to retry. The error below identifies the failed resource.</p><pre></pre></main>`;
     document.querySelector("pre")!.textContent = String(error);
   }
 }
