@@ -400,9 +400,10 @@ for (const device of wanted) {
       return b;
     };
     /**
-     * Holds a finger on `selector` until `done(state)` or `ms` pass. Under load the
-     * game's clock can run slower than the wall clock (each frame counts at most 0.1 s),
-     * so a fixed hold could end inside a weapon's cooldown.
+     * Holds a finger on `selector` until `done(state)` or `ms` pass. The game's clock
+     * follows requestAnimationFrame's timestamps, which in headless WebKit under load
+     * were measured advancing about 5 times slower than the wall clock, so a fixed hold
+     * could end inside a weapon's cooldown.
      */
     const hold = async (selector, ms, done = () => false) => {
       const b = await box(selector);
@@ -678,7 +679,7 @@ for (const device of wanted) {
     const weapon = s.weapon,
       ammo = s.ammo[weapon],
       alt = s.altAmmo[weapon];
-    await hold("[data-touch=primary]", 4000, (s) => s?.ammo[weapon] < ammo);
+    await hold("[data-touch=primary]", 12000, (s) => s?.ammo[weapon] < ammo);
     await sleep(300);
     s = await state();
     step(
@@ -687,7 +688,11 @@ for (const device of wanted) {
       `weapon ${before + 1} → ${weapon + 1}, ammunition ${ammo} → ${s.ammo[weapon]}`,
     );
     await sleep(300);
-    await hold("[data-touch=secondary]", 4000, (s) => s?.altAmmo[weapon] < alt);
+    await hold(
+      "[data-touch=secondary]",
+      12000,
+      (s) => s?.altAmmo[weapon] < alt,
+    );
     await sleep(300);
     s = await state();
     step(
