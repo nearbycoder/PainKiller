@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101310" />
+    <title>Purgatory</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23bb442c' d='M28 4h8v19h17v8H36v29h-8V31H11v-8h17z'/%3E%3C/svg%3E"
+    />
+    <noscript
+      ><style>
+        .art-loading {
+          display: none;
+        }
+      </style></noscript
+    >
+    <script type="module" crossorigin src="./assets/index-Djj6PN2p.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CMZzKsud.css">
+  </head>
+  <body>
+    <canvas id="world" aria-label="3D game world"></canvas>
+    <div id="app">
+      <main class="art-loading">
+        <span>PURGATORY</span>
+        <h1>Opening Purgatory</h1>
+        <p>Loading the game…</p>
+        <progress max="1"></progress>
+      </main>
+      <noscript
+        ><main class="fatal">
+          <h1>JavaScript is turned off.</h1>
+          <p>Purgatory runs in the browser and needs JavaScript and WebGL 2.</p>
+        </main></noscript
+      >
+    </div>
+    <script>
+      // If the game's own script or style sheet fails to download, say so instead of
+      // leaving the loading screen up forever (src/main.ts handles everything after that).
+      addEventListener(
+        "error",
+        (e) => {
+          if (!/^(SCRIPT|LINK)$/.test(e.target?.tagName)) return;
+          document.querySelector("#app").innerHTML =
+            '<main class="fatal"><h1>The download stopped.</h1><p>Part of the game could not be downloaded. Check your connection and reload the page.</p></main>';
+        },
+        true,
+      );
+    </script>
+  </body>
+</html>
