@@ -48,3 +48,6 @@ desktop.ini
 *~
 .idea/
 .vscode/
+
+# GitHub Pages site built by tools/build-pages.sh
+pages/
