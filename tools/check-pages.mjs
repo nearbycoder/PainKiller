@@ -472,6 +472,11 @@ async function until(b, what, test, ms = timeout) {
       throw new Error(
         `${what}: the page shows an error: ${fatal.replace(/\s+/g, " ").slice(0, 300)}`,
       );
+    const missing = b.errors.find(
+      (e) => /^HTTP \d+ /.test(e) && e.endsWith(" " + url),
+    );
+    if (missing)
+      throw new Error(`${what}: the page itself failed (${missing})`);
     if (Date.now() - started > ms)
       throw new Error(
         `${what}: timed out after ${ms / 1000}s (mode ${s?.mode ?? "none"})`,
@@ -625,6 +630,8 @@ try {
 } catch (e) {
   report.errors = b ? [...b.errors] : [];
   step("runner", false, e.message);
+  if (report.errors.length)
+    console.log(`     page errors: ${report.errors.slice(0, 10).join(" | ")}`);
 } finally {
   await b?.close().catch(() => {});
   server?.stop();
