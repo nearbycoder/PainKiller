@@ -383,13 +383,22 @@ for (const device of wanted) {
           h: r.height,
         };
       }, selector);
+    /** Taps `selector`, first scrolling it into view as a player would. */
     const tap = async (selector) => {
+      await page.evaluate((s) => {
+        const e = [...document.querySelectorAll(s)].find(
+          (e) => e.getClientRects().length,
+        );
+        const r = e?.getBoundingClientRect();
+        if (r && (r.top < 0 || r.bottom > innerHeight))
+          e.scrollIntoView({ block: "center" });
+      }, selector);
+      await sleep(150);
       const b = await box(selector);
       if (!b) throw new Error(`nothing visible matches ${selector}`);
       await page.touchscreen.tap(b.x, b.y);
       return b;
     };
-    /** Holds a finger on `selector` for `ms`. */
     /**
      * Holds a finger on `selector` until `done(state)` or `ms` pass. Under load the
      * game's clock can run slower than the wall clock (each frame counts at most 0.1 s),
