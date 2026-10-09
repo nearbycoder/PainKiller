@@ -13,7 +13,7 @@
 [![Platform: Linux | Web](https://img.shields.io/badge/platform-Linux%20%7C%20Web-bfa477?logo=linux&logoColor=white)](https://github.com/nearbycoder/PainKiller/releases)
 [![Release](https://img.shields.io/github/v/release/nearbycoder/PainKiller?color=b33927)](https://github.com/nearbycoder/PainKiller/releases/latest)
 
-[**Watch the trailer**](#trailer) · [**Download**](https://github.com/nearbycoder/PainKiller/releases/latest) · [Features](#features) · [Build from source](#build-from-source)
+[**Play in your browser**](https://nearbycoder.github.io/PainKiller/) · [**Watch the trailer**](#trailer) · [**Download**](https://github.com/nearbycoder/PainKiller/releases/latest) · [Features](#features) · [Build from source](#build-from-source)
 
 </div>
 
@@ -34,6 +34,16 @@ It is built around **momentum**: there is no reload key, every weapon has two fi
 It runs as an offline Linux desktop game, or in any WebGL 2 browser. No account, server, or internet connection is needed.
 
 ## Play it
+
+### Play in your browser
+
+**[nearbycoder.github.io/PainKiller](https://nearbycoder.github.io/PainKiller/)** runs the current code (not the older v0.1.0 release) in any browser with WebGL 2, with nothing to install. If the link shows a 404, the site has not been published yet.
+
+- **Download:** about 53 MB before the title screen (the game script is 1 MB compressed; the rest is the cemetery, weapons, enemies and sky), then the cathedral, crypt and foundry scenes in the background, 86 MB in all. A progress bar counts the megabytes, and a failed download offers _Try again_.
+- **Tested** headless on Linux in Chromium 151 (`chrome-headless-shell`, software WebGL) and Firefox 157 (on the GPU), served under `/PainKiller/` as GitHub Pages serves it: the title screen, starting a campaign, walking, firing, pausing, and a Graphics fidelity change and the save surviving a reload. Nobody has played it by hand in a browser yet, and Safari, Edge and phones have not been tried.
+- **What differs from the desktop build:** saves and options live in the browser's storage for this site (clearing site data or a private window loses them, and they are separate from a desktop install's saves); there is no _Quit game_ button (close the tab); sound starts with your first click or key press; the mouse is captured when you click into the fight, and after Esc Chromium refuses to capture it again for about a second, so the fight waits for a click; _Toggle fullscreen_ under Options › Video uses the browser's fullscreen (the browser's own Esc leaves it). Graphics start on Medium (Low on touch devices) with adaptive resolution, as on the desktop; speed depends on the browser using the GPU.
+
+### Downloads
 
 Grab a build from [**Releases**](https://github.com/nearbycoder/PainKiller/releases/latest):
 
@@ -176,7 +186,7 @@ npm run package:linux   # AppImage + portable tar.gz in release/
 npm run package:web     # static site zip in release/ (purgatory-<version>-web.zip)
 ```
 
-The web build is a plain static site (relative paths, no server code), so it can be hosted from any static host. `.github/workflows/pages.yml` can publish it to GitHub Pages, but it only runs when started by hand and needs Pages enabled for the repository first; nothing is hosted yet.
+The web build is a plain static site (relative paths, no server code), so it can be hosted from any static host. `bash tools/build-pages.sh` builds the GitHub Pages site into `pages/` (git-ignored; `index.html` at its root and a `.nojekyll` file), which is published from the `gh-pages` branch. `node tools/check-pages.mjs <url>` (or `--serve pages`, which serves the folder under `/PainKiller/` like Pages does) opens it in headless Chromium, or Firefox with `--browser firefox`, and exits 0 only when the title screen appears with no page errors; `--play` also starts a fight, walks, fires, pauses, changes Graphics fidelity and reloads to check the setting and save are kept. `.github/workflows/pages.yml` is an alternative that publishes `dist/` through GitHub Actions; it only runs when started by hand and needs Pages set to "GitHub Actions" first, so it is not used with the `gh-pages` branch.
 
 If npm's install-script policy skipped the Electron download, run `node node_modules/electron/install.js`. `./play.sh` runs a packaged build if one exists, otherwise it builds and launches the desktop shell.
 
@@ -262,7 +272,7 @@ Purgatory is a **playable prototype**. The whole campaign can be played start to
 - Controller and touch input are tested only with synthetic events; no physical gamepad or phone has been tried, so controller vibration, the stick dead zone, the precise look response, swapped sticks and toggle sprint have never been felt. Switching between the touch layout and the mouse (round 9) is checked with synthetic touches and Chromium's touch emulation, not on a real touchscreen laptop or tablet.
 - The sound is measured, not heard: levels of the empty-weapon click, the five chapter music themes (round 6) and the low-health heartbeat (round 7) were checked by offline rendering, and listening clips are in `docs/media/improvements/`, but no person has listened to them yet.
 - Only Linux x86-64 desktop builds are produced. Windows and macOS packaging is untested.
-- The web build is packaged (`npm run package:web`) but not hosted anywhere yet. A manual-only GitHub Pages workflow is included and has never been run. It passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in Firefox, and Safari has not been tried.
+- The browser build for GitHub Pages (`tools/build-pages.sh`) passes the automated checks in Chromium and in Firefox (headless, on Linux), but no one has played it by hand in a browser, and Safari, Edge and phones have not been tried. The manual-only Pages workflow has never been run.
 - Two round 8 behaviours are checked against simulated platform responses only. Holding the fight when the browser refuses the mouse is tested with a simulated pointer lock, since the offscreen test windows never get one and the shared desktop's mouse must not be grabbed. Reopening the desktop window maximized, fullscreen or at its old position is covered by unit tests only, because this Wayland desktop reports no window position and test windows must not cover the shared desktop; reopening at the old size was checked by launching the build twice.
 - The HUD's contrast over bright ground was measured at 1280 × 800 from each level's opening view (round 9), at eight headings in the three brightest arenas and a dark hall (round 10), and looking down at the ground, beside a rocket blast and in the chaingun's muzzle flash, with the mid-screen messages on screen (round 11): every small label at least 3:1, every number and message at least 4.5:1 there. Round 12 measured a crowded fight (a dozen enemies in front, firing), Wraith form and the low-health vignette in Frostbound Crossing and Hallowed Ground: everything held those targets except the health readout at low health, which faded to 1.6:1 at the low point of its pulse and now brightens instead (4.7:1 or more). Bloom and the vignette on High and Ultra left no small label under 3:1. These are still frozen frames; nobody has judged them in play.
 - Keyboard, mouse and controller buttons can be rebound and the sticks swapped; the touch layout is fixed. Saves resume the start of the current wave, not the exact moment you quit. After the campaign's ending the title screen still offers _Continue · The Abyss · Sector 1_, which replays the last level; nothing marks the campaign as finished there yet.
