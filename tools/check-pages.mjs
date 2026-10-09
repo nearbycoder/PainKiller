@@ -301,7 +301,8 @@ async function chromium() {
     },
     async close() {
       try {
-        await send("Browser.close");
+        // The browser may exit before it answers; do not wait for an answer forever.
+        await Promise.race([send("Browser.close"), sleep(5000)]);
       } catch {}
       ws.close();
       if (proc.exitCode === null) {
@@ -435,7 +436,8 @@ async function firefox() {
     },
     async close() {
       try {
-        await send("session.end");
+        // The browser may exit before it answers; do not wait for an answer forever.
+        await Promise.race([send("session.end"), sleep(5000)]);
       } catch {}
       ws.close();
       if (proc.exitCode === null) {
