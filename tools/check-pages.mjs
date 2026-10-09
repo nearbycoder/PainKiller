@@ -9,10 +9,10 @@
 // Exits 0 only when the game reaches its title screen with no page errors: no uncaught
 // exception, no console error and no failed or 4xx/5xx request. --play also starts a
 // fight from the title with a real click (checking that sound starts only after it),
-// walks, fires, pauses, raises Graphics fidelity on the Options page, and reloads to
-// check the setting and the saved progress survive. Nothing needs installing: Chromium is
-// Playwright's cached chrome-headless-shell (or --chromium PATH / $CHROMIUM) over the
-// DevTools protocol, Firefox speaks WebDriver BiDi. Each browser runs headless in a
+// checks the touch controls stay hidden, walks, fires, pauses, raises Graphics fidelity
+// on the Options page, and reloads to check the setting and the saved progress survive.
+// Nothing needs installing: Chromium is Playwright's cached chrome-headless-shell (or
+// --chromium PATH / $CHROMIUM) over the DevTools protocol, Firefox speaks WebDriver BiDi. Each browser runs headless in a
 // throwaway profile under artifacts/ that is deleted afterwards, muted.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -525,6 +525,9 @@ try {
     `${report.secondsToTitle.toFixed(1)} s, ${(report.download.bytes / 1048576).toFixed(1)} MB in ${report.download.files} files, WebGL 2: ${report.webgl}`,
   );
 
+  const titleTouch = await b.js(
+    "document.body.classList.contains('touch-layout')",
+  );
   if (flag("play")) {
     const before = await audioRunning(b);
     step(
@@ -557,6 +560,16 @@ try {
     const moved = Math.hypot(
       s.position[0] - start[0],
       s.position[2] - start[2],
+    );
+    // A desktop with a mouse never shows the phone and tablet controls, from the start
+    // or in a fight.
+    const touch = await b.js(
+      "({ layout: document.body.classList.contains('touch-layout'), controls: getComputedStyle(document.getElementById('touch-controls')).display })",
+    );
+    step(
+      "no touch controls on the desktop",
+      !titleTouch && !touch.layout && touch.controls === "none",
+      `touch layout at the title ${titleTouch}, in the fight ${touch.layout}; controls ${touch.controls}`,
     );
     step(
       "walks forward with W",
