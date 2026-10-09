@@ -73,7 +73,9 @@ export class Sound {
       this.musicGain.connect(this.gain);
       this.setChannels(this.effectsVolume, this.musicVolume);
     }
-    if (this.ctx.state === "suspended") void this.ctx.resume();
+    // Refused outside a touch or click, or with no audio device; the next input retries.
+    if (this.ctx.state !== "running")
+      Promise.resolve(this.ctx.resume()).catch(() => {});
   }
   tone(
     freq: number,

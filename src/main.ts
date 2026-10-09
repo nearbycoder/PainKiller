@@ -7,7 +7,7 @@ import "./touch.css";
 import { Game } from "./game";
 import { UI } from "./ui";
 import { LEVELS } from "./data";
-import { loadArt, prefetchArt } from "./assets";
+import { LIGHT_ART, loadArt, prefetchArt } from "./assets";
 import { initPhysics } from "./physics";
 import { randomState, seedRandom } from "./random";
 const LOADING = `<main class="art-loading"><span>PURGATORY</span><h1>Opening Purgatory</h1><p>Loading models and materials…</p><progress max="1" value="0"></progress></main>`,
@@ -52,6 +52,68 @@ function webgl2() {
     return false;
   }
 }
+const RUNNING = "purgatory.running",
+  OPTIONS = "purgatory.options";
+/**
+ * Phones and tablets: whether the last visit ended without the page closing. A mobile
+ * browser that runs out of memory kills the tab (iOS reloads it with only a line of
+ * text), so the game itself has to say what happened. Afterwards the page is marked as
+ * running until it closes normally.
+ */
+function closedUnexpectedly() {
+  if (!LIGHT_ART) return false;
+  let previous: string | null = null;
+  try {
+    previous = localStorage.getItem(RUNNING);
+    const mark = () => localStorage.setItem(RUNNING, String(Date.now()));
+    mark();
+    addEventListener("pagehide", () => localStorage.removeItem(RUNNING));
+    addEventListener("pageshow", (e) => e.persisted && mark());
+  } catch {}
+  return !!previous;
+}
+/** Says the tab was closed, and offers the lightest graphics before loading again. */
+async function lighterStart(app: Element) {
+  app.innerHTML = `<main class="art-loading art-notice"><span>PURGATORY</span><h1>Purgatory closed unexpectedly</h1><p>The browser most likely ran short of memory and closed the page. Lighter graphics use less.</p><nav><button type="button" data-choice="light" data-default>Use the lightest graphics</button><button type="button" data-choice="keep">Keep my settings</button></nav></main>`;
+  const choice = await new Promise<string>((resolve) =>
+    app.querySelectorAll<HTMLButtonElement>("[data-choice]").forEach((b) =>
+      b.addEventListener("click", () => resolve(b.dataset.choice!), {
+        once: true,
+      }),
+    ),
+  );
+  if (choice !== "light") return;
+  try {
+    const options = JSON.parse(localStorage.getItem(OPTIONS) || "{}");
+    localStorage.setItem(
+      OPTIONS,
+      JSON.stringify({
+        ...options,
+        quality: 0,
+        renderScale: 0.6,
+        adaptiveResolution: true,
+      }),
+    );
+  } catch {}
+}
+/**
+ * The graphics device can be taken away (a mobile browser short of memory, a driver
+ * reset). three.js restores the scene if the browser gives the context back; until then,
+ * and if it never does, the player is told instead of facing a frozen picture.
+ */
+function watchContext(canvas: HTMLCanvasElement) {
+  const notice = document.createElement("div");
+  notice.id = "context-lost";
+  notice.setAttribute("role", "alert");
+  notice.hidden = true;
+  notice.innerHTML = `<h1>The graphics stopped</h1><p>The browser took the graphics device away, most likely to free memory. Waiting for it to return…</p><button type="button">Reload the page</button>`;
+  notice
+    .querySelector("button")!
+    .addEventListener("click", () => location.reload());
+  document.body.append(notice);
+  canvas.addEventListener("webglcontextlost", () => (notice.hidden = false));
+  canvas.addEventListener("webglcontextrestored", () => (notice.hidden = true));
+}
 async function boot() {
   try {
     const app = document.querySelector("#app")!;
@@ -61,11 +123,14 @@ async function boot() {
       console.warn("WebGL 2 is not available; the game cannot start");
       return;
     }
+    if (closedUnexpectedly()) await lighterStart(app);
     app.innerHTML = LOADING;
     await initPhysics();
     await download(app);
     app.innerHTML = "";
-    const game = new Game(document.querySelector<HTMLCanvasElement>("#world")!);
+    const canvas = document.querySelector<HTMLCanvasElement>("#world")!;
+    watchContext(canvas);
+    const game = new Game(canvas);
     new UI(game);
     void game.init().then(prefetchArt);
     // Read-only inspection is available in every build. Test controls are dev-only.
